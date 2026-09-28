@@ -44,6 +44,9 @@ export function TagMigrationDialog({ open = false, count = 0, onOpenChange, onCo
 
     let hasMore = true;
     let attempts = 0;
+    let totalErrors = 0;
+    let totalItems = 0;
+    let totalProcessed = 0;
     const maxAttempts = 1000;
 
     while (hasMore && attempts < maxAttempts) {
@@ -52,6 +55,7 @@ export function TagMigrationDialog({ open = false, count = 0, onOpenChange, onCo
         processed: number;
         hasMore: boolean;
         total: number;
+        errors?: number;
       }>("/api/migration/tags/run-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -64,11 +68,12 @@ export function TagMigrationDialog({ open = false, count = 0, onOpenChange, onCo
         return;
       }
 
-      const processed = result.data.processed;
+      totalProcessed = result.data.processed;
       hasMore = result.data.hasMore;
-      const total = result.data.total;
-      setProgress(total > 0 ? Math.round((processed / total) * 100) : 0);
-      setStatus(t("status-migration-progress", { current: processed, total }));
+      totalItems = result.data.total;
+      totalErrors = result.data.errors ?? 0;
+      setProgress(totalItems > 0 ? Math.round((totalProcessed / totalItems) * 100) : 0);
+      setStatus(t("status-migration-progress", { current: totalProcessed, total: totalItems }));
       if (hasMore) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -76,6 +81,16 @@ export function TagMigrationDialog({ open = false, count = 0, onOpenChange, onCo
 
     if (attempts >= maxAttempts) {
       setStatus(t("migration-stopped"));
+      setRunning(false);
+      return;
+    }
+
+    if (totalErrors > 0) {
+      const finalProgress = totalItems > 0 ? Math.round((totalProcessed / totalItems) * 100) : 0;
+      setProgress(finalProgress);
+      const failedMsg = `${t("toast-migration-failed")}: ${totalErrors} memory tag generation failure(s)`;
+      setStatus(failedMsg);
+      toast.error(failedMsg);
       setRunning(false);
       return;
     }

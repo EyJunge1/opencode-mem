@@ -171,6 +171,7 @@ console.log(JSON.stringify({
     expect(result.parsed.batch.success).toBe(true);
     expect(result.parsed.batch.data.processed).toBe(0);
     expect(result.parsed.batch.data.hasMore).toBe(false);
+    expect(result.parsed.batch.data.errors).toBe(2);
     expect(result.parsed.progress.data.processed).toBe(0);
     expect(result.parsed.progress.data.isComplete).toBe(true);
     expect(result.parsed.progress.data.errors.length).toBe(2);

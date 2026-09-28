@@ -1452,7 +1452,7 @@ export async function handleGetTagMigrationProgress(): Promise<ApiResponse<Migra
 
 export async function handleRunTagMigrationBatch(
   batchSize: number = 5
-): Promise<ApiResponse<{ processed: number; total: number; hasMore: boolean }>> {
+): Promise<ApiResponse<{ processed: number; total: number; hasMore: boolean; errors: number }>> {
   try {
     await ensureTursoReady();
     const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
@@ -1566,7 +1566,12 @@ export async function handleRunTagMigrationBatch(
 
     return {
       success: true,
-      data: { processed: migrationProgress.processed, total: migrationProgress.total, hasMore },
+      data: {
+        processed: migrationProgress.processed,
+        total: migrationProgress.total,
+        hasMore,
+        errors: migrationProgress.errors.length,
+      },
     };
   } catch (error) {
     return { success: false, error: String(error) };
