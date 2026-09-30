@@ -103,6 +103,44 @@ describe("v2 client cache", () => {
     expect(typeof client.session.prompt).toBe("function");
     expect(typeof client.session.delete).toBe("function");
   });
+
+  it("setV2Client enables SDK structured output without createV2Client", async () => {
+    const mod = await import(`../src/services/ai/opencode-provider.js?cachebust=${Math.random()}`);
+    const calls: string[] = [];
+    const client = {
+      session: {
+        create: async () => {
+          calls.push("create");
+          return { data: { id: "ses_sdk_native" } };
+        },
+        prompt: async () => {
+          calls.push("prompt");
+          return {
+            data: {
+              info: { structured_output: { topic: "native-v2", count: 1 } },
+              parts: [],
+            },
+          };
+        },
+        delete: async () => {
+          calls.push("delete");
+        },
+      },
+    };
+
+    mod.setV2Client(client);
+    const result = await mod.generateStructuredOutput({
+      client,
+      providerID: "github-copilot",
+      modelID: "gpt-4o-mini",
+      systemPrompt: "s",
+      userPrompt: "u",
+      schema,
+    });
+
+    expect(result).toEqual({ topic: "native-v2", count: 1 });
+    expect(calls).toEqual(["create", "prompt", "delete"]);
+  });
 });
 
 describe("generateStructuredOutput", () => {
