@@ -54,7 +54,16 @@ export class TursoConnectionManager {
         mkdirSync(dir, { recursive: true });
       }
 
-      const client: Client = this.clientFactory({ url: toFileUrl(dbPath) });
+      // libsql 0.18 pools up to `concurrency` native sqlite handles (default 20).
+      // On Windows that multi-handle model stalls file-backed clients under bun's
+      // default 5s test budget (and can hang real claim/import paths). Keep one
+      // connection per client — matching pre-0.18 local reuse — and set a busy
+      // timeout so any residual lock contention fails fast instead of hanging.
+      const client: Client = this.clientFactory({
+        url: toFileUrl(dbPath),
+        concurrency: 1,
+        timeout: 5_000,
+      });
       try {
         const db = new TursoDb(client);
         await db.execute("PRAGMA foreign_keys = ON");

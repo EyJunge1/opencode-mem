@@ -111,6 +111,38 @@ describe("turso connection manager", () => {
     expect(Number((row as { foreign_keys?: number } | null)?.foreign_keys)).toBe(1);
   });
 
+  it("opens local clients with a single pooled connection and busy timeout", async () => {
+    baseDir = mkdtempSync(join(tmpdir(), "turso-conn-opts-"));
+    const { CONFIG } = await import("../src/config.js");
+    CONFIG.storagePath = baseDir;
+    const dbPath = join(baseDir, "opts.db");
+
+    const configs: Array<Record<string, unknown>> = [];
+    const clientFactory = ((config: Record<string, unknown>) => {
+      configs.push(config);
+      return {
+        async execute() {
+          return { columns: [], columnTypes: [], rows: [], rowsAffected: 0 };
+        },
+        close() {},
+      } as unknown as Client;
+    }) as unknown as typeof import("@libsql/client").createClient;
+
+    const { TursoConnectionManager } = await import("../src/services/turso/connection-manager.js");
+    const manager = new TursoConnectionManager(clientFactory);
+    try {
+      await manager.getConnection(dbPath);
+      expect(configs).toHaveLength(1);
+      expect(configs[0]).toMatchObject({
+        url: `file:${dbPath}`,
+        concurrency: 1,
+        timeout: 5_000,
+      });
+    } finally {
+      await manager.closeAll();
+    }
+  });
+
   it("refuses paths outside storagePath", async () => {
     baseDir = mkdtempSync(join(tmpdir(), "turso-conn-outside-"));
     const { CONFIG } = await import("../src/config.js");
