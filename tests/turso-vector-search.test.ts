@@ -15,88 +15,100 @@ describe("turso vector search", () => {
     baseDir = mkdtempSync(join(tmpdir(), "turso-vector-test-"));
 
     const { CONFIG } = await import("../src/config.js");
+    const previousStoragePath = CONFIG.storagePath;
     CONFIG.storagePath = baseDir;
 
-    const { tursoConnectionManager } = await import("../src/services/turso/connection-manager.js");
-    const { tursoShardManager } = await import("../src/services/turso/shard-manager.js");
-    const { tursoVectorSearch } = await import("../src/services/turso/vector-search.js");
+    try {
+      const { tursoConnectionManager } =
+        await import("../src/services/turso/connection-manager.js");
+      const { tursoShardManager } = await import("../src/services/turso/shard-manager.js");
+      const { tursoVectorSearch } = await import("../src/services/turso/vector-search.js");
 
-    const dims = CONFIG.embeddingDimensions;
-    const vector = new Float32Array(dims);
-    vector[0] = 1;
-    const tagsVector = new Float32Array(dims);
-    tagsVector[1] = 1;
+      const dims = CONFIG.embeddingDimensions;
+      const vector = new Float32Array(dims);
+      vector[0] = 1;
+      const tagsVector = new Float32Array(dims);
+      tagsVector[1] = 1;
 
-    const scopeHash = "a1b2c3d4e5f67890";
-    const containerTag = `opencode_project_${scopeHash}`;
+      const scopeHash = "a1b2c3d4e5f67890";
+      const containerTag = `opencode_project_${scopeHash}`;
 
-    const shard = await tursoShardManager.createShard("project", scopeHash, 0);
-    const db = await tursoConnectionManager.getConnection(shard.dbPath);
+      const shard = await tursoShardManager.createShard("project", scopeHash, 0);
+      const db = await tursoConnectionManager.getConnection(shard.dbPath);
 
-    const diskAnnIndexes = await db.all<{ name: string }>(`
+      const diskAnnIndexes = await db.all<{ name: string }>(`
       SELECT name
       FROM sqlite_schema
       WHERE type = 'index' AND name IN ('memories_vec_idx', 'memories_tags_vec_idx')
     `);
-    expect(diskAnnIndexes).toHaveLength(0);
+      expect(diskAnnIndexes).toHaveLength(0);
 
-    await tursoVectorSearch.insertVector(db, {
-      id: "mem_test_1",
-      content: "Turso native vector search",
-      vector,
-      tagsVector,
-      containerTag,
-      tags: "turso,vector",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+      await tursoVectorSearch.insertVector(db, {
+        id: "mem_test_1",
+        content: "Turso native vector search",
+        vector,
+        tagsVector,
+        containerTag,
+        tags: "turso,vector",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
 
-    const contentHit = await db.get<{ id: string }>(
-      `
+      const contentHit = await db.get<{ id: string }>(
+        `
         SELECT m.id AS id
         FROM memories m
         WHERE m.vector IS NOT NULL
         ORDER BY vector_distance_cos(m.vector, vector32(?)) ASC
         LIMIT 1
       `,
-      [JSON.stringify(Array.from(vector))]
-    );
-    const tagsHit = await db.get<{ id: string }>(
-      `
+        [JSON.stringify(Array.from(vector))]
+      );
+      const tagsHit = await db.get<{ id: string }>(
+        `
         SELECT m.id AS id
         FROM memories m
         WHERE m.tags_vector IS NOT NULL
         ORDER BY vector_distance_cos(m.tags_vector, vector32(?)) ASC
         LIMIT 1
       `,
-      [JSON.stringify(Array.from(tagsVector))]
-    );
-    expect(contentHit?.id).toBe("mem_test_1");
-    expect(tagsHit?.id).toBe("mem_test_1");
+        [JSON.stringify(Array.from(tagsVector))]
+      );
+      expect(contentHit?.id).toBe("mem_test_1");
+      expect(tagsHit?.id).toBe("mem_test_1");
 
-    await tursoVectorSearch.insertVector(db, {
-      id: "mem_test_no_tags",
-      content: "Content only vector",
-      vector,
-      containerTag,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+      await tursoVectorSearch.insertVector(db, {
+        id: "mem_test_no_tags",
+        content: "Content only vector",
+        vector,
+        containerTag,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
 
-    const results = await tursoVectorSearch.searchInShard(shard, vector, containerTag, 5, "turso");
+      const results = await tursoVectorSearch.searchInShard(
+        shard,
+        vector,
+        containerTag,
+        5,
+        "turso"
+      );
 
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.id).toBe("mem_test_1");
-    expect(results[0]?.similarity).toBeGreaterThan(0.5);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0]?.id).toBe("mem_test_1");
+      expect(results[0]?.similarity).toBeGreaterThan(0.5);
 
-    const limitedResults = await tursoVectorSearch.searchInShard(
-      shard,
-      vector,
-      containerTag,
-      1,
-      "turso"
-    );
-    expect(limitedResults).toHaveLength(1);
+      const limitedResults = await tursoVectorSearch.searchInShard(
+        shard,
+        vector,
+        containerTag,
+        1,
+        "turso"
+      );
+      expect(limitedResults).toHaveLength(1);
+    } finally {
+      CONFIG.storagePath = previousStoragePath;
+    }
   });
 
   it("uses exact cosine scans for filtered and unfiltered queries", async () => {
@@ -131,73 +143,68 @@ describe("turso vector search", () => {
     expect(observedSql[1]).toContain("m.container_tag = ?");
   });
 
-  // Seeding 200 vectors plus a real ANN search can exceed bun's default 5s test
-  // timeout on slower CI runners (observed on windows-latest), so give this
-  // integration-style check explicit headroom. The assertions are unchanged.
-  it("returns correct tagged memories from ANN above the k threshold (result-level plan check)", async () => {
-    baseDir = mkdtempSync(join(tmpdir(), "turso-vector-ann-"));
+  // Large exact-scan + container_tag filter. Explicit timeout for slower CI runners.
+  it("ranks exact cosine hits and filters other container tags", async () => {
+    baseDir = mkdtempSync(join(tmpdir(), "turso-vector-rank-"));
 
     const { CONFIG } = await import("../src/config.js");
+    const previousStoragePath = CONFIG.storagePath;
     CONFIG.storagePath = baseDir;
 
-    const { tursoConnectionManager } = await import("../src/services/turso/connection-manager.js");
-    const { tursoShardManager } = await import("../src/services/turso/shard-manager.js");
-    const { tursoVectorSearch } = await import("../src/services/turso/vector-search.js");
+    try {
+      const { tursoConnectionManager } =
+        await import("../src/services/turso/connection-manager.js");
+      const { tursoShardManager } = await import("../src/services/turso/shard-manager.js");
+      const { tursoVectorSearch } = await import("../src/services/turso/vector-search.js");
 
-    const dims = CONFIG.embeddingDimensions;
-    const scopeHash = "a1b2c3d4e5f67890";
-    const targetTag = `opencode_project_${scopeHash}`;
-    const otherTag = "opencode_project_0000000000000000";
+      const dims = CONFIG.embeddingDimensions;
+      const scopeHash = "a1b2c3d4e5f67890";
+      const targetTag = `opencode_project_${scopeHash}`;
+      const otherTag = "opencode_project_0000000000000000";
 
-    const shard = await tursoShardManager.createShard("project", scopeHash, 0);
-    const db = await tursoConnectionManager.getConnection(shard.dbPath);
+      const shard = await tursoShardManager.createShard("project", scopeHash, 0);
+      const db = await tursoConnectionManager.getConnection(shard.dbPath);
 
-    // Insert 200 memories across two container tags, well above the k=128
-    // threshold for container-tagged ANN searches. The target-tag memory at
-    // index 0 has the query vector itself (similarity 1.0), so it must rank
-    // first; other-tag memories must never appear in results.
-    const now = Date.now();
-    for (let i = 0; i < 200; i++) {
-      const vec = new Float32Array(dims);
-      // Spread signal across dimensions so vectors are distinguishable but
-      // the index-0 vector is closest to the query (also vec[0]=1).
-      vec[i % dims] = 1;
-      if (i > 0) vec[0] = 0.001;
+      // 200 memories across two tags (above the over-fetch k=128). mem_rank_0 is
+      // an exact query match; every other vector is orthogonal on a different dim.
+      const now = Date.now();
+      for (let i = 0; i < 200; i++) {
+        const vec = new Float32Array(dims);
+        if (i === 0) {
+          vec[0] = 1;
+        } else {
+          vec[i % dims === 0 ? 1 : i % dims] = 1;
+        }
 
-      const tag = i < 150 ? targetTag : otherTag;
-      await tursoVectorSearch.insertVector(db, {
-        id: `mem_ann_${i}`,
-        content: `Memory ${i}`,
-        vector: vec,
-        containerTag: tag,
-        tags: "",
-        createdAt: now - (200 - i),
-        updatedAt: now,
-      });
+        const tag = i < 150 ? targetTag : otherTag;
+        await tursoVectorSearch.insertVector(db, {
+          id: `mem_rank_${i}`,
+          content: `Memory ${i}`,
+          vector: vec,
+          containerTag: tag,
+          tags: "",
+          createdAt: now - (200 - i),
+          updatedAt: now,
+        });
+      }
+
+      const queryVector = new Float32Array(dims);
+      queryVector[0] = 1;
+
+      // No queryText: avoids keyword boost; ranking is pure vector similarity.
+      const results = await tursoVectorSearch.searchInShard(shard, queryVector, targetTag, 10);
+
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0]?.id).toBe("mem_rank_0");
+      // Hybrid score is 0.6*content + 0.4*tags; tags_vector is null → ~0.6 for exact hit.
+      expect(results[0]?.similarity).toBeGreaterThan(0.55);
+      for (const r of results) {
+        const idx = Number(r.id.replace("mem_rank_", ""));
+        expect(idx).toBeLessThan(150);
+      }
+      expect(results.length).toBeLessThanOrEqual(10);
+    } finally {
+      CONFIG.storagePath = previousStoragePath;
     }
-
-    // Query vector matches mem_ann_0 (vec[0]=1, no other dimensions set).
-    const queryVector = new Float32Array(dims);
-    queryVector[0] = 1;
-
-    const results = await tursoVectorSearch.searchInShard(
-      shard,
-      queryVector,
-      targetTag,
-      10,
-      "turso"
-    );
-
-    expect(results.length).toBeGreaterThan(0);
-    // The closest target-tag memory must rank first.
-    expect(results[0]?.id).toBe("mem_ann_0");
-    expect(results[0]?.similarity).toBeGreaterThan(0.9);
-    // No other-container-tag memories (indices 150-199) should leak through.
-    for (const r of results) {
-      const idx = Number(r.id.replace("mem_ann_", ""));
-      expect(idx).toBeLessThan(150);
-    }
-    // Results should be limited to the requested limit.
-    expect(results.length).toBeLessThanOrEqual(10);
   }, 60000);
 });

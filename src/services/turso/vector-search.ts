@@ -185,7 +185,11 @@ export class TursoVectorSearch {
           ? 0
           : distanceToSimilarity(Number(row.tags_dist));
       const memoryTagsStr = String(row.tags || "");
-      const memoryTags = memoryTagsStr.split(",").map((tag) => tag.trim().toLowerCase());
+      // filter(Boolean): "".split(",") → [""], and "query".includes("") is always true.
+      const memoryTags = memoryTagsStr
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean);
 
       let exactMatchBoost = 0;
       if (queryWords.length > 0 && memoryTags.length > 0) {
