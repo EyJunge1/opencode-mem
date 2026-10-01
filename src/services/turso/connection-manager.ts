@@ -1,14 +1,14 @@
-import { createClient, type Client } from "@libsql/client";
+import { connect, type Database } from "@tursodatabase/database";
+import type { DatabaseOpts, EncryptionOpts } from "@tursodatabase/database-common";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve, relative, isAbsolute, sep } from "node:path";
 import { CONFIG } from "../../config.js";
 import { log } from "../logger.js";
 import { collectReleasedSqliteHandles } from "./sqlite-handle-release.js";
 import { TursoDb } from "./turso-db.js";
+import { resolveOrCreateDatabaseEncryptionKey } from "./encryption-key.js";
 
-function toFileUrl(dbPath: string): string {
-  return dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`;
-}
+export type ConnectFactory = (path: string, opts?: DatabaseOpts) => Promise<Database>;
 
 function assertPathInsideStorage(dbPath: string): void {
   const storageRoot = resolve(CONFIG.storagePath);
@@ -20,13 +20,32 @@ function assertPathInsideStorage(dbPath: string): void {
   }
 }
 
+function buildConnectOptions(encryption?: EncryptionOpts | null): DatabaseOpts {
+  const opts: DatabaseOpts = {
+    experimental: ["encryption"],
+  };
+  if (encryption) {
+    opts.encryption = encryption;
+  }
+  return opts;
+}
+
+export function resolveDatabaseEncryption(): EncryptionOpts | null {
+  const hexkey = resolveOrCreateDatabaseEncryptionKey();
+  if (!hexkey) return null;
+  return {
+    cipher: CONFIG.databaseEncryptionCipher,
+    hexkey,
+  };
+}
+
 export class TursoConnectionManager {
   private readonly connections = new Map<string, TursoDb>();
   private readonly pending = new Map<string, Promise<TursoDb>>();
   private readonly closingConnections = new Map<string, Promise<void>>();
   private closingPromise: Promise<void> | null = null;
 
-  constructor(private readonly clientFactory: typeof createClient = createClient) {}
+  constructor(private readonly connectFactory: ConnectFactory = connect) {}
 
   async getConnection(dbPath: string): Promise<TursoDb> {
     if (this.closingPromise) {
@@ -54,26 +73,30 @@ export class TursoConnectionManager {
         mkdirSync(dir, { recursive: true });
       }
 
-      // libsql 0.18 pools up to `concurrency` native sqlite handles (default 20).
-      // On Windows that multi-handle model stalls file-backed clients under bun's
-      // default 5s test budget (and can hang real claim/import paths). Keep one
-      // connection per client — matching pre-0.18 local reuse — and set a busy
-      // timeout so any residual lock contention fails fast instead of hanging.
-      const client: Client = this.clientFactory({
-        url: toFileUrl(dbPath),
-        concurrency: 1,
-        timeout: 5_000,
-      });
+      const encryption = resolveDatabaseEncryption();
+      const opts = buildConnectOptions(encryption);
+      let database: Database | null = null;
       try {
-        const db = new TursoDb(client);
+        database = await this.connectFactory(dbPath, opts);
+        const db = new TursoDb(database);
         await db.execute("PRAGMA foreign_keys = ON");
         this.connections.set(dbPath, db);
         return db;
       } catch (error) {
-        try {
-          client.close();
-        } catch {
-          // ignore close errors during cleanup
+        if (database) {
+          try {
+            await database.close();
+          } catch {
+            // ignore close errors during cleanup
+          }
+        }
+        if (encryption) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(
+            `Failed to open encrypted database ${dbPath}: ${message}. ` +
+              `Check databaseEncryptionKey / cipher, or remove encryption config for plaintext shards.`,
+            { cause: error }
+          );
         }
         throw error;
       }
@@ -155,7 +178,7 @@ export class TursoConnectionManager {
   closeAllSync(): void {
     for (const [path, db] of this.connections) {
       try {
-        db.getClient().close();
+        void db.close();
       } catch (error) {
         log("Error closing Turso database (sync)", { path, error: String(error) });
       }
