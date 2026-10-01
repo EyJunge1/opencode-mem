@@ -11,6 +11,7 @@ import type { MemoryType } from "../types/index.js";
 import { userPromptManager } from "./user-prompt/user-prompt-manager.js";
 import type { UserProfileData } from "./user-profile/types.js";
 import { sortProfileItems } from "../utils/profile.js";
+import { toPublicProfileData } from "./user-profile/profile-utils.js";
 import type { ShardInfo } from "./turso/types.js";
 
 async function getAllMemoryShards(): Promise<ShardInfo[]> {
@@ -932,7 +933,7 @@ export async function handleGetUserProfile(userId?: string): Promise<ApiResponse
         createdAt: safeToISOString(profile.createdAt),
         lastAnalyzedAt: safeToISOString(profile.lastAnalyzedAt),
         totalPromptsAnalyzed: profile.totalPromptsAnalyzed,
-        profileData,
+        profileData: toPublicProfileData(profileData),
       },
     };
   } catch (error) {
@@ -970,7 +971,7 @@ export async function handleGetProfileSnapshot(changelogId: string): Promise<Api
     const { userProfileManager } = await import("./user-profile/user-profile-manager.js");
     const changelog = await userProfileManager.getChangelogById(changelogId);
     if (!changelog) return { success: false, error: "Changelog not found" };
-    const profileData = JSON.parse(changelog.profileDataSnapshot);
+    const profileData = toPublicProfileData(JSON.parse(changelog.profileDataSnapshot));
     return {
       success: true,
       data: {
@@ -1091,8 +1092,10 @@ export async function handleAICleanup(
     return {
       success: true,
       data: {
-        old: profileData,
-        new: result.cleaned,
+        // Strip embeddings only on the HTTP response; pendingCleanups keeps
+        // full vectors for apply/merge.
+        old: toPublicProfileData(profileData),
+        new: toPublicProfileData(result.cleaned),
         changes: result.diff,
       },
     };
