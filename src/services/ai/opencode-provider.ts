@@ -94,6 +94,11 @@ export function isProviderConnected(providerName: string): boolean {
 
 export function setV2Client(client: OpencodeClient): void {
   _v2Client = client;
+  // Native v2 adapters pass a session-capable client without a server URL.
+  // Enable the SDK transport path so structured output does not require createV2Client.
+  if (hasV2SessionClient(client)) {
+    _useSdkTransport = true;
+  }
 }
 
 export function getV2Client(): OpencodeClient | undefined {

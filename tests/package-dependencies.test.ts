@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 import pkg from "../package.json";
 
 describe("published dependency constraints", () => {
-  it("uses @libsql/client for Turso persistence and vector search", () => {
+  it("uses @tursodatabase/database for local persistence (libsql kept for DiskANN migration)", () => {
+    expect(pkg.dependencies["@tursodatabase/database"]).toBeTruthy();
     expect(pkg.dependencies["@libsql/client"]).toBeTruthy();
     expect(pkg.dependencies).not.toHaveProperty("usearch");
   });
@@ -16,7 +17,8 @@ describe("published dependency constraints", () => {
     // Nested package.json overrides are ignored by npm/Arborist (#184). A direct
     // dependency is required so OpenCode nested installs keep a shipping binding.
     // 1.30.0 includes the Ort::Env teardown fix from 1.24.1 (#225). Intel Mac
-    // (darwin/x64) is unsupported — fixed releases ship no x64 binding (#27961).
+    // (darwin/x64) is unsupported — @tursodatabase/database and fixed onnxruntime
+    // releases ship no x64 binding (#27961).
     expect(pkg.dependencies["onnxruntime-node"]).toBe("1.30.0");
     expect((pkg as { overrides?: Record<string, string> }).overrides?.["onnxruntime-node"]).toBe(
       "1.30.0"

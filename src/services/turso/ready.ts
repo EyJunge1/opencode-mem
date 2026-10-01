@@ -1,4 +1,6 @@
 import { runLegacyTursoMigration } from "./legacy-migrator.js";
+import { runTursoEngineMigration } from "./engine-migrator.js";
+import { runDatabaseEncryptionMigration } from "./encryption-migrator.js";
 import { tursoShardManager } from "./shard-manager.js";
 import { log } from "../logger.js";
 
@@ -12,6 +14,8 @@ export async function ensureTursoReady(): Promise<void> {
   initPromise = (async () => {
     try {
       await runLegacyTursoMigration();
+      await runTursoEngineMigration();
+      await runDatabaseEncryptionMigration();
       const { shardPathMigrationService } = await import("../shard-path-migration-service.js");
       await shardPathMigrationService.recoverInterruptedSwap();
       await tursoShardManager.getAllShards("user", "");

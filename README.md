@@ -33,12 +33,12 @@ This plugin uses embedded Turso/libSQL with native vector indexes (`F32_BLOB`, `
 - Internet access on first use if you use the default local embedding model, because the model is downloaded by `@huggingface/transformers`.
 - For source/development installs, run `bun install` before building or testing. The published plugin package installs its runtime dependencies automatically through OpenCode.
 
-**CI-tested platforms:** Linux, Windows, and macOS 15 / macOS 26 on Apple Silicon (`darwin/arm64`). **Intel Mac (`darwin/x64`) is not supported** for local embeddings — fixed `onnxruntime-node` releases ship no x64 native binding. Older macOS releases are not excluded by that matrix; they are simply outside the current GitHub-hosted runner set.
+**CI-tested platforms:** Linux, Windows, and macOS 15 / macOS 26 on Apple Silicon (`darwin/arm64`). **Intel Mac (`darwin/x64`) is not supported** — `@tursodatabase/database` and fixed `onnxruntime-node` releases ship no x64 native binding. Older macOS releases are not excluded by that matrix; they are simply outside the current GitHub-hosted runner set.
 
 **Notes:**
 
-- Vector embeddings are stored and searched directly in Turso/libSQL; inserts update the vector index automatically.
-- Vector search uses libSQL's DiskANN index via `vector_top_k` (approximate nearest neighbors).
+- Vector embeddings are stored and searched directly in Turso; inserts store `F32_BLOB` vectors for exact cosine ranking.
+- Vector search uses exact cosine distance via `vector_distance_cos` (no DiskANN / approximate index).
 - Auto-capture and user profile learning require an AI provider that can return structured/tool-call output. Memory search/add/list still work without auto-capture provider configuration.
 
 ### Upgrading from legacy SQLite shards
@@ -55,13 +55,17 @@ If migration is interrupted, the next startup resumes from the backup automatica
 
 If a shard becomes incompatible (for example after changing `embeddingDimensions`), writes are blocked and the original database is left untouched. Use the Web UI's re-embed migration to build and verify a replacement before it is swapped into place. The previous shard remains available as `<shard>.db.pre-reembed-<pid>-<timestamp>.bak`.
 
+## Schema migrations
+
+Local Turso shards and auxiliary databases (`metadata.db`, `user-prompts.db`, `user-profiles.db`, `ai-sessions.db`) are upgraded with ordered `PRAGMA user_version` migrations in `src/services/turso/schema-migrations.ts`. Migrations are idempotent: starting the plugin applies only pending versions.
+
 ## Getting Started
 
 For OpenCode v2, add the package to the native `plugins` list:
 
 ```jsonc
 {
-  "plugins": ["opencode-mem"],
+  "plugins": ["opencode-mem@latest"],
 }
 ```
 
@@ -70,9 +74,23 @@ For OpenCode v1, add the default entrypoint to your configuration at
 
 ```jsonc
 {
-  "plugin": ["opencode-mem"],
+  "plugin": ["opencode-mem@latest"],
 }
 ```
+
+With `@latest` (or a semver range) and `autoUpdate: true` in `opencode-mem.jsonc` (default), the plugin clears OpenCode's cached install when a newer npm release is available and asks you to restart. Pinned versions like `opencode-mem@2.26.0` are never auto-updated.
+
+### Optional database encryption at rest
+
+Enable AES-256-GCM encryption for local Turso shards in `~/.config/opencode/opencode-mem.jsonc`:
+
+```jsonc
+{
+  "databaseEncryptionEnabled": true,
+}
+```
+
+On first start the plugin creates `~/.config/opencode/opencode-mem-db.key` (32-byte hex key, `chmod 600`) and migrates existing plaintext shards. Override with `"databaseEncryptionKey": "env://OPENCODE_MEM_DB_KEY"` or `"file://~/path/to.key"` if you manage the key yourself. Losing the key means the encrypted databases cannot be opened.
 
 **Windows:** use `%USERPROFILE%\.config\opencode\opencode.json` (for example `C:\Users\<you>\.config\opencode\opencode.json`). This plugin does **not** read `%APPDATA%` or `%LOCALAPPDATA%` for its OpenCode plugin entry — put the file under `.config\opencode` in your user profile, then restart OpenCode. If the plugin does not appear, confirm that path and restart again.
 
@@ -243,7 +261,7 @@ Example — remote OpenAI embeddings:
 
 Changing `embeddingModel` (or dimensions) can trigger re-embedding of stored memories on next startup. Prefer picking a model once and sticking with it for a given data directory.
 
-**Intel Mac (`darwin/x64`):** unsupported for local embeddings. Fixed `onnxruntime-node` releases (`1.24.1+`, including the pinned `1.30.0`) ship no x64 native binding (`microsoft/onnxruntime#27961`). Use Apple Silicon, Linux, or Windows, or a remote endpoint via `embeddingApiUrl` + `embeddingApiKey` (example above). On supported platforms, `opencode-mem` pins `onnxruntime-node@1.30.0` (Ort::Env teardown fix from `1.24.1` / #225) and loads transformers through a CJS resolve shim so OpenCode nested installs keep that binding. Transformers is resolved to an absolute path before that shim is installed so OpenCode's Bun `--compile` host does not fail with `Cannot find module '@huggingface/transformers' from ''`. After upgrading, clear OpenCode's nested plugin cache (`~/.cache/opencode/packages/opencode-mem@*`) and reinstall.
+**Unsupported — Intel Mac (`darwin/x64`):** Local persistence requires `@tursodatabase/database`, which does not publish an Intel Mac native binding. Fixed `onnxruntime-node` releases (`1.24.1+`, including the pinned `1.30.0`) also lack darwin/x64. Use an Apple Silicon Mac, Linux, or Windows, or a remote endpoint via `embeddingApiUrl` + `embeddingApiKey` (example above). On supported platforms, `opencode-mem` pins `onnxruntime-node@1.30.0` (Ort::Env teardown fix from `1.24.1` / #225) and loads transformers through a CJS resolve shim so OpenCode nested installs keep that binding. Transformers is resolved to an absolute path before that shim is installed so OpenCode's Bun `--compile` host does not fail with `Cannot find module '@huggingface/transformers' from ''`. After upgrading, clear OpenCode's nested plugin cache (`~/.cache/opencode/packages/opencode-mem@*`) and reinstall.
 
 ### Memory Scope
 
@@ -437,7 +455,7 @@ Troubleshooting:
 - If auto-capture reports that a provider is not connected, confirm the provider name with `opencode providers list` and configure that provider in opencode first.
 - If a proxy or custom provider returns plain text instead of structured/tool output, choose another model/provider or use one of the manual provider modes above.
 - For models that reject `temperature`, add `"memoryTemperature": false` when using manual API configuration.
-- **Intel Mac (darwin/x64) local embedding:** unsupported — pinned `onnxruntime-node@1.30.0` has no x64 binding. Use Apple Silicon, Linux, Windows, or a remote embedding endpoint via `embeddingApiUrl` + `embeddingApiKey`. See [Choosing / configuring embeddings](#choosing-configuring-embeddings). MLX is not supported.
+- **Unsupported platforms:** Intel Mac (`darwin/x64`) is not supported — `@tursodatabase/database` and fixed `onnxruntime-node` releases (pinned `1.30.0`) ship no x64 native binding. Use Apple Silicon, Linux, or Windows, or a remote embedding endpoint via `embeddingApiUrl` + `embeddingApiKey`. MLX is not supported.
 
 ## Public Subpath Exports
 
@@ -483,7 +501,7 @@ bun run typecheck
 bun run format
 ```
 
-This project is actively seeking contributions to become the definitive memory plugin for AI coding agents. Whether you are fixing bugs, adding features, improving documentation, or expanding embedding model support, your contributions are critical. The codebase is well-structured and ready for enhancement. If you hit a blocker or have improvement ideas, submit a pull request - we review and merge contributions quickly.
+This project is actively seeking contributions to become the definitive memory plugin for AI coding agents. Whether you are fixing bugs, adding features, improving documentation, or expanding embedding model support, your contributions are critical. The codebase is well-structured and ready for enhancement. Please open issues with the Issue or Feature request templates, and fill out the pull request template when you submit a PR — we review and merge contributions quickly.
 
 ## License & Links
 
