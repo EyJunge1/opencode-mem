@@ -38,7 +38,7 @@ type RequestBody = {
   model: string;
   messages: APIMessage[];
   tools: ChatCompletionTool[];
-  tool_choice: "auto";
+  tool_choice: "auto" | "required";
   temperature?: number;
   [key: string]: unknown;
 };
@@ -264,7 +264,7 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           model: this.resolveModel(),
           messages,
           tools: [toolSchema],
-          tool_choice: "auto",
+          tool_choice: this.config.forceToolChoice === false ? "auto" : "required",
         };
 
         if (this.config.memoryTemperature !== false) {

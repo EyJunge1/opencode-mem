@@ -1495,7 +1495,7 @@ export async function handleRunTagMigrationBatch(
           : [];
 
         if (currentTags.length === 0) {
-          const prompt = `Generate 2-4 short technical tags for this memory content:\n\n${m.content}\n\nReturn ONLY a comma-separated list of tags.`;
+          const prompt = `Generate 2-4 short technical tags for this memory content. Call the save_tags tool with a "tags" array.\n\n${m.content}`;
           const result = await provider.executeToolCall(
             "You are a technical tagger.",
             prompt,
