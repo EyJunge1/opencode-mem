@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { fetchAPI } from "$lib/api";
+import { deleteSelectedMemories } from "$lib/bulk-delete";
 import { t } from "$lib/i18n";
 import type { MemoryItem, TagInfo } from "$lib/types";
 
@@ -316,23 +317,28 @@ export function useMemoriesExplorer() {
   async function bulkDelete() {
     if (selectedIds.size === 0) return;
     if (!confirm(t("confirm-bulk-delete", { count: selectedIds.size }))) return;
-    const ids = Array.from(selectedIds);
-    const promptIds = ids.filter((id) => id.startsWith("prompt_"));
-    const memoryIds = ids.filter((id) => !id.startsWith("prompt_"));
-    if (promptIds.length > 0) {
-      await fetchAPI("/api/prompts/bulk-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: promptIds, cascade: true }),
-      });
+
+    const result = await deleteSelectedMemories(
+      Array.from(selectedIds),
+      fetchAPI,
+      memories.map((m) => ({
+        id: m.id,
+        linkedMemoryId: m.linkedMemoryId,
+        linkedPromptId: m.linkedPromptId,
+      }))
+    );
+    if (!result.success) {
+      if (result.deletedIds.length > 0) {
+        const next = new Set(selectedIds);
+        for (const id of result.deletedIds) next.delete(id);
+        setSelected(next);
+        await loadMemories();
+        await loadStats();
+      }
+      toast.error(result.error || t("toast-bulk-delete-failed"));
+      return;
     }
-    if (memoryIds.length > 0) {
-      await fetchAPI("/api/memories/bulk-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: memoryIds, cascade: true }),
-      });
-    }
+
     toast.success(t("toast-bulk-delete-success"));
     setSelected(new Set());
     await loadMemories();
