@@ -11,7 +11,7 @@ describe("turso vector search", () => {
     await cleanupTursoTestDirectory(baseDir);
   });
 
-  it("inserts and searches memories with native vector index", async () => {
+  it("inserts and searches memories with exact cosine distance", async () => {
     baseDir = mkdtempSync(join(tmpdir(), "turso-vector-test-"));
 
     const { CONFIG } = await import("../src/config.js");
@@ -33,17 +33,12 @@ describe("turso vector search", () => {
     const shard = await tursoShardManager.createShard("project", scopeHash, 0);
     const db = await tursoConnectionManager.getConnection(shard.dbPath);
 
-    const indexDefinitions = await db.all<{ name: string; sql: string }>(`
-      SELECT name, sql
+    const diskAnnIndexes = await db.all<{ name: string }>(`
+      SELECT name
       FROM sqlite_schema
       WHERE type = 'index' AND name IN ('memories_vec_idx', 'memories_tags_vec_idx')
     `);
-    expect(indexDefinitions).toHaveLength(2);
-    for (const index of indexDefinitions) {
-      expect(index.sql).toContain("'metric=cosine'");
-      expect(index.sql).toContain("'compress_neighbors=float8'");
-      expect(index.sql).toContain("'max_neighbors=20'");
-    }
+    expect(diskAnnIndexes).toHaveLength(0);
 
     await tursoVectorSearch.insertVector(db, {
       id: "mem_test_1",
@@ -56,24 +51,28 @@ describe("turso vector search", () => {
       updatedAt: Date.now(),
     });
 
-    const contentIndexHit = await db.get<{ id: string }>(
+    const contentHit = await db.get<{ id: string }>(
       `
         SELECT m.id AS id
-        FROM vector_top_k('memories_vec_idx', vector32(?), 1) AS v
-        CROSS JOIN memories m ON m.rowid = v.id
+        FROM memories m
+        WHERE m.vector IS NOT NULL
+        ORDER BY vector_distance_cos(m.vector, vector32(?)) ASC
+        LIMIT 1
       `,
       [JSON.stringify(Array.from(vector))]
     );
-    const tagsIndexHit = await db.get<{ id: string }>(
+    const tagsHit = await db.get<{ id: string }>(
       `
         SELECT m.id AS id
-        FROM vector_top_k('memories_tags_vec_idx', vector32(?), 1) AS v
-        CROSS JOIN memories m ON m.rowid = v.id
+        FROM memories m
+        WHERE m.tags_vector IS NOT NULL
+        ORDER BY vector_distance_cos(m.tags_vector, vector32(?)) ASC
+        LIMIT 1
       `,
       [JSON.stringify(Array.from(tagsVector))]
     );
-    expect(contentIndexHit?.id).toBe("mem_test_1");
-    expect(tagsIndexHit?.id).toBe("mem_test_1");
+    expect(contentHit?.id).toBe("mem_test_1");
+    expect(tagsHit?.id).toBe("mem_test_1");
 
     await tursoVectorSearch.insertVector(db, {
       id: "mem_test_no_tags",
@@ -100,7 +99,7 @@ describe("turso vector search", () => {
     expect(limitedResults).toHaveLength(1);
   });
 
-  it("keeps vector_top_k before memories for filtered and unfiltered ANN queries", async () => {
+  it("uses exact cosine scans for filtered and unfiltered queries", async () => {
     const observedSql: string[] = [];
     const db = {
       all: async (sql: string) => {
@@ -125,9 +124,9 @@ describe("turso vector search", () => {
 
     expect(observedSql).toHaveLength(2);
     for (const sql of observedSql) {
-      expect(sql).toContain("FROM vector_top_k");
-      expect(sql).toContain("CROSS JOIN memories m ON m.rowid = v.id");
-      expect(sql.indexOf("vector_top_k")).toBeLessThan(sql.indexOf("memories m"));
+      expect(sql).toContain("vector_distance_cos");
+      expect(sql).toContain("FROM memories m");
+      expect(sql).not.toContain("vector_top_k");
     }
     expect(observedSql[1]).toContain("m.container_tag = ?");
   });

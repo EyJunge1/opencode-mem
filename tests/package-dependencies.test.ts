@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 import pkg from "../package.json";
 
 describe("published dependency constraints", () => {
-  it("uses @libsql/client for Turso persistence and vector search", () => {
+  it("uses @tursodatabase/database for local persistence (libsql kept for DiskANN migration)", () => {
+    expect(pkg.dependencies["@tursodatabase/database"]).toBeTruthy();
     expect(pkg.dependencies["@libsql/client"]).toBeTruthy();
     expect(pkg.dependencies).not.toHaveProperty("usearch");
   });

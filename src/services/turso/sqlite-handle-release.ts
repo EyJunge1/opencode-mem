@@ -1,3 +1,5 @@
+import { copyFileSync, existsSync, renameSync, unlinkSync } from "node:fs";
+
 type RuntimeWithGarbageCollector = typeof globalThis & {
   Bun?: {
     gc?: (force?: boolean) => void;
@@ -8,6 +10,52 @@ type RuntimeWithGarbageCollector = typeof globalThis & {
 const GC_PASSES = 3;
 const FILE_LOCK_RETRY_DELAYS_MS = [25, 50, 100, 200, 400, 800, 1600, 3200];
 export const RETRYABLE_FILE_LOCK_CODES = new Set(["EBUSY", "EPERM", "EACCES"]);
+
+const SQLITE_SIDE_SUFFIXES = ["-wal", "-shm"] as const;
+
+/**
+ * Rename a SQLite/Turso database file together with its WAL/SHM sidecars.
+ * Leaving a `.tmp-wal` behind after renaming only the main file drops commits.
+ */
+export function renameSqliteDatabase(fromPath: string, toPath: string): void {
+  renameSync(fromPath, toPath);
+  for (const suffix of SQLITE_SIDE_SUFFIXES) {
+    const fromSide = `${fromPath}${suffix}`;
+    const toSide = `${toPath}${suffix}`;
+    if (existsSync(toSide)) {
+      unlinkSync(toSide);
+    }
+    if (existsSync(fromSide)) {
+      renameSync(fromSide, toSide);
+    }
+  }
+}
+
+/**
+ * Copy a SQLite/Turso database file together with its WAL/SHM sidecars.
+ */
+export function copySqliteDatabase(fromPath: string, toPath: string): void {
+  copyFileSync(fromPath, toPath);
+  for (const suffix of SQLITE_SIDE_SUFFIXES) {
+    const fromSide = `${fromPath}${suffix}`;
+    const toSide = `${toPath}${suffix}`;
+    if (existsSync(toSide)) {
+      unlinkSync(toSide);
+    }
+    if (existsSync(fromSide)) {
+      copyFileSync(fromSide, toSide);
+    }
+  }
+}
+
+/**
+ * Remove a SQLite/Turso database file together with WAL/SHM sidecars.
+ */
+export function removeSqliteDatabase(dbPath: string): void {
+  for (const path of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+    if (existsSync(path)) unlinkSync(path);
+  }
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));

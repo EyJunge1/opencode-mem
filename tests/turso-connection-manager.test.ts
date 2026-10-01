@@ -1,5 +1,4 @@
 import { describe, expect, it, afterEach } from "bun:test";
-import type { Client } from "@libsql/client";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -45,30 +44,48 @@ describe("turso connection manager", () => {
       markOpenStarted = resolve;
     });
     const clientStates: Array<{ closed: boolean }> = [];
-    const clientFactory = (): Client => {
-      const clientIndex = clientStates.length;
+    let openCount = 0;
+    const connectFactory = async () => {
+      const clientIndex = openCount++;
       const state = { closed: false };
       clientStates.push(state);
+      if (clientIndex === 0) {
+        markOpenStarted();
+        await openGate;
+      }
       return {
-        async execute(statement: { sql: string }) {
-          if (clientIndex === 0 && statement.sql === "PRAGMA foreign_keys = ON") {
+        async exec() {},
+        async run(sql: string) {
+          if (clientIndex === 0 && sql === "PRAGMA foreign_keys = ON") {
             markOpenStarted();
             await openGate;
           }
+          return { changes: 0, lastInsertRowid: 0 };
+        },
+        async get(sql: string) {
+          if (sql === "PRAGMA foreign_keys") return { foreign_keys: 1 };
+          return undefined;
+        },
+        async all(sql: string) {
+          if (sql === "PRAGMA foreign_keys") return [{ foreign_keys: 1 }];
+          return [];
+        },
+        async batch() {
+          return [];
+        },
+        transactionAsync() {
           return {
-            columns: statement.sql === "PRAGMA foreign_keys" ? ["foreign_keys"] : [],
-            columnTypes: [],
-            rows: statement.sql === "PRAGMA foreign_keys" ? [{ foreign_keys: 1 }] : [],
-            rowsAffected: 0,
+            immediate: async () => undefined,
+            deferred: async () => undefined,
           };
         },
-        close() {
+        async close() {
           state.closed = true;
         },
-      } as unknown as Client;
+      } as any;
     };
     const { TursoConnectionManager } = await import("../src/services/turso/connection-manager.js");
-    const manager = new TursoConnectionManager(clientFactory);
+    const manager = new TursoConnectionManager(connectFactory);
 
     try {
       const opening = manager.getConnection(dbPath);
@@ -117,8 +134,8 @@ describe("turso connection manager", () => {
     CONFIG.storagePath = baseDir;
 
     const { tursoConnectionManager } = await import("../src/services/turso/connection-manager.js");
-    await expect(
-      tursoConnectionManager.getConnection(join(tmpdir(), "outside-opencode-mem.db"))
-    ).rejects.toThrow(/outside storagePath/);
+    await expect(tursoConnectionManager.getConnection("/tmp/outside.db")).rejects.toThrow(
+      /outside storagePath/
+    );
   });
 });
