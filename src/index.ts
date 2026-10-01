@@ -239,6 +239,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const { directory } = ctx;
   initConfig(directory);
   logAutoCaptureProviderStatus();
+  const { startAutoUpdate } = await import("./services/auto-update.js");
+  startAutoUpdate(ctx, CONFIG.autoUpdate);
   const tags = getTags(directory);
   let webServer: WebServer | null = null;
   let idleTimeout: ReturnType<typeof setTimeout> | null = null;

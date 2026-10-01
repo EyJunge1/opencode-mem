@@ -88,6 +88,8 @@ interface OpenCodeMemConfig {
   showAutoCaptureToasts?: boolean;
   showUserProfileToasts?: boolean;
   showErrorToasts?: boolean;
+  /** Automatically clear OpenCode's cached plugin install when a newer npm latest is available. */
+  autoUpdate?: boolean;
   compaction?: {
     enabled?: boolean;
     memoryLimit?: number;
@@ -189,6 +191,7 @@ const DEFAULTS: Required<
   showAutoCaptureToasts: true,
   showUserProfileToasts: true,
   showErrorToasts: true,
+  autoUpdate: true,
   memory: {
     defaultScope: "project",
   },
@@ -485,6 +488,10 @@ const CONFIG_TEMPLATE = `{
   // Show toast for error messages
   "showErrorToasts": true,
 
+  // Automatically update when installed as opencode-mem@latest (or a range).
+  // Pinned versions like opencode-mem@2.26.0 are never auto-updated.
+  "autoUpdate": true,
+
   // ============================================
   // User Profile System
   // ============================================
@@ -762,6 +769,7 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     showAutoCaptureToasts: fileConfig.showAutoCaptureToasts ?? DEFAULTS.showAutoCaptureToasts,
     showUserProfileToasts: fileConfig.showUserProfileToasts ?? DEFAULTS.showUserProfileToasts,
     showErrorToasts: fileConfig.showErrorToasts ?? DEFAULTS.showErrorToasts,
+    autoUpdate: fileConfig.autoUpdate ?? DEFAULTS.autoUpdate,
     memory: {
       defaultScope: fileConfig.memory?.defaultScope ?? DEFAULTS.memory.defaultScope,
     },

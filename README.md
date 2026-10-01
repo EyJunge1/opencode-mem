@@ -61,7 +61,7 @@ For OpenCode v2, add the package to the native `plugins` list:
 
 ```jsonc
 {
-  "plugins": ["opencode-mem"],
+  "plugins": ["opencode-mem@latest"],
 }
 ```
 
@@ -70,9 +70,11 @@ For OpenCode v1, add the default entrypoint to your configuration at
 
 ```jsonc
 {
-  "plugin": ["opencode-mem"],
+  "plugin": ["opencode-mem@latest"],
 }
 ```
+
+With `@latest` (or a semver range) and `autoUpdate: true` in `opencode-mem.jsonc` (default), the plugin clears OpenCode's cached install when a newer npm release is available and asks you to restart. Pinned versions like `opencode-mem@2.26.0` are never auto-updated.
 
 **Windows:** use `%USERPROFILE%\.config\opencode\opencode.json` (for example `C:\Users\<you>\.config\opencode\opencode.json`). This plugin does **not** read `%APPDATA%` or `%LOCALAPPDATA%` for its OpenCode plugin entry — put the file under `.config\opencode` in your user profile, then restart OpenCode. If the plugin does not appear, confirm that path and restart again.
 
