@@ -12,14 +12,14 @@ describe("published dependency constraints", () => {
     expect(pkg.dependencies).not.toHaveProperty("@xenova/transformers");
   });
 
-  it("pins onnxruntime-node@1.20.1 as a direct dependency (Intel binding + Bun teardown)", () => {
+  it("pins onnxruntime-node@1.30.0 as a direct dependency (nested install + Ort::Env fix)", () => {
     // Nested package.json overrides are ignored by npm/Arborist (#184). A direct
-    // dependency is required so Intel Mac (darwin/x64) gets a shipping binding.
-    // Stay on 1.20.1 until onnxruntime publishes a post-teardown-fix x64 build
-    // (#225 / microsoft/onnxruntime#24579 / #27961) and OpenCode embeds Bun >1.3.14.
-    expect(pkg.dependencies["onnxruntime-node"]).toBe("1.20.1");
+    // dependency is required so OpenCode nested installs keep a shipping binding.
+    // 1.30.0 includes the Ort::Env teardown fix from 1.24.1 (#225). Intel Mac
+    // (darwin/x64) is unsupported — fixed releases ship no x64 binding (#27961).
+    expect(pkg.dependencies["onnxruntime-node"]).toBe("1.30.0");
     expect((pkg as { overrides?: Record<string, string> }).overrides?.["onnxruntime-node"]).toBe(
-      "1.20.1"
+      "1.30.0"
     );
   });
 });

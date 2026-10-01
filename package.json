@@ -64,12 +64,12 @@
     "franc-min": "^6.2.0",
     "hono": "^4.12.32",
     "iso-639-3": "^3.0.1",
-    "onnxruntime-node": "1.20.1",
+    "onnxruntime-node": "1.30.0",
     "zod": "^4.4.3"
   },
-  "//": "Pin onnxruntime-node@1.20.1 (direct + override): nested OpenCode installs ignore package overrides (#184); 1.21.0–1.23.2 can SIGILL on macOS process exit (#225); fixed releases still lack darwin/x64 (microsoft/onnxruntime#27961).",
+  "//": "Pin onnxruntime-node@1.30.0 (direct + override): nested OpenCode installs ignore package overrides (#184); Ort::Env teardown fix shipped in 1.24.1 (#225 / microsoft/onnxruntime#24579). Fixed releases lack darwin/x64 — Intel Mac unsupported for local embeddings (microsoft/onnxruntime#27961).",
   "overrides": {
-    "onnxruntime-node": "1.20.1",
+    "onnxruntime-node": "1.30.0",
     "bun-types": "1.3.14"
   },
   "devDependencies": {
