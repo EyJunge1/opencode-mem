@@ -106,9 +106,11 @@ export async function updateRemoveDir(packageDir: string, name: string) {
     : packageParent;
   if (basename(nodeModulesDir) !== "node_modules") return undefined;
 
+  // Only trust OpenCode wrapper basenames like `opencode-mem@latest`.
+  // Never fall back to package.json dependencies — that would delete a
+  // project root when the plugin lives under project/node_modules.
   const wrapperDir = dirname(nodeModulesDir);
-  const wrapperPkg = await readPackageJson(join(wrapperDir, "package.json"));
-  const spec = wrapperSpec(wrapperDir, name) ?? wrapperPkg?.dependencies?.[name];
+  const spec = wrapperSpec(wrapperDir, name);
   if (!spec || !isAutoUpdatableSpec(spec)) return undefined;
 
   return wrapperDir;

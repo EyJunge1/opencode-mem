@@ -79,6 +79,20 @@ describe("auto-update helpers", () => {
 
     expect(await updateRemoveDir(packageDir, "opencode-mem")).toBeUndefined();
   });
+
+  it("updateRemoveDir skips project node_modules installs with range deps", async () => {
+    const projectDir = await mkdtemp(join(tmpdir(), "mem-update-project-"));
+    const packageDir = join(projectDir, "node_modules", "opencode-mem");
+    await writePackageJson(projectDir, {
+      dependencies: { "opencode-mem": "^2.26.0" },
+    });
+    await writePackageJson(packageDir, {
+      name: "opencode-mem",
+      version: "2.26.0",
+    });
+
+    expect(await updateRemoveDir(packageDir, "opencode-mem")).toBeUndefined();
+  });
 });
 
 describe("auto-update checkAutoUpdate", () => {
