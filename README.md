@@ -78,6 +78,18 @@ For OpenCode v1, add the default entrypoint to your configuration at
 }
 ```
 
+### Optional database encryption at rest
+
+Enable AES-256-GCM encryption for local Turso shards in `~/.config/opencode/opencode-mem.jsonc`:
+
+```jsonc
+{
+  "databaseEncryptionEnabled": true,
+}
+```
+
+On first start the plugin creates `~/.config/opencode/opencode-mem-db.key` (32-byte hex key, `chmod 600`) and migrates existing plaintext shards. Override with `"databaseEncryptionKey": "env://OPENCODE_MEM_DB_KEY"` or `"file://~/path/to.key"` if you manage the key yourself. Losing the key means the encrypted databases cannot be opened.
+
 **Windows:** use `%USERPROFILE%\.config\opencode\opencode.json` (for example `C:\Users\<you>\.config\opencode\opencode.json`). This plugin does **not** read `%APPDATA%` or `%LOCALAPPDATA%` for its OpenCode plugin entry — put the file under `.config\opencode` in your user profile, then restart OpenCode. If the plugin does not appear, confirm that path and restart again.
 
 The plugin downloads automatically on next startup.

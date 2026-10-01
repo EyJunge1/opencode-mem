@@ -88,6 +88,24 @@ interface OpenCodeMemConfig {
   showAutoCaptureToasts?: boolean;
   showUserProfileToasts?: boolean;
   showErrorToasts?: boolean;
+  /**
+   * Hex encryption key for local DB at rest (32 or 64 hex chars), or a secret
+   * ref (`env://`, `file://`). Prefer file:// / env:// — never commit keys.
+   * When `databaseEncryptionEnabled` is true and this is unset, the plugin
+   * auto-creates `~/.config/opencode/opencode-mem-db.key` (chmod 600).
+   */
+  databaseEncryptionKey?: string;
+  /** Opt-in local DB encryption at rest (AES-256-GCM by default). */
+  databaseEncryptionEnabled?: boolean;
+  /** Cipher for @tursodatabase/database encryption (default aes256gcm). */
+  databaseEncryptionCipher?:
+    | "aes128gcm"
+    | "aes256gcm"
+    | "aegis256"
+    | "aegis256x2"
+    | "aegis128l"
+    | "aegis128x2"
+    | "aegis128x4";
   compaction?: {
     enabled?: boolean;
     memoryLimit?: number;
@@ -120,6 +138,7 @@ const DEFAULTS: Required<
     | "webServerAuthPassword"
     | "webServerAuthUsername"
     | "webServerApiToken"
+    | "databaseEncryptionKey"
   >
 > & {
   embeddingApiUrl?: string;
@@ -138,6 +157,7 @@ const DEFAULTS: Required<
   webServerAuthPassword?: string;
   webServerAuthUsername?: string;
   webServerApiToken?: string;
+  databaseEncryptionKey?: string;
   memory?: {
     defaultScope?: "project" | "all-projects";
   };
@@ -189,6 +209,8 @@ const DEFAULTS: Required<
   showAutoCaptureToasts: true,
   showUserProfileToasts: true,
   showErrorToasts: true,
+  databaseEncryptionEnabled: false,
+  databaseEncryptionCipher: "aes256gcm",
   memory: {
     defaultScope: "project",
   },
@@ -485,6 +507,13 @@ const CONFIG_TEMPLATE = `{
   // Show toast for error messages
   "showErrorToasts": true,
 
+  // Opt-in encryption at rest for local Turso DB shards (AES-256-GCM).
+  // When enabled without a key, the plugin creates
+  // ~/.config/opencode/opencode-mem-db.key (chmod 600) once.
+  // "databaseEncryptionEnabled": true,
+  // Optional override: "databaseEncryptionKey": "env://OPENCODE_MEM_DB_KEY",
+  // "databaseEncryptionCipher": "aes256gcm",
+
   // ============================================
   // User Profile System
   // ============================================
@@ -762,6 +791,12 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     showAutoCaptureToasts: fileConfig.showAutoCaptureToasts ?? DEFAULTS.showAutoCaptureToasts,
     showUserProfileToasts: fileConfig.showUserProfileToasts ?? DEFAULTS.showUserProfileToasts,
     showErrorToasts: fileConfig.showErrorToasts ?? DEFAULTS.showErrorToasts,
+    databaseEncryptionEnabled:
+      fileConfig.databaseEncryptionEnabled ?? DEFAULTS.databaseEncryptionEnabled,
+    // Keep raw ref (env:// / file:// / hex); resolved lazily with optional auto-create.
+    databaseEncryptionKey: fileConfig.databaseEncryptionKey,
+    databaseEncryptionCipher:
+      fileConfig.databaseEncryptionCipher ?? DEFAULTS.databaseEncryptionCipher,
     memory: {
       defaultScope: fileConfig.memory?.defaultScope ?? DEFAULTS.memory.defaultScope,
     },

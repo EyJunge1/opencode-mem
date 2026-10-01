@@ -6,6 +6,7 @@ import { CONFIG } from "../../config.js";
 import { log } from "../logger.js";
 import { collectReleasedSqliteHandles } from "./sqlite-handle-release.js";
 import { TursoDb } from "./turso-db.js";
+import { resolveOrCreateDatabaseEncryptionKey } from "./encryption-key.js";
 
 export type ConnectFactory = (path: string, opts?: DatabaseOpts) => Promise<Database>;
 
@@ -30,8 +31,12 @@ function buildConnectOptions(encryption?: EncryptionOpts | null): DatabaseOpts {
 }
 
 export function resolveDatabaseEncryption(): EncryptionOpts | null {
-  // Encryption lands in a follow-up PR; adapter opens DBs unencrypted.
-  return null;
+  const hexkey = resolveOrCreateDatabaseEncryptionKey();
+  if (!hexkey) return null;
+  return {
+    cipher: CONFIG.databaseEncryptionCipher,
+    hexkey,
+  };
 }
 
 export class TursoConnectionManager {
