@@ -24,7 +24,7 @@ Local Turso/libSQL database with native vector search, persistent project memori
 
 ## Prerequisites
 
-This plugin uses embedded Turso/libSQL with native vector indexes (`F32_BLOB`, `vector_top_k`). No separate vector database or custom SQLite build is required.
+This plugin uses embedded Turso (`@tursodatabase/database`) with `F32_BLOB` vectors and exact cosine search via `vector_distance_cos`. No separate vector database or custom SQLite build is required.
 
 **Recommended runtime:**
 
