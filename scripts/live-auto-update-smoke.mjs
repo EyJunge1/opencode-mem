@@ -32,6 +32,27 @@ assert.equal(await updateRemoveDir(pkgDir, "opencode-mem"), wrapDir);
 rmSync(wrapper, { recursive: true, force: true });
 console.log("✔ updateRemoveDir @latest wrapper");
 
+const project = mkdtempSync(join(tmpdir(), "mem-au-project-"));
+const projectPkg = join(project, "node_modules", "opencode-mem");
+mkdirSync(projectPkg, { recursive: true });
+writeFileSync(
+  join(project, "package.json"),
+  JSON.stringify({ dependencies: { "opencode-mem": "^2.26.0" } })
+);
+writeFileSync(
+  join(projectPkg, "package.json"),
+  JSON.stringify({ name: "opencode-mem", version: "2.26.0" })
+);
+assert.equal(await updateRemoveDir(projectPkg, "opencode-mem"), undefined);
+const projectAlive = await checkAutoUpdate(AbortSignal.timeout(1000), {
+  findPackageDir: async () => projectPkg,
+  fetchLatestVersion: async () => "2.27.0",
+});
+assert.equal(projectAlive.updated, false);
+assert.equal((await import("node:fs")).existsSync(join(project, "package.json")), true);
+rmSync(project, { recursive: true, force: true });
+console.log("✔ project node_modules + caret-dep is not deleted");
+
 const missing = await checkAutoUpdate(AbortSignal.timeout(1000), {
   findPackageDir: async () => undefined,
 });
