@@ -18,11 +18,6 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # Keep this pin while OpenCode embeds Bun 1.3.14 (Ort::Env SIGILL on
-      # onnxruntime-node 1.21–1.23) and nested installs ignore package overrides.
-      # Intel Mac (darwin/x64) support is dropped; the pin is for Apple Silicon /
-      # Linux / Windows nested OpenCode installs (#184 / #225).
-      - dependency-name: "onnxruntime-node"
       # ESLint 10 / typescript-eslint do not support TypeScript 7 yet (peer: <6.1.0).
       - dependency-name: "typescript"
         versions: [">=7"]

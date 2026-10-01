@@ -29,8 +29,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Apple Silicon only for macOS: Intel Mac (darwin/x64) support is dropped —
-        # @tursodatabase/database and fixed onnxruntime releases ship no x64 binding.
+        # Apple Silicon only for macOS: @tursodatabase/database and
+        # onnxruntime-node@1.30.0 ship no darwin/x64 binding. Intel Mac unsupported.
         # Apple Silicon: macos-15 / macos-26 (darwin/arm64).
         os:
           [
