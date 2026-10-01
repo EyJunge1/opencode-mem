@@ -55,6 +55,10 @@ If migration is interrupted, the next startup resumes from the backup automatica
 
 If a shard becomes incompatible (for example after changing `embeddingDimensions`), writes are blocked and the original database is left untouched. Use the Web UI's re-embed migration to build and verify a replacement before it is swapped into place. The previous shard remains available as `<shard>.db.pre-reembed-<pid>-<timestamp>.bak`.
 
+## Schema migrations
+
+Local Turso shards and auxiliary databases (`metadata.db`, `user-prompts.db`, `user-profiles.db`, `ai-sessions.db`) are upgraded with ordered `PRAGMA user_version` migrations in `src/services/turso/schema-migrations.ts`. Migrations are idempotent: starting the plugin applies only pending versions.
+
 ## Getting Started
 
 For OpenCode v2, add the package to the native `plugins` list:
