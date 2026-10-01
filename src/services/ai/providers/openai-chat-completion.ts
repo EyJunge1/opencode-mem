@@ -311,6 +311,15 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           ) {
             errorMessage =
               'Your model does not support the temperature parameter. Add "memoryTemperature": false to your config file to disable it.';
+          } else if (
+            response.status === 400 &&
+            /tool_choice/i.test(errorText) &&
+            (/Thinking mode does not support/i.test(errorText) ||
+              /unsupported/i.test(errorText) ||
+              /not support/i.test(errorText))
+          ) {
+            errorMessage =
+              'Your model does not support tool_choice "required". Add "forceToolChoice": false to your config file to fall back to "auto".';
           }
 
           return {

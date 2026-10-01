@@ -88,9 +88,21 @@ describe("AI provider config", () => {
       apiUrl: "https://api.openai.com/v1",
       apiKey: "sk-test",
       memoryTemperature: false,
+      forceToolChoice: undefined,
       maxIterations: 7,
       iterationTimeout: 1234,
     });
+  });
+
+  it("builds provider config with forceToolChoice from runtime config", () => {
+    const providerConfig = buildMemoryProviderConfig({
+      memoryModel: "deepseek-v4-flash",
+      memoryApiUrl: "https://openrouter.ai/api/v1",
+      memoryApiKey: "sk-test",
+      forceToolChoice: false,
+    });
+
+    expect(providerConfig.forceToolChoice).toBe(false);
   });
 
   it("rejects placeholder API keys before a provider request is built", () => {
@@ -138,6 +150,7 @@ describe("AI provider config", () => {
       model: "",
       apiUrl: "",
       apiKey: "sk-orca-test",
+      forceToolChoice: undefined,
       maxIterations: undefined,
       iterationTimeout: undefined,
     });

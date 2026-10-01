@@ -322,6 +322,25 @@ describe("OpenAIChatCompletionProvider", () => {
     expect(result.error).toContain("memoryTemperature");
   });
 
+  it("returns friendly message when thinking mode rejects tool_choice required", async () => {
+    globalThis.fetch = makeFetch({
+      ok: false,
+      status: 400,
+      body: "Thinking mode does not support this tool_choice",
+    });
+
+    const result = await makeProvider({ apiUrl: "https://api.openai.com/v1" }).executeToolCall(
+      "system",
+      "user",
+      toolSchema,
+      "session-id"
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("forceToolChoice");
+    expect(result.error).toContain("false");
+  });
+
   it("returns success: false when response has no choices", async () => {
     globalThis.fetch = makeFetch({ ok: true, body: { choices: [] } } as any);
 
