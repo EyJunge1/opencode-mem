@@ -109,39 +109,54 @@ function getProjectPathFromTag(tag: string): Promise<string | undefined> {
   })();
 }
 
-export async function handleListTags(): Promise<ApiResponse<{ project: TagInfo[] }>> {
+function tagInfoFromDistinctRow(t: Record<string, unknown>): TagInfo | null {
+  if (!t.container_tag) return null;
+  return {
+    tag: String(t.container_tag),
+    displayName: t.display_name ? String(t.display_name) : undefined,
+    userName: t.user_name ? String(t.user_name) : undefined,
+    userEmail: t.user_email ? String(t.user_email) : undefined,
+    projectPath: t.project_path ? String(t.project_path) : undefined,
+    projectName: t.project_name ? String(t.project_name) : undefined,
+    gitRepoUrl: t.git_repo_url ? String(t.git_repo_url) : undefined,
+  };
+}
+
+async function collectDistinctTags(
+  scope: "user" | "project",
+  marker: "_user_" | "_project_"
+): Promise<TagInfo[]> {
+  const shards = await tursoShardManager.getAllShards(scope, "");
+  const tagsMap = new Map<string, TagInfo>();
+  for (const shard of shards) {
+    const db = await tursoConnectionManager.getConnection(shard.dbPath);
+    const tags = await tursoVectorSearch.getDistinctTags(db);
+    for (const t of tags) {
+      const tagInfo = tagInfoFromDistinctRow(t);
+      if (!tagInfo || tagsMap.has(tagInfo.tag) || !tagInfo.tag.includes(marker)) continue;
+      tagsMap.set(tagInfo.tag, tagInfo);
+    }
+  }
+  return Array.from(tagsMap.values());
+}
+
+export async function handleListTags(): Promise<
+  ApiResponse<{ project: TagInfo[]; user: TagInfo[] }>
+> {
   try {
     await ensureTursoReady();
     // Tags are stored as SQLite metadata; embedding model is not needed.
     // Calling warmup() here would block on local transformer init in the worker
     // thread and hang every read API. Only handlers that compute similarity
     // (e.g. handleSearch) should warm up the embedding service.
-    const projectShards = await tursoShardManager.getAllShards("project", "");
-    const tagsMap = new Map<string, TagInfo>();
-    for (const shard of projectShards) {
-      const db = await tursoConnectionManager.getConnection(shard.dbPath);
-      const tags = await tursoVectorSearch.getDistinctTags(db);
-      for (const t of tags) {
-        if (t.container_tag && !tagsMap.has(String(t.container_tag))) {
-          tagsMap.set(String(t.container_tag), {
-            tag: String(t.container_tag),
-            displayName: t.display_name ? String(t.display_name) : undefined,
-            userName: t.user_name ? String(t.user_name) : undefined,
-            userEmail: t.user_email ? String(t.user_email) : undefined,
-            projectPath: t.project_path ? String(t.project_path) : undefined,
-            projectName: t.project_name ? String(t.project_name) : undefined,
-            gitRepoUrl: t.git_repo_url ? String(t.git_repo_url) : undefined,
-          });
-        }
-      }
-    }
-    const projectTags: TagInfo[] = [];
-    for (const tagInfo of tagsMap.values()) {
-      if (tagInfo.tag.includes("_project_")) {
-        projectTags.push(tagInfo);
-      }
-    }
-    return { success: true, data: { project: projectTags } };
+    //
+    // Return both scopes: the unfiltered explorer list and /api/stats total
+    // already include user + project memories, so the tag dropdown must too.
+    const [project, user] = await Promise.all([
+      collectDistinctTags("project", "_project_"),
+      collectDistinctTags("user", "_user_"),
+    ]);
+    return { success: true, data: { project, user } };
   } catch (error) {
     log("handleListTags: error", { error: String(error) });
     return { success: false, error: String(error) };
