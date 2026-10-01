@@ -163,66 +163,9 @@ Dimension migrations generate every new embedding first, import them into a temp
 
 Configure at `~/.config/opencode/opencode-mem.jsonc`:
 
-**Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (same `.config\opencode` directory as above — not AppData). Default storage resolves to `%USERPROFILE%\.opencode-mem\data` (the `~` form in the example below expands to your user home on Windows as well).
+**Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (same `.config\opencode` directory as above — not AppData). Default storage resolves to `%USERPROFILE%\.opencode-mem\data` (the `~` form expands to your user home on Windows as well).
 
-The plugin creates a full commented template at this path on first startup. This trimmed example shows the most common settings:
-
-```jsonc
-{
-  "storagePath": "~/.opencode-mem/data",
-  "userEmailOverride": "user@example.com",
-  "userNameOverride": "John Doe",
-  "embeddingModel": "Xenova/nomic-embed-text-v1",
-  // Optional Nomic task prefixes (search_document: / search_query:). After enabling,
-  // re-index existing memories so store and query vectors stay aligned.
-  // "embeddingUseTaskPrefixes": true,
-  // Optional OpenAI-compatible embedding endpoint:
-  // "embeddingApiUrl": "https://api.openai.com/v1",
-  // "embeddingApiKey": "env://OPENAI_API_KEY",
-  // "embeddingModel": "text-embedding-3-small",
-
-  "memory": {
-    "defaultScope": "project",
-  },
-  "webServerEnabled": true,
-  "webServerPort": 4747,
-  // Required when webServerHost is not 127.0.0.1/localhost:
-  // "webServerHost": "0.0.0.0",
-  // "webServerApiToken": "env://OPENCODE_MEM_WEB_TOKEN",
-
-  "autoCaptureEnabled": true,
-  "autoCaptureLanguage": "auto",
-
-  "opencodeProvider": "anthropic",
-  "opencodeModel": "claude-haiku-4-5-20251001",
-
-  // Manual fallback if you do not use opencodeProvider:
-  // "memoryProvider": "openai-chat",
-  // "memoryModel": "gpt-4o-mini",
-  // "memoryApiUrl": "https://api.openai.com/v1",
-  // "memoryApiKey": "env://OPENAI_API_KEY",
-
-  "showAutoCaptureToasts": true,
-  "showUserProfileToasts": true,
-  "showErrorToasts": true,
-
-  "userProfileAnalysisInterval": 10,
-  "userProfileMaxContextBytes": 32768,
-  "maxMemories": 10,
-
-  "compaction": {
-    "enabled": true,
-    "memoryLimit": 10,
-  },
-  "chatMessage": {
-    "enabled": true,
-    "maxMemories": 3,
-    "excludeCurrentSession": true,
-    "maxAgeDays": undefined,
-    "injectOn": "first",
-  },
-}
-```
+The plugin creates a full commented template at this path on first startup. For every setting and comment, see [`opencode-mem.example.jsonc`](opencode-mem.example.jsonc).
 
 ### Choosing / configuring embeddings
 
