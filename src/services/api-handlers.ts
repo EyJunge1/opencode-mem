@@ -1427,6 +1427,8 @@ export async function handleDetectTagMigration(): Promise<
 
 interface MigrationProgress {
   processed: number;
+  /** Next index in the memory list to attempt; advances even when tagging fails. */
+  cursor: number;
   total: number;
   currentBatch: number;
   totalBatches: number;
@@ -1436,6 +1438,7 @@ interface MigrationProgress {
 
 const migrationProgress: MigrationProgress = {
   processed: 0,
+  cursor: 0,
   total: 0,
   currentBatch: 0,
   totalBatches: 0,
@@ -1449,7 +1452,7 @@ export async function handleGetTagMigrationProgress(): Promise<ApiResponse<Migra
 
 export async function handleRunTagMigrationBatch(
   batchSize: number = 5
-): Promise<ApiResponse<{ processed: number; total: number; hasMore: boolean }>> {
+): Promise<ApiResponse<{ processed: number; total: number; hasMore: boolean; errors: number }>> {
   try {
     await ensureTursoReady();
     const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
@@ -1471,13 +1474,19 @@ export async function handleRunTagMigrationBatch(
       }
     }
 
-    if (migrationProgress.total === 0) {
+    // Fresh run (or retry after a completed pass): reset counters so soft
+    // failures from a prior attempt can be retried instead of being skipped.
+    if (migrationProgress.total === 0 || migrationProgress.isComplete) {
+      migrationProgress.processed = 0;
+      migrationProgress.cursor = 0;
       migrationProgress.total = allMemories.length;
       migrationProgress.totalBatches = Math.ceil(allMemories.length / batchSize);
+      migrationProgress.currentBatch = 0;
       migrationProgress.isComplete = false;
+      migrationProgress.errors = [];
     }
 
-    const startIdx = migrationProgress.processed;
+    const startIdx = migrationProgress.cursor;
     const endIdx = Math.min(startIdx + batchSize, allMemories.length);
 
     for (let i = startIdx; i < endIdx; i++) {
@@ -1519,6 +1528,15 @@ export async function handleRunTagMigrationBatch(
               currentTags.join(","),
               m.id,
             ]);
+          } else {
+            // Soft failure (e.g. empty tool-call args): do not mark processed.
+            // Cursor still advances below so the batch window moves forward.
+            const errorMsg = `Tag generation failed for memory ${m.id}: ${
+              result.error ?? "no tags returned"
+            }`;
+            migrationProgress.errors.push(errorMsg);
+            log("Migration error for memory", { id: m.id, error: errorMsg });
+            continue;
           }
         }
 
@@ -1538,8 +1556,9 @@ export async function handleRunTagMigrationBatch(
       }
     }
 
+    migrationProgress.cursor = endIdx;
     migrationProgress.currentBatch++;
-    const hasMore = migrationProgress.processed < migrationProgress.total;
+    const hasMore = migrationProgress.cursor < allMemories.length;
 
     if (!hasMore) {
       migrationProgress.isComplete = true;
@@ -1547,7 +1566,12 @@ export async function handleRunTagMigrationBatch(
 
     return {
       success: true,
-      data: { processed: migrationProgress.processed, total: migrationProgress.total, hasMore },
+      data: {
+        processed: migrationProgress.processed,
+        total: migrationProgress.total,
+        hasMore,
+        errors: migrationProgress.errors.length,
+      },
     };
   } catch (error) {
     return { success: false, error: String(error) };
