@@ -88,7 +88,7 @@ export function TagMigrationDialog({ open = false, count = 0, onOpenChange, onCo
     if (totalErrors > 0) {
       const finalProgress = totalItems > 0 ? Math.round((totalProcessed / totalItems) * 100) : 0;
       setProgress(finalProgress);
-      const failedMsg = `${t("toast-migration-failed")}: ${totalErrors} memory tag generation failure(s)`;
+      const failedMsg = t("toast-migration-tag-failures", { count: totalErrors });
       setStatus(failedMsg);
       toast.error(failedMsg);
       setRunning(false);

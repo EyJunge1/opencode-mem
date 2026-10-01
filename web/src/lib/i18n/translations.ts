@@ -69,6 +69,7 @@ export const translations = {
     "toast-bulk-delete-failed": "Failed to delete selected memories",
     "toast-migration-success": "Migration completed successfully",
     "toast-migration-failed": "Migration failed",
+    "toast-migration-tag-failures": "Migration failed: {count} memory tag generation failure(s)",
     "toast-fresh-start-success": "Fresh start completed successfully",
     "toast-fresh-start-failed": "Fresh start failed",
     "confirm-delete": "Delete this memory?",
@@ -216,6 +217,7 @@ export const translations = {
     "toast-bulk-delete-failed": "删除选中的记忆失败",
     "toast-migration-success": "迁移完成",
     "toast-migration-failed": "迁移失败",
+    "toast-migration-tag-failures": "迁移失败：{count} 条记忆标签生成失败",
     "toast-fresh-start-success": "重新开始完成",
     "toast-fresh-start-failed": "重新开始失败",
     "confirm-delete": "删除这条记忆？",
@@ -384,6 +386,7 @@ export const translations = {
 
     "toast-migration-success": "اكتملت عملية الترحيل بنجاح",
     "toast-migration-failed": "فشلت عملية الترحيل",
+    "toast-migration-tag-failures": "فشلت عملية الترحيل: {count} من حالات فشل توليد الوسوم",
 
     "toast-fresh-start-success": "تمت البداية الجديدة بنجاح",
     "toast-fresh-start-failed": "فشلت البداية الجديدة",
