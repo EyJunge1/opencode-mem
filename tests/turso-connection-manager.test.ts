@@ -128,6 +128,55 @@ describe("turso connection manager", () => {
     expect(Number((row as { foreign_keys?: number } | null)?.foreign_keys)).toBe(1);
   });
 
+  it("opens databases with experimental encryption opts enabled", async () => {
+    baseDir = mkdtempSync(join(tmpdir(), "turso-conn-opts-"));
+    const { CONFIG } = await import("../src/config.js");
+    CONFIG.storagePath = baseDir;
+    CONFIG.databaseEncryptionEnabled = false;
+    const dbPath = join(baseDir, "opts.db");
+
+    const opens: Array<{ path: string; opts?: Record<string, unknown> }> = [];
+    const connectFactory = async (path: string, opts?: Record<string, unknown>) => {
+      opens.push({ path, opts });
+      return {
+        async exec() {},
+        async run() {
+          return { changes: 0, lastInsertRowid: 0 };
+        },
+        async get() {
+          return undefined;
+        },
+        async all() {
+          return [];
+        },
+        async batch() {
+          return [];
+        },
+        transactionAsync() {
+          return {
+            immediate: async () => undefined,
+            deferred: async () => undefined,
+          };
+        },
+        async close() {},
+      } as any;
+    };
+
+    const { TursoConnectionManager } = await import("../src/services/turso/connection-manager.js");
+    const manager = new TursoConnectionManager(connectFactory);
+    try {
+      await manager.getConnection(dbPath);
+      expect(opens).toHaveLength(1);
+      expect(opens[0]?.path).toBe(dbPath);
+      expect(opens[0]?.opts).toMatchObject({
+        experimental: ["encryption"],
+      });
+      expect(opens[0]?.opts).not.toHaveProperty("encryption");
+    } finally {
+      await manager.closeAll();
+    }
+  });
+
   it("refuses paths outside storagePath", async () => {
     baseDir = mkdtempSync(join(tmpdir(), "turso-conn-outside-"));
     const { CONFIG } = await import("../src/config.js");

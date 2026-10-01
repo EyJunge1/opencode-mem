@@ -106,6 +106,8 @@ interface OpenCodeMemConfig {
     | "aegis128l"
     | "aegis128x2"
     | "aegis128x4";
+  /** Automatically clear OpenCode's cached plugin install when a newer npm latest is available. */
+  autoUpdate?: boolean;
   compaction?: {
     enabled?: boolean;
     memoryLimit?: number;
@@ -211,6 +213,7 @@ const DEFAULTS: Required<
   showErrorToasts: true,
   databaseEncryptionEnabled: false,
   databaseEncryptionCipher: "aes256gcm",
+  autoUpdate: true,
   memory: {
     defaultScope: "project",
   },
@@ -514,6 +517,10 @@ const CONFIG_TEMPLATE = `{
   // Optional override: "databaseEncryptionKey": "env://OPENCODE_MEM_DB_KEY",
   // "databaseEncryptionCipher": "aes256gcm",
 
+  // Automatically update when installed as opencode-mem@latest (or a range).
+  // Pinned versions like opencode-mem@2.26.0 are never auto-updated.
+  "autoUpdate": true,
+
   // ============================================
   // User Profile System
   // ============================================
@@ -797,6 +804,7 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     databaseEncryptionKey: fileConfig.databaseEncryptionKey,
     databaseEncryptionCipher:
       fileConfig.databaseEncryptionCipher ?? DEFAULTS.databaseEncryptionCipher,
+    autoUpdate: fileConfig.autoUpdate ?? DEFAULTS.autoUpdate,
     memory: {
       defaultScope: fileConfig.memory?.defaultScope ?? DEFAULTS.memory.defaultScope,
     },

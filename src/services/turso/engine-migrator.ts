@@ -1,4 +1,4 @@
-import { createClient } from "@libsql/client";
+import { createClient, type Client } from "@libsql/client";
 import { connect } from "@tursodatabase/database";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -17,6 +17,15 @@ import { parseExtractedVector } from "./vector-utils.js";
 
 const ENGINE_MARKER = ".tursodb-engine-v1";
 const LIBSQL_VECTOR_INDEX_RE = /libsql_vector_idx/i;
+
+/** libsql 0.18 defaults to a multi-handle pool; keep one connection for file DBs. */
+function openLibsql(dbPath: string): Client {
+  return createClient({
+    url: `file:${dbPath}`,
+    concurrency: 1,
+    timeout: 5_000,
+  });
+}
 
 function markerPath(): string {
   return join(CONFIG.storagePath, ENGINE_MARKER);
@@ -65,7 +74,7 @@ async function needsEngineRewrite(dbPath: string): Promise<boolean> {
     }
     // Unknown open failure: try libsql probe for DiskANN indexes.
     try {
-      const client = createClient({ url: `file:${dbPath}` });
+      const client = openLibsql(dbPath);
       try {
         const result = await client.execute(
           `SELECT sql FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL`
@@ -85,7 +94,7 @@ async function copyTableViaLibsql(
   targetDb: TursoDb,
   table: string
 ): Promise<number> {
-  const client = createClient({ url: `file:${sourcePath}` });
+  const client = openLibsql(sourcePath);
   try {
     const tableInfo = await client.execute(`PRAGMA table_info(${table})`);
     if (tableInfo.rows.length === 0) return 0;
@@ -137,7 +146,7 @@ async function copyTableViaLibsql(
 }
 
 async function rewriteMemoryShard(dbPath: string): Promise<void> {
-  const client = createClient({ url: `file:${dbPath}` });
+  const client = openLibsql(dbPath);
   let dims = CONFIG.embeddingDimensions;
   let model = CONFIG.embeddingModel;
   try {
@@ -167,7 +176,7 @@ async function rewriteMemoryShard(dbPath: string): Promise<void> {
   try {
     await tursoShardManager.initShardDb(staged, dims, model);
     const imported = await copyTableViaLibsql(dbPath, staged, "memories");
-    const metaClient = createClient({ url: `file:${dbPath}` });
+    const metaClient = openLibsql(dbPath);
     try {
       const metaRows = await metaClient.execute(`SELECT key, value FROM shard_metadata`);
       for (const row of metaRows.rows) {
@@ -216,7 +225,7 @@ async function rewriteGenericDb(dbPath: string, tables: string[]): Promise<void>
   const staged = new TursoDb(stagedNative);
   try {
     // Recreate schema by copying CREATE SQL from source via libsql.
-    const source = createClient({ url: `file:${dbPath}` });
+    const source = openLibsql(dbPath);
     try {
       for (const table of tables) {
         const schema = await source.execute({
