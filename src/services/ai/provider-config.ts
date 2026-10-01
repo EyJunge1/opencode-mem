@@ -7,6 +7,7 @@ interface MemoryProviderRuntimeConfig {
   memoryApiUrl?: string;
   memoryApiKey?: string;
   memoryTemperature?: number | false;
+  forceToolChoice?: boolean;
   memoryExtraParams?: Record<string, unknown>;
   autoCaptureMaxIterations?: number;
   autoCaptureIterationTimeout?: number;
@@ -44,6 +45,7 @@ export function buildMemoryProviderConfig(
     apiUrl: memoryApiUrl || "",
     apiKey: memoryApiKey || "",
     memoryTemperature: config.memoryTemperature,
+    forceToolChoice: config.forceToolChoice,
     extraParams: config.memoryExtraParams,
     maxIterations: overrides.maxIterations ?? config.autoCaptureMaxIterations,
     iterationTimeout: overrides.iterationTimeout ?? config.autoCaptureIterationTimeout,

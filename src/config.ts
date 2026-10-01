@@ -49,6 +49,12 @@ interface OpenCodeMemConfig {
   memoryApiUrl?: string;
   memoryApiKey?: string;
   memoryTemperature?: number | false;
+  /**
+   * Force chat-completion providers to send `tool_choice: "required"`.
+   * Defaults to true when unset. Set to false for models that reject forced
+   * tool choice (e.g. some thinking/reasoning modes).
+   */
+  forceToolChoice?: boolean;
   memoryExtraParams?: Record<string, unknown>;
   opencodeProvider?: string;
   opencodeModel?: string;
@@ -131,6 +137,7 @@ const DEFAULTS: Required<
     | "memoryApiKey"
     | "memoryProvider"
     | "memoryTemperature"
+    | "forceToolChoice"
     | "memoryExtraParams"
     | "opencodeProvider"
     | "opencodeModel"
@@ -150,6 +157,7 @@ const DEFAULTS: Required<
   memoryApiKey?: string;
   memoryProvider?: "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter";
   memoryTemperature?: number | false;
+  forceToolChoice?: boolean;
   memoryExtraParams?: Record<string, unknown>;
   opencodeProvider?: string;
   opencodeModel?: string;
@@ -487,6 +495,10 @@ const CONFIG_TEMPLATE = `{
   // Set to false and add "memoryTemperature": false in config when using such models
   "memoryTemperature": 0.3,
 
+  // Force tool calls on openai-chat / orcarouter (tool_choice: "required"). Default true.
+  // Some thinking/reasoning models reject forced tool choice — set false to fall back to "auto":
+  // "forceToolChoice": false,
+
   // Extra parameters to include in API request body
   // Useful for local inference servers (e.g. llama-server with --jinja) that support
   // additional parameters like disabling thinking/reasoning mode
@@ -723,6 +735,7 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     memoryApiUrl: fileConfig.memoryApiUrl,
     memoryApiKey,
     memoryTemperature: fileConfig.memoryTemperature,
+    forceToolChoice: fileConfig.forceToolChoice,
     memoryExtraParams: fileConfig.memoryExtraParams,
     opencodeProvider: fileConfig.opencodeProvider,
     opencodeModel: fileConfig.opencodeModel,
