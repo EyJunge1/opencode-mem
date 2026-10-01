@@ -46,9 +46,11 @@ export function useMemoriesExplorer() {
   }, []);
 
   const loadTags = useCallback(async () => {
-    const result = await fetchAPI<{ project: TagInfo[] }>("/api/tags");
+    const result = await fetchAPI<{ project: TagInfo[]; user?: TagInfo[] }>("/api/tags");
     if (result.success && result.data) {
-      setTags(result.data.project || []);
+      // Project tags first (historical order), then user tags so every memory
+      // counted in /api/stats is reachable through the filter dropdown.
+      setTags([...(result.data.project || []), ...(result.data.user || [])]);
     }
   }, []);
 
