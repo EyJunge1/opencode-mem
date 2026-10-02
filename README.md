@@ -398,6 +398,12 @@ Manual `memoryProvider` modes:
   "memoryApiKey": "<OrcaRouter API key>",
   ```
   [OrcaRouter](https://www.orcarouter.ai) also runs gateway-level, zero-trust security for AI agents on the same endpoint — screening every prompt/response and governing every tool call on a default-deny basis, with no application code changes.
+- `atlas-cloud`: OpenAI-compatible Chat Completions preset for [Atlas Cloud](https://www.atlascloud.ai). `memoryApiUrl` and `memoryModel` are optional — they default to `https://api.atlascloud.ai/v1` and `deepseek-ai/deepseek-v4-pro`. If `memoryApiKey` is omitted, `ATLASCLOUD_API_KEY` from the environment is used. Example:
+  ```jsonc
+  "memoryProvider": "atlas-cloud",
+  "memoryApiKey": "env://ATLASCLOUD_API_KEY",
+  ```
+  When this provider is selected, auto-capture / profile prompts, model responses, and relevant conversation context are transmitted to `https://api.atlascloud.ai`.
 
 Troubleshooting:
 
@@ -405,7 +411,7 @@ Troubleshooting:
 - If auto-capture reports that a provider is not connected, confirm the provider name with `opencode providers list` and configure that provider in opencode first.
 - If a proxy or custom provider returns plain text instead of structured/tool output, choose another model/provider or use one of the manual provider modes above.
 - For models that reject `temperature`, add `"memoryTemperature": false` when using manual API configuration.
-- For models that reject forced tool calls (`tool_choice: "required"`, e.g. some thinking modes), add `"forceToolChoice": false` when using `openai-chat` / `orcarouter`.
+- For models that reject forced tool calls (`tool_choice: "required"`, e.g. some thinking modes), add `"forceToolChoice": false` when using `openai-chat` / `orcarouter` / `atlas-cloud`.
 - **Unsupported platforms:** Intel Mac (`darwin/x64`) is not supported — `@tursodatabase/database` and fixed `onnxruntime-node` releases (pinned `1.30.0`) ship no x64 native binding. Use Apple Silicon, Linux, or Windows, or a remote embedding endpoint via `embeddingApiUrl` + `embeddingApiKey`. MLX is not supported.
 
 ## Public Subpath Exports

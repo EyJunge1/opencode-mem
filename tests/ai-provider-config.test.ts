@@ -164,6 +164,30 @@ describe("AI provider config", () => {
     ).toThrow("missing memoryApiKey");
   });
 
+  it("builds atlas-cloud config from only an API key, defaulting model and endpoint", () => {
+    const providerConfig = buildMemoryProviderConfig({
+      memoryProvider: "atlas-cloud",
+      memoryApiKey: "atlas-test-key",
+    });
+
+    expect(providerConfig).toEqual({
+      model: "",
+      apiUrl: "",
+      apiKey: "atlas-test-key",
+      forceToolChoice: undefined,
+      maxIterations: undefined,
+      iterationTimeout: undefined,
+    });
+  });
+
+  it("still requires an API key for the atlas-cloud provider", () => {
+    expect(() =>
+      buildMemoryProviderConfig({
+        memoryProvider: "atlas-cloud",
+      })
+    ).toThrow("missing memoryApiKey");
+  });
+
   it("omits temperature for openai-chat when memoryTemperature is false", async () => {
     let capturedBody: Record<string, unknown> | undefined;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
