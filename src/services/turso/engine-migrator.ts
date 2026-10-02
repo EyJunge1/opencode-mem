@@ -12,7 +12,11 @@ import {
   removeSqliteDatabase,
   collectReleasedSqliteHandles,
 } from "./sqlite-handle-release.js";
-import { tursoConnectionManager, resolveDatabaseEncryption } from "./connection-manager.js";
+import {
+  tursoConnectionManager,
+  resolveDatabaseEncryption,
+  buildConnectOptions,
+} from "./connection-manager.js";
 import { TursoDb } from "./turso-db.js";
 import { tursoShardManager } from "./shard-manager.js";
 import { parseExtractedVector } from "./vector-utils.js";
@@ -52,10 +56,7 @@ function collectCandidateDbs(): string[] {
 async function needsEngineRewrite(dbPath: string): Promise<boolean> {
   try {
     const encryption = resolveDatabaseEncryption();
-    const opts = encryption
-      ? { encryption, experimental: ["encryption" as const] }
-      : { experimental: ["encryption" as const] };
-    const db = await connect(dbPath, opts);
+    const db = await connect(dbPath, buildConnectOptions(encryption));
     try {
       await db.all("SELECT 1");
       return false;
@@ -222,10 +223,7 @@ async function rewriteGenericDb(dbPath: string, tables: string[]): Promise<void>
 
   await tursoConnectionManager.closeConnection(dbPath);
   const encryption = resolveDatabaseEncryption();
-  const opts = encryption
-    ? { encryption, experimental: ["encryption" as const] }
-    : { experimental: ["encryption" as const] };
-  const stagedNative = await connect(stagedPath, opts);
+  const stagedNative = await connect(stagedPath, buildConnectOptions(encryption));
   const staged = new TursoDb(stagedNative);
   try {
     // Recreate schema by copying CREATE SQL from source via libsql.

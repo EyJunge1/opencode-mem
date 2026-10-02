@@ -513,7 +513,7 @@ async function allShardsComplete(): Promise<boolean> {
   return true;
 }
 
-function recoverInterruptedReembedSwaps(): void {
+async function recoverInterruptedReembedSwaps(): Promise<void> {
   for (const dirName of ["users", "projects"] as const) {
     const dir = join(CONFIG.storagePath, dirName);
     if (!existsSync(dir)) continue;
@@ -543,11 +543,21 @@ function recoverInterruptedReembedSwaps(): void {
         }
 
         if (existsSync(expectedDbPath)) {
-          if (existsSync(stagedPath)) removeSqliteDatabase(stagedPath);
+          if (existsSync(stagedPath)) {
+            await withSqliteFileLockRetry(() => removeSqliteDatabase(stagedPath));
+          }
         } else if (existsSync(stagedPath)) {
-          renameSqliteDatabase(stagedPath, expectedDbPath);
+          // Target is absent after a crash mid-swap; retry covers Windows EPERM
+          // while native handles release (same pattern as engine/encryption swaps).
+          await withSqliteFileLockRetry(() => {
+            if (existsSync(expectedDbPath)) removeSqliteDatabase(expectedDbPath);
+            renameSqliteDatabase(stagedPath, expectedDbPath);
+          });
         } else if (existsSync(backupPath)) {
-          renameSqliteDatabase(backupPath, expectedDbPath);
+          await withSqliteFileLockRetry(() => {
+            if (existsSync(expectedDbPath)) removeSqliteDatabase(expectedDbPath);
+            renameSqliteDatabase(backupPath, expectedDbPath);
+          });
         } else {
           throw new Error("neither staged replacement nor source backup exists");
         }
@@ -612,7 +622,7 @@ export async function runLegacyTursoMigration(): Promise<void> {
     mkdirSync(CONFIG.storagePath, { recursive: true });
   }
 
-  recoverInterruptedReembedSwaps();
+  await recoverInterruptedReembedSwaps();
 
   // Recovery may put a libSQL shard back at its active path. Convert DiskANN
   // indexes before any legacy verification opens it with the Turso engine,
