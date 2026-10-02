@@ -141,7 +141,7 @@
         class="rounded-lg border border-border bg-card px-2.5 py-1 text-xs tabular-nums text-muted-foreground"
       >
         {i18n.t("profile-meta", {
-          count: profile.totalPromptsAnalyzed,
+          count: profile.totalPromptsAnalyzed ?? 0,
           date: profile.lastAnalyzedAt ? formatDate(profile.lastAnalyzedAt) : "—",
         })}
       </span>

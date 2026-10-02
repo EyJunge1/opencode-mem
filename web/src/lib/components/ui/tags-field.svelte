@@ -49,7 +49,7 @@
     if (disabled) return;
     drafting = true;
     draft = "";
-    queuePromise.resolve().then(() => inputEl?.focus());
+    queueMicrotask(() => inputEl?.focus());
   }
 
   function cancelAdd() {
