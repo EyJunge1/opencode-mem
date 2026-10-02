@@ -507,7 +507,7 @@ const CONFIG_TEMPLATE = `{
   // Example for Qwen3 models: { "enable_thinking": false }
   // "memoryExtraParams": {},
 
-  // Language for auto-capture summaries (default: "auto" for auto-detection)
+  // Language for auto-capture summaries and user profile learning (default: "auto" for auto-detection)
   // Options: "auto", "en", "id", "zh", "ja", "es", "fr", "de", "ru", "pt", "ar", "ko"
   // "autoCaptureLanguage": "auto",
 
