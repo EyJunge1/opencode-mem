@@ -6,12 +6,16 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
-  renameSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { cleanupTursoTestDirectory } from "./turso-test-utils.js";
+import {
+  collectReleasedSqliteHandles,
+  renameSqliteDatabase,
+  withSqliteFileLockRetry,
+} from "../src/services/turso/sqlite-handle-release.js";
 
 describe("turso ready gate", () => {
   let baseDir: string;
@@ -102,6 +106,8 @@ describe("turso ready gate", () => {
     } finally {
       client.close();
     }
+    // libsql can keep native handles until GC; Windows renames need them gone.
+    await collectReleasedSqliteHandles();
     if (completedLegacyMigration) {
       writeFileSync(
         `${dbPath}.turso-migrate.json`,
@@ -206,7 +212,9 @@ describe("turso ready gate", () => {
     await withStorage();
     const dbPath = await createIndexedShard(true);
     const stagedPath = `${dbPath}.reembed-fixture.tmp`;
-    renameSync(dbPath, stagedPath);
+    // Simulate an interrupted re-embed: active path vacated, staged replacement present.
+    // Use the production Windows-safe rename helper — raw renameSync races libsql GC (EBUSY).
+    await withSqliteFileLockRetry(() => renameSqliteDatabase(dbPath, stagedPath));
     writeFileSync(
       `${dbPath}.reembed-swap.json`,
       JSON.stringify({
