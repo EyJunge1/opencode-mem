@@ -357,7 +357,7 @@ export class TursoVectorSearch {
       ? db.all(
           `
       SELECT * FROM memories
-      ORDER BY created_at DESC
+      ORDER BY is_pinned DESC, created_at DESC
       LIMIT ?
     `,
           [limit]
@@ -366,7 +366,7 @@ export class TursoVectorSearch {
           `
       SELECT * FROM memories
       WHERE container_tag = ?
-      ORDER BY created_at DESC
+      ORDER BY is_pinned DESC, created_at DESC
       LIMIT ?
     `,
           [containerTag, limit]

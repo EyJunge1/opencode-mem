@@ -3,20 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
 [![npm downloads](https://img.shields.io/npm/dm/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
 [![license](https://img.shields.io/npm/l/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
+[![GitHub stars](https://img.shields.io/github/stars/tickernelz/opencode-mem.svg)](https://github.com/tickernelz/opencode-mem)
 
-![OpenCode Memory Banner](.github/banner.png)
+![OpenCode Memory Banner](.github/pics/banner.png)
 
 A persistent memory system for AI coding agents that enables long-term context retention across sessions using local vector database technology.
-
-## Visual Overview
-
-**Project Memory Timeline:**
-
-![Project Memory Timeline](.github/screenshot-project-memory.png)
-
-**User Profile Viewer:**
-
-![User Profile Viewer](.github/screenshot-user-profile.png)
 
 ## Core Features
 
