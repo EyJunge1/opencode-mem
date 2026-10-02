@@ -1,0 +1,82 @@
+<script lang="ts">
+  import { fetchAPI } from "$lib/api";
+  import AppDialog from "$lib/components/ui/app-dialog.svelte";
+  import EmptyState from "$lib/components/ui/empty-state.svelte";
+  import ScrollArea from "$lib/components/ui/scroll-area.svelte";
+  import { formatDate } from "$lib/format";
+  import { useI18n } from "$lib/i18n/context.svelte";
+
+  type ChangelogEntry = {
+    version: number;
+    changeType: string;
+    createdAt: string;
+    changeSummary: string;
+  };
+
+  type Props = {
+    open?: boolean;
+    profileId?: string;
+    onOpenChange?: (open: boolean) => void;
+  };
+
+  let { open = $bindable(false), profileId = "", onOpenChange }: Props = $props();
+
+  const i18n = useI18n();
+  let loading = $state(false);
+  let entries = $state<ChangelogEntry[]>([]);
+
+  $effect(() => {
+    if (open && profileId) {
+      void loadChangelog(profileId);
+    }
+  });
+
+  async function loadChangelog(id: string) {
+    loading = true;
+    entries = [];
+    const result = await fetchAPI<ChangelogEntry[]>(
+      `/api/user-profile/changelog?profileId=${encodeURIComponent(id)}&limit=10`
+    );
+    loading = false;
+    if (result.success && result.data) {
+      entries = result.data;
+    } else {
+      entries = [];
+    }
+  }
+
+  function handleOpenChange(next: boolean) {
+    open = next;
+    onOpenChange?.(next);
+  }
+</script>
+
+<AppDialog
+  bind:open
+  title={i18n.t("modal-changelog-title")}
+  class="sm:max-w-lg"
+  onOpenChange={handleOpenChange}
+>
+  <ScrollArea class="max-h-80">
+    {#if loading}
+      <EmptyState class="py-6">{i18n.t("loading-changelog")}</EmptyState>
+    {:else if entries.length === 0}
+      <EmptyState class="py-6">{i18n.t("empty-changelog")}</EmptyState>
+    {:else}
+      <div class="space-y-3 pr-3">
+        {#each entries as entry, i (`${entry.version}-${i}`)}
+          <div class="rounded-lg border border-border p-3 space-y-1">
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <span class="font-medium">v{entry.version}</span>
+              <span class="text-muted-foreground">{entry.changeType}</span>
+              <span class="text-muted-foreground ml-auto">
+                {formatDate(entry.createdAt)}
+              </span>
+            </div>
+            <p class="text-sm">{entry.changeSummary}</p>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </ScrollArea>
+</AppDialog>

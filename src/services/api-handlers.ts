@@ -164,7 +164,7 @@ export async function handleListTags(): Promise<
 }
 
 export async function handleListMemories(
-  tag?: string,
+  tag?: string | string[],
   page: number = 1,
   pageSize: number = 20,
   includePrompts: boolean = true
@@ -173,14 +173,30 @@ export async function handleListMemories(
     await ensureTursoReady();
     // Listing only reads SQLite rows; no vector ops happen here.
     // See handleListTags comment - keep embedding init out of read paths.
+    const filterTags = (Array.isArray(tag) ? tag : tag ? [tag] : [])
+      .map((t) => t.trim())
+      .filter(Boolean);
     const allMemories: any[] = [];
-    if (tag) {
-      const { scope: tagScope, hash } = extractScopeFromTag(tag);
-      const shards = await tursoShardManager.getAllShards(tagScope, hash);
-      for (const shard of shards) {
-        const db = await tursoConnectionManager.getConnection(shard.dbPath);
-        const memories = await tursoVectorSearch.listMemories(db, tag, 10000);
-        allMemories.push(...memories);
+    const seenIds = new Set<string>();
+
+    async function pushUnique(memories: any[]) {
+      for (const memory of memories) {
+        const id = String(memory.id);
+        if (seenIds.has(id)) continue;
+        seenIds.add(id);
+        allMemories.push(memory);
+      }
+    }
+
+    if (filterTags.length > 0) {
+      for (const filterTag of filterTags) {
+        const { scope: tagScope, hash } = extractScopeFromTag(filterTag);
+        const shards = await tursoShardManager.getAllShards(tagScope, hash);
+        for (const shard of shards) {
+          const db = await tursoConnectionManager.getConnection(shard.dbPath);
+          const memories = await tursoVectorSearch.listMemories(db, filterTag, 10000);
+          await pushUnique(memories);
+        }
       }
     } else {
       // Iterate both project- and user-scoped shards. Previously this only
@@ -196,8 +212,8 @@ export async function handleListMemories(
       for (const shard of [...projectShards, ...userShards]) {
         const db = await tursoConnectionManager.getConnection(shard.dbPath);
         const memories = await tursoVectorSearch.getAllMemories(db);
-        allMemories.push(
-          ...memories.filter(
+        await pushUnique(
+          memories.filter(
             (m: any) =>
               m.container_tag?.includes("_project_") || m.container_tag?.includes("_user_")
           )
@@ -229,9 +245,18 @@ export async function handleListMemories(
 
     let timeline: any[] = memoriesWithType;
     if (includePrompts) {
-      const projectPath = tag ? await getProjectPathFromTag(tag) : undefined;
-      const prompts = await userPromptManager.getCapturedPrompts(projectPath);
-      const promptsWithType = prompts.map((p) => ({
+      const promptById = new Map<string, any>();
+      if (filterTags.length === 0) {
+        const prompts = await userPromptManager.getCapturedPrompts(undefined);
+        for (const p of prompts) promptById.set(p.id, p);
+      } else {
+        for (const filterTag of filterTags) {
+          const projectPath = await getProjectPathFromTag(filterTag);
+          const prompts = await userPromptManager.getCapturedPrompts(projectPath);
+          for (const p of prompts) promptById.set(p.id, p);
+        }
+      }
+      const promptsWithType = [...promptById.values()].map((p) => ({
         type: "prompt",
         id: p.id,
         sessionId: p.sessionId,
@@ -265,21 +290,38 @@ export async function handleListMemories(
 
     const sortedTimeline: any[] = [];
     const pairValues = Array.from(linkedPairs.values());
-    const pairs = pairValues
-      .filter((p) => p.memory && p.prompt)
-      .sort((a, b) => b.memory.createdAt - a.memory.createdAt);
+    const completePairs = pairValues.filter((p) => p.memory && p.prompt);
     // A memory or prompt whose counterpart is missing (linked prompt deleted,
     // or prompt capture off) must still show up in the timeline, unlinked.
     for (const pair of pairValues) {
       if (pair.memory && !pair.prompt) standalone.push(pair.memory);
       else if (pair.prompt && !pair.memory) standalone.push(pair.prompt);
     }
-    for (const pair of pairs) {
-      sortedTimeline.push(pair.memory);
-      sortedTimeline.push(pair.prompt);
+
+    type TimelineGroup = { kind: "pair"; memory: any; prompt: any } | { kind: "item"; item: any };
+
+    const groups: TimelineGroup[] = [
+      ...completePairs.map((p) => ({ kind: "pair" as const, memory: p.memory, prompt: p.prompt })),
+      ...standalone.map((item) => ({ kind: "item" as const, item })),
+    ];
+
+    groups.sort((a, b) => {
+      const pinA = a.kind === "pair" ? Number(!!a.memory.isPinned) : Number(!!a.item.isPinned);
+      const pinB = b.kind === "pair" ? Number(!!b.memory.isPinned) : Number(!!b.item.isPinned);
+      if (pinA !== pinB) return pinB - pinA;
+      const timeA = a.kind === "pair" ? a.memory.createdAt : a.item.createdAt;
+      const timeB = b.kind === "pair" ? b.memory.createdAt : b.item.createdAt;
+      return timeB - timeA;
+    });
+
+    for (const group of groups) {
+      if (group.kind === "pair") {
+        sortedTimeline.push(group.memory);
+        sortedTimeline.push(group.prompt);
+      } else {
+        sortedTimeline.push(group.item);
+      }
     }
-    standalone.sort((a, b) => b.createdAt - a.createdAt);
-    sortedTimeline.push(...standalone);
     timeline = sortedTimeline;
 
     const total = timeline.length;
@@ -555,7 +597,7 @@ type SearchResultItem = FormattedPrompt | FormattedMemory;
 
 export async function handleSearch(
   query: string,
-  tag?: string,
+  tag?: string | string[],
   page: number = 1,
   pageSize: number = 20
 ): Promise<ApiResponse<PaginatedResponse<SearchResultItem>>> {
@@ -566,24 +608,38 @@ export async function handleSearch(
     const queryVector = await embeddingService.embedWithTimeout(query, { task: "query" });
     const memoryResults: any[] = [];
     let promptResults: any[] = [];
-    if (tag) {
-      const { scope, hash } = extractScopeFromTag(tag);
-      const shards = await tursoShardManager.getAllShards(scope, hash);
-      for (const shard of shards) {
-        try {
-          const results = await tursoVectorSearch.searchInShard(
-            shard,
-            queryVector,
-            tag,
-            pageSize * 2
-          );
-          memoryResults.push(...results);
-        } catch (error) {
-          log("Shard search error", { shardId: shard.id, error: String(error) });
+    const filterTags = (Array.isArray(tag) ? tag : tag ? [tag] : [])
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (filterTags.length > 0) {
+      const seenMemoryKeys = new Set<string>();
+      const promptById = new Map<string, any>();
+      for (const filterTag of filterTags) {
+        const { scope, hash } = extractScopeFromTag(filterTag);
+        const shards = await tursoShardManager.getAllShards(scope, hash);
+        for (const shard of shards) {
+          try {
+            const results = await tursoVectorSearch.searchInShard(
+              shard,
+              queryVector,
+              filterTag,
+              pageSize * 2
+            );
+            for (const result of results) {
+              const key = String(result.id ?? `${result.memory}:${result.similarity}`);
+              if (seenMemoryKeys.has(key)) continue;
+              seenMemoryKeys.add(key);
+              memoryResults.push(result);
+            }
+          } catch (error) {
+            log("Shard search error", { shardId: shard.id, error: String(error) });
+          }
         }
+        const projectPath = await getProjectPathFromTag(filterTag);
+        const prompts = await userPromptManager.searchPrompts(query, projectPath, pageSize * 2);
+        for (const prompt of prompts) promptById.set(prompt.id, prompt);
       }
-      const projectPath = await getProjectPathFromTag(tag);
-      promptResults = await userPromptManager.searchPrompts(query, projectPath, pageSize * 2);
+      promptResults = [...promptById.values()];
     } else {
       const allShards = await getAllMemoryShards();
       const uniqueTags = new Set<string>();

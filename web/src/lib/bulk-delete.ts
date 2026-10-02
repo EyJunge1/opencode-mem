@@ -44,7 +44,6 @@ export async function deleteSelectedMemories(
   if (promptIds.length > 0) {
     const result = await request("/api/prompts/bulk-delete", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: promptIds, cascade: true }),
     });
 
@@ -66,7 +65,6 @@ export async function deleteSelectedMemories(
   if (memoryIds.length > 0) {
     const result = await request("/api/memories/bulk-delete", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: memoryIds, cascade: true }),
     });
 
