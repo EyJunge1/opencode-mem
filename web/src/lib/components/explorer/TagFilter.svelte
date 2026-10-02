@@ -112,7 +112,7 @@
       <div class="p-2">
         <input
           bind:value={query}
-          class={cn(FIELD_INPUT, "mb-2 h-9")}
+          class={cn(FIELD_INPUT, "mb-2")}
           placeholder={searchPlaceholder}
           aria-label={searchPlaceholder}
         />

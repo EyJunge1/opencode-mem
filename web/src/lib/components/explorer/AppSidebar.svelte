@@ -140,7 +140,7 @@
       aria-label={projectLabel}
       onclick={(e) => onNavClick(e, ROUTES.project)}
     >
-      <Folder class="size-4 shrink-0" />
+      <Folder class={cn(ICON, "shrink-0")} />
       {#if !iconOnly}
         <span class="truncate text-start">{projectLabel}</span>
       {/if}
@@ -153,7 +153,7 @@
       aria-label={profileLabel}
       onclick={(e) => onNavClick(e, ROUTES.profile)}
     >
-      <User class="size-4 shrink-0" />
+      <User class={cn(ICON, "shrink-0")} />
       {#if !iconOnly}
         <span class="truncate text-start">{profileLabel}</span>
       {/if}

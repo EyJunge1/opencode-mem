@@ -58,7 +58,7 @@
       aria-label="Clear"
       onclick={() => onClear?.()}
     >
-      <X class="size-4" aria-hidden="true" />
+      <X class={ICON} aria-hidden="true" />
     </button>
   {/if}
   <button

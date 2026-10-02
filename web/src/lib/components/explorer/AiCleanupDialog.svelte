@@ -28,6 +28,7 @@
   import { toggleInSet } from "$lib/set-utils";
   import type { PendingCleanup, UserProfile } from "$lib/types";
   import {
+    CARD_PAD,
     GAP,
     GAP_LOOSE,
     GAP_TIGHT,
@@ -39,6 +40,7 @@
     STACK_DENSE_MD,
     STACK_FORM,
     STACK_TIGHT,
+    SURFACE_CARD,
   } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
@@ -262,7 +264,7 @@
               {@const checked = selectedIds.has(it._id)}
               <SelectableRow
                 {checked}
-                class="rounded-lg border border-border/60 px-2 py-1.5 hover:bg-muted/40"
+                class="rounded-xl border border-border/60 px-2 py-1.5 hover:bg-muted/40"
                 onToggle={(next) => toggleId(it._id, next)}
               >
                 <span class="text-[10px] font-medium text-muted-foreground w-4">
@@ -319,7 +321,7 @@
               {@const mainDesc = m.result || ""}
               {@const mainSteps = findStepsById(m.ids[0], pendingCleanup.old)}
               {@const mergeChecked = acceptedMerged.has(mi)}
-              <div class={cn("rounded-xl border border-border p-3", STACK_TIGHT)}>
+              <div class={cn(SURFACE_CARD, CARD_PAD, STACK_TIGHT)}>
                 <SelectableRow checked={mergeChecked} onToggle={(next) => toggleMerged(mi, next)}>
                   <span>{i18n.t("label-ai-cleanup-merge-check")}</span>
                 </SelectableRow>
@@ -371,7 +373,7 @@
               {@const desc = findDescById(r.id, pendingCleanup.old)}
               {@const steps = findStepsById(r.id, pendingCleanup.old)}
               {@const removeChecked = acceptedRemoved.has(ri)}
-              <div class={cn("rounded-xl border border-border p-3", STACK_TIGHT)}>
+              <div class={cn(SURFACE_CARD, CARD_PAD, STACK_TIGHT)}>
                 <SelectableRow checked={removeChecked} onToggle={(next) => toggleRemoved(ri, next)}>
                   <span>{i18n.t("label-ai-cleanup-remove-check")}</span>
                 </SelectableRow>

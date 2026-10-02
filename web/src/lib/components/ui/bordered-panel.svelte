@@ -1,8 +1,8 @@
 <script lang="ts">
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import type { Snippet } from "svelte";
+  import { GAP, ICON_SM, PANEL } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
-  import { ICON_SM, STACK } from "$lib/ui/styles";
 
   type Props = {
     title: string;
@@ -35,16 +35,11 @@
 </script>
 
 <section class={cn("min-w-0", className)}>
-  <div
-    class={cn(
-      "rounded-xl border border-border bg-card px-4 py-4 [--floating-label-bg:var(--card)]",
-      STACK
-    )}
-  >
+  <div class={cn(PANEL, "[--floating-label-bg:var(--card)]")}>
     {#if collapsible}
       <button
         type="button"
-        class="flex w-full items-center gap-2 min-w-0 text-start"
+        class={cn("flex w-full items-center min-w-0 text-start", GAP)}
         aria-expanded={open}
         onclick={toggle}
       >
@@ -71,7 +66,7 @@
         />
       </button>
     {:else}
-      <div class="flex items-center gap-2 min-w-0">
+      <div class={cn("flex items-center min-w-0", GAP)}>
         {#if leading}
           {@render leading()}
         {/if}

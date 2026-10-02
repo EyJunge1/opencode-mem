@@ -33,6 +33,7 @@
     GAP,
     GAP_LOOSE,
     HEADER_GUTTER,
+    ICON,
     ICON_SM,
     META_CHIP,
     PAGE_SHELL,
@@ -169,7 +170,7 @@
           onclick={() => (sidebarOpen = true)}
           aria-label={i18n.t("nav-menu")}
         >
-          <Menu class="size-4" />
+          <Menu class={ICON} />
         </Button>
         <Button
           variant="ghost"
@@ -181,9 +182,9 @@
           aria-expanded={!sidebarCollapsed}
         >
           {#if sidebarCollapsed}
-            <PanelLeftOpen class="size-4" />
+            <PanelLeftOpen class={ICON} />
           {:else}
-            <PanelLeftClose class="size-4" />
+            <PanelLeftClose class={ICON} />
           {/if}
         </Button>
         <h1 class="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-foreground-bright">
