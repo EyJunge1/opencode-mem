@@ -3,7 +3,11 @@ import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CONFIG } from "../../config.js";
 import { log } from "../logger.js";
-import { resolveDatabaseEncryption, tursoConnectionManager } from "./connection-manager.js";
+import {
+  resolveDatabaseEncryption,
+  tursoConnectionManager,
+  buildConnectOptions,
+} from "./connection-manager.js";
 import { acquireTursoOperationLock } from "./operation-lock.js";
 import {
   withSqliteFileLockRetry,
@@ -51,10 +55,7 @@ async function isAlreadyEncrypted(dbPath: string): Promise<boolean> {
   const encryption = resolveDatabaseEncryption();
   if (!encryption) return false;
   try {
-    const db = await connect(dbPath, {
-      encryption,
-      experimental: ["encryption"],
-    });
+    const db = await connect(dbPath, buildConnectOptions(encryption));
     await db.close();
     return true;
   } catch {
@@ -64,7 +65,7 @@ async function isAlreadyEncrypted(dbPath: string): Promise<boolean> {
 
 async function canOpenPlain(dbPath: string): Promise<boolean> {
   try {
-    const db = await connect(dbPath, { experimental: ["encryption"] });
+    const db = await connect(dbPath, buildConnectOptions());
     await db.close();
     return true;
   } catch {
@@ -84,12 +85,9 @@ async function dumpAndReloadEncrypted(dbPath: string): Promise<void> {
   const backupPath = `${dbPath}.pre-encrypt-${Date.now()}.bak`;
 
   // Re-open plain to copy rows into encrypted staged DB.
-  const source = await connect(dbPath, { experimental: ["encryption"] });
+  const source = await connect(dbPath, buildConnectOptions());
   const sourceDb = new TursoDb(source);
-  const staged = await connect(stagedPath, {
-    encryption,
-    experimental: ["encryption"],
-  });
+  const staged = await connect(stagedPath, buildConnectOptions(encryption));
   const stagedDb = new TursoDb(staged);
 
   try {
@@ -214,7 +212,7 @@ async function dumpAndReloadEncrypted(dbPath: string): Promise<void> {
   });
 
   // Verify encrypted open
-  const verify = await connect(dbPath, { encryption, experimental: ["encryption"] });
+  const verify = await connect(dbPath, buildConnectOptions(encryption));
   await verify.close();
 
   log("Encrypted database at rest", { dbPath, backupPath });

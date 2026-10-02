@@ -10,6 +10,29 @@ import { resolveOrCreateDatabaseEncryptionKey } from "./encryption-key.js";
 
 export type ConnectFactory = (path: string, opts?: DatabaseOpts) => Promise<Database>;
 
+/** Always-on experimental flags for every Turso open. */
+export const TURSO_BASE_EXPERIMENTAL_FEATURES = ["encryption"] as const;
+
+/**
+ * Multiprocess WAL is Unix-only. On Windows the default IO backend rejects the
+ * flag (`experimental multiprocess WAL is not supported by the active IO backend`).
+ */
+export function supportsTursoMultiprocessWal(
+  platform: NodeJS.Platform = process.platform
+): boolean {
+  return platform !== "win32";
+}
+
+/** Experimental flags required on every Turso open for the current platform. */
+export function tursoExperimentalFeatures(
+  platform: NodeJS.Platform = process.platform
+): Array<(typeof TURSO_BASE_EXPERIMENTAL_FEATURES)[number] | "multiprocess_wal"> {
+  if (supportsTursoMultiprocessWal(platform)) {
+    return [...TURSO_BASE_EXPERIMENTAL_FEATURES, "multiprocess_wal"];
+  }
+  return [...TURSO_BASE_EXPERIMENTAL_FEATURES];
+}
+
 function assertPathInsideStorage(dbPath: string): void {
   const storageRoot = resolve(CONFIG.storagePath);
   const resolvedPath = resolve(dbPath);
@@ -20,9 +43,14 @@ function assertPathInsideStorage(dbPath: string): void {
   }
 }
 
-function buildConnectOptions(encryption?: EncryptionOpts | null): DatabaseOpts {
+/**
+ * Shared connect options for `@tursodatabase/database`.
+ * Always enables encryption; adds multiprocess_wal on Unix so concurrent
+ * OpenCode sessions can share the store. Windows stays single-process.
+ */
+export function buildConnectOptions(encryption?: EncryptionOpts | null): DatabaseOpts {
   const opts: DatabaseOpts = {
-    experimental: ["encryption"],
+    experimental: tursoExperimentalFeatures(),
   };
   if (encryption) {
     opts.encryption = encryption;
@@ -37,6 +65,28 @@ export function resolveDatabaseEncryption(): EncryptionOpts | null {
     cipher: CONFIG.databaseEncryptionCipher,
     hexkey,
   };
+}
+
+const LOCK_ERROR_RE =
+  /File is locked by another process|already open (with|without) experimental multiprocess WAL|Locking error/i;
+
+export function isTursoMultiProcessLockError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return LOCK_ERROR_RE.test(message);
+}
+
+export function wrapTursoOpenError(dbPath: string, error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  if (isTursoMultiProcessLockError(error)) {
+    const platformHint =
+      process.platform === "win32"
+        ? "On Windows the Turso engine still allows only one process as database owner — close other OpenCode sessions."
+        : "Another OpenCode session (or an older opencode-mem without multiprocess_wal) still holds the database — close it and retry.";
+    return new Error(`Failed to open database ${dbPath}: ${message}. ${platformHint}`, {
+      cause: error,
+    });
+  }
+  return error instanceof Error ? error : new Error(message, { cause: error });
 }
 
 export class TursoConnectionManager {
@@ -92,13 +142,16 @@ export class TursoConnectionManager {
         }
         if (encryption) {
           const message = error instanceof Error ? error.message : String(error);
+          if (isTursoMultiProcessLockError(error)) {
+            throw wrapTursoOpenError(dbPath, error);
+          }
           throw new Error(
             `Failed to open encrypted database ${dbPath}: ${message}. ` +
               `Check databaseEncryptionKey / cipher, or remove encryption config for plaintext shards.`,
             { cause: error }
           );
         }
-        throw error;
+        throw wrapTursoOpenError(dbPath, error);
       }
     })();
 

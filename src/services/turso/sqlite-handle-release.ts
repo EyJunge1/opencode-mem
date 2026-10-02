@@ -11,11 +11,12 @@ const GC_PASSES = 3;
 const FILE_LOCK_RETRY_DELAYS_MS = [25, 50, 100, 200, 400, 800, 1600, 3200];
 export const RETRYABLE_FILE_LOCK_CODES = new Set(["EBUSY", "EPERM", "EACCES"]);
 
-const SQLITE_SIDE_SUFFIXES = ["-wal", "-shm"] as const;
+const SQLITE_SIDE_SUFFIXES = ["-wal", "-shm", "-tshm"] as const;
 
 /**
- * Rename a SQLite/Turso database file together with its WAL/SHM sidecars.
+ * Rename a SQLite/Turso database file together with its WAL/SHM/TSHM sidecars.
  * Leaving a `.tmp-wal` behind after renaming only the main file drops commits.
+ * `-tshm` is Turso multiprocess WAL shared memory (multiprocess_wal).
  */
 export function renameSqliteDatabase(fromPath: string, toPath: string): void {
   renameSync(fromPath, toPath);
@@ -32,7 +33,7 @@ export function renameSqliteDatabase(fromPath: string, toPath: string): void {
 }
 
 /**
- * Copy a SQLite/Turso database file together with its WAL/SHM sidecars.
+ * Copy a SQLite/Turso database file together with its WAL/SHM/TSHM sidecars.
  */
 export function copySqliteDatabase(fromPath: string, toPath: string): void {
   copyFileSync(fromPath, toPath);
@@ -49,10 +50,10 @@ export function copySqliteDatabase(fromPath: string, toPath: string): void {
 }
 
 /**
- * Remove a SQLite/Turso database file together with WAL/SHM sidecars.
+ * Remove a SQLite/Turso database file together with WAL/SHM/TSHM sidecars.
  */
 export function removeSqliteDatabase(dbPath: string): void {
-  for (const path of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+  for (const path of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`, `${dbPath}-tshm`]) {
     if (existsSync(path)) unlinkSync(path);
   }
 }

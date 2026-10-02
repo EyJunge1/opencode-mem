@@ -169,7 +169,8 @@ describe("turso connection manager", () => {
       expect(opens).toHaveLength(1);
       expect(opens[0]?.path).toBe(dbPath);
       expect(opens[0]?.opts).toMatchObject({
-        experimental: ["encryption"],
+        experimental:
+          process.platform === "win32" ? ["encryption"] : ["encryption", "multiprocess_wal"],
       });
       expect(opens[0]?.opts).not.toHaveProperty("encryption");
     } finally {

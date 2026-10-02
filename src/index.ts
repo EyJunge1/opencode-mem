@@ -324,11 +324,18 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     } catch (error) {
       log("Turso ready gate failed before web server start", { error: String(error) });
       if (ctx.client?.tui) {
+        const { isTursoMultiProcessLockError } =
+          await import("./services/turso/connection-manager.js");
+        const lockHeld = isTursoMultiProcessLockError(error);
         ctx.client.tui
           .showToast({
             body: {
               title: "Memory Explorer",
-              message: "Database migration failed; web UI not started",
+              message: lockHeld
+                ? process.platform === "win32"
+                  ? "Memory DB locked by another OpenCode session (Windows is single-owner)"
+                  : "Memory DB locked by another session — close it or restart all OpenCode windows"
+                : "Database migration failed; web UI not started",
               variant: "error",
               duration: 8000,
             },
