@@ -10,8 +10,28 @@ import { resolveOrCreateDatabaseEncryptionKey } from "./encryption-key.js";
 
 export type ConnectFactory = (path: string, opts?: DatabaseOpts) => Promise<Database>;
 
-/** Experimental flags required on every Turso open (Mixing Modes is rejected). */
-export const TURSO_EXPERIMENTAL_FEATURES = ["encryption", "multiprocess_wal"] as const;
+/** Always-on experimental flags for every Turso open. */
+export const TURSO_BASE_EXPERIMENTAL_FEATURES = ["encryption"] as const;
+
+/**
+ * Multiprocess WAL is Unix-only. On Windows the default IO backend rejects the
+ * flag (`experimental multiprocess WAL is not supported by the active IO backend`).
+ */
+export function supportsTursoMultiprocessWal(
+  platform: NodeJS.Platform = process.platform
+): boolean {
+  return platform !== "win32";
+}
+
+/** Experimental flags required on every Turso open for the current platform. */
+export function tursoExperimentalFeatures(
+  platform: NodeJS.Platform = process.platform
+): Array<(typeof TURSO_BASE_EXPERIMENTAL_FEATURES)[number] | "multiprocess_wal"> {
+  if (supportsTursoMultiprocessWal(platform)) {
+    return [...TURSO_BASE_EXPERIMENTAL_FEATURES, "multiprocess_wal"];
+  }
+  return [...TURSO_BASE_EXPERIMENTAL_FEATURES];
+}
 
 function assertPathInsideStorage(dbPath: string): void {
   const storageRoot = resolve(CONFIG.storagePath);
@@ -25,12 +45,12 @@ function assertPathInsideStorage(dbPath: string): void {
 
 /**
  * Shared connect options for `@tursodatabase/database`.
- * Always enables encryption + multiprocess_wal so every opener uses the same mode.
- * On Windows, multiprocess_wal is accepted but ignored by Turso (single-process).
+ * Always enables encryption; adds multiprocess_wal on Unix so concurrent
+ * OpenCode sessions can share the store. Windows stays single-process.
  */
 export function buildConnectOptions(encryption?: EncryptionOpts | null): DatabaseOpts {
   const opts: DatabaseOpts = {
-    experimental: [...TURSO_EXPERIMENTAL_FEATURES],
+    experimental: tursoExperimentalFeatures(),
   };
   if (encryption) {
     opts.encryption = encryption;
