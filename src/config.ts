@@ -45,7 +45,8 @@ interface OpenCodeMemConfig {
   autoCaptureMaxRetries?: number;
   autoCaptureMaxContextBytes?: number;
   autoCaptureLanguage?: string;
-  memoryProvider?: "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter";
+  memoryProvider?:
+    "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter";
   memoryModel?: string;
   memoryApiUrl?: string;
   memoryApiKey?: string;
@@ -158,7 +159,8 @@ const DEFAULTS: Required<
   memoryModel?: string;
   memoryApiUrl?: string;
   memoryApiKey?: string;
-  memoryProvider?: "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter";
+  memoryProvider?:
+    "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter";
   memoryTemperature?: number | false;
   forceToolChoice?: boolean;
   memoryExtraParams?: Record<string, unknown>;
@@ -410,7 +412,7 @@ const CONFIG_TEMPLATE = `{
   
   "autoCaptureEnabled": true,
   
-  // Provider type: "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
+  // Provider type: "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
   // Note: "openai-chat" is a generic OpenAI API-compatible mode.
   // Any service that follows the OpenAI Chat Completions API can use it via custom "memoryApiUrl".
   "memoryProvider": "openai-chat",
@@ -474,6 +476,15 @@ const CONFIG_TEMPLATE = `{
   //   // namespaced ID such as "openai/gpt-5.5" or "deepseek/deepseek-v4-flash".
   //   "memoryModel": "openai/gpt-5.5"
 
+  // Atlas Cloud (OpenAI-compatible Chat Completions preset, with session support):
+  //   "memoryProvider": "atlas-cloud"
+  //   "memoryApiKey": "env://ATLASCLOUD_API_KEY"
+  //   // memoryApiUrl and memoryModel are optional — they default to
+  //   // https://api.atlascloud.ai/v1 and "deepseek-ai/deepseek-v4-pro".
+  //   // When selected, auto-capture/profile prompts, responses, and relevant
+  //   // conversation context are sent to api.atlascloud.ai.
+  //   // "memoryModel": "deepseek-ai/deepseek-v4-pro"
+
   // Groq (OpenAI-compatible, use openai-chat provider):
   //   "memoryProvider": "openai-chat"
   //   "memoryModel": "llama-3.3-70b-versatile"
@@ -502,7 +513,7 @@ const CONFIG_TEMPLATE = `{
   // Set to false and add "memoryTemperature": false in config when using such models
   "memoryTemperature": 0.3,
 
-  // Force tool calls on openai-chat / orcarouter (tool_choice: "required"). Default true.
+  // Force tool calls on openai-chat / orcarouter / atlas-cloud (tool_choice: "required"). Default true.
   // Some thinking/reasoning models reject forced tool choice — set false to fall back to "auto":
   // "forceToolChoice": false,
 
@@ -728,7 +739,11 @@ export function normalizeInjectionMarkers(value: string[] | undefined): string[]
 }
 
 function buildConfig(fileConfig: OpenCodeMemConfig) {
-  const memoryApiKey = resolveSecretValue(fileConfig.memoryApiKey);
+  const memoryProvider = (fileConfig.memoryProvider ?? "openai-chat") as
+    "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter";
+  const memoryApiKey =
+    resolveSecretValue(fileConfig.memoryApiKey) ??
+    (memoryProvider === "atlas-cloud" ? process.env.ATLASCLOUD_API_KEY : undefined);
   const embeddingDimensions =
     fileConfig.embeddingDimensions ??
     getEmbeddingDimensions(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel);
@@ -776,8 +791,7 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     autoCaptureMaxRetries: fileConfig.autoCaptureMaxRetries ?? DEFAULTS.autoCaptureMaxRetries,
     autoCaptureMaxContextBytes,
     autoCaptureLanguage: fileConfig.autoCaptureLanguage,
-    memoryProvider: (fileConfig.memoryProvider ?? "openai-chat") as
-      "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter",
+    memoryProvider,
     memoryModel: fileConfig.memoryModel,
     memoryApiUrl: fileConfig.memoryApiUrl,
     memoryApiKey,
@@ -789,6 +803,7 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     autoCaptureProviderStatus: getAutoCaptureProviderStatus({
       opencodeProvider: fileConfig.opencodeProvider,
       opencodeModel: fileConfig.opencodeModel,
+      memoryProvider,
       memoryModel: fileConfig.memoryModel,
       memoryApiUrl: fileConfig.memoryApiUrl,
       memoryApiKey,
@@ -928,9 +943,9 @@ export function getAutoCaptureProviderStatus(
   const hasMemoryApiKey = hasValue(config.memoryApiKey);
   const hasPlaceholderMemoryApiKey = isPlaceholderApiKey(config.memoryApiKey);
 
-  // The orcarouter provider presets its endpoint and default model, so only
-  // an API key is required for the manual fallback path.
-  if (config.memoryProvider === "orcarouter") {
+  // Preset providers fill endpoint/model themselves, so only an API key is
+  // required for the manual fallback path.
+  if (config.memoryProvider === "orcarouter" || config.memoryProvider === "atlas-cloud") {
     if (!hasMemoryApiKey) issues.push("memoryApiKey is not configured");
     if (hasPlaceholderMemoryApiKey) issues.push("memoryApiKey contains a placeholder value");
     if (hasMemoryApiKey && !hasPlaceholderMemoryApiKey) {

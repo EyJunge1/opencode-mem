@@ -103,7 +103,7 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
   }
 
   getProviderName(): string {
-    return "openai-chat";
+    return this.sessionProviderTag();
   }
 
   supportsSession(): boolean {

@@ -155,7 +155,7 @@
 
   "autoCaptureEnabled": true,
 
-  // Provider type: "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
+  // Provider type: "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
   // Note: "openai-chat" is a generic OpenAI API-compatible mode.
   // Any service that follows the OpenAI Chat Completions API can use it via custom "memoryApiUrl".
   "memoryProvider": "openai-chat",
@@ -219,6 +219,15 @@
   //   // namespaced ID such as "openai/gpt-5.5" or "deepseek/deepseek-v4-flash".
   //   "memoryModel": "openai/gpt-5.5"
 
+  // Atlas Cloud (OpenAI-compatible Chat Completions preset, with session support):
+  //   "memoryProvider": "atlas-cloud"
+  //   "memoryApiKey": "env://ATLASCLOUD_API_KEY"
+  //   // memoryApiUrl and memoryModel are optional — they default to
+  //   // https://api.atlascloud.ai/v1 and "deepseek-ai/deepseek-v4-pro".
+  //   // When selected, auto-capture/profile prompts, responses, and relevant
+  //   // conversation context are sent to api.atlascloud.ai.
+  //   // "memoryModel": "deepseek-ai/deepseek-v4-pro"
+
   // Groq (OpenAI-compatible, use openai-chat provider):
   //   "memoryProvider": "openai-chat"
   //   "memoryModel": "llama-3.3-70b-versatile"
@@ -247,7 +256,7 @@
   // Set to false and add "memoryTemperature": false in config when using such models
   "memoryTemperature": 0.3,
 
-  // Force tool calls on openai-chat / orcarouter (tool_choice: "required"). Default true.
+  // Force tool calls on openai-chat / orcarouter / atlas-cloud (tool_choice: "required"). Default true.
   // Some thinking/reasoning models reject forced tool choice — set false to fall back to "auto":
   // "forceToolChoice": false,
 
