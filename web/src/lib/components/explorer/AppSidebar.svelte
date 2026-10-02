@@ -14,6 +14,7 @@
   import {
     ACTIVE_ACCENT,
     GAP_LOOSE,
+    HIT_TARGET,
     HOVER_SURFACE,
     ICON,
     ICON_SM,
@@ -72,9 +73,13 @@
     return cn(
       NAV_ITEM,
       iconOnly ? "justify-center px-0 py-2.5" : cn(GAP_LOOSE, "px-3 py-2.5"),
-      active ? ACTIVE_ACCENT : cn("text-muted-foreground", HOVER_SURFACE)
+      active ? ACTIVE_ACCENT : cn("text-muted-foreground", HOVER_SURFACE),
+      "focus-ring"
     );
   }
+
+  const footerIconBtn =
+    "inline-flex items-center justify-center self-stretch min-w-11 px-2.5 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-ring";
 </script>
 
 {#if open}
@@ -88,7 +93,7 @@
 
 <aside
   class={cn(
-    "inset-y-0 start-0 z-50 flex h-svh shrink-0 flex-col overflow-hidden border-e border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200",
+    "inset-y-0 start-0 z-50 flex h-svh shrink-0 flex-col overflow-hidden border-e border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 motion-reduce:transition-none",
     "fixed top-0 translate-x-0!",
     collapsed ? "md:w-16" : "md:w-64",
     "w-64",
@@ -104,7 +109,7 @@
     <a
       href={ROUTES.home}
       class={cn(
-        "flex min-w-0 items-center rounded-xl transition-colors hover:opacity-90",
+        "flex min-w-0 items-center rounded-xl transition-colors hover:opacity-90 focus-ring",
         iconOnly ? "justify-center" : cn("flex-1", GAP_LOOSE)
       )}
       title={brand}
@@ -127,7 +132,7 @@
       onclick={() => setOpen(false)}
       aria-label={closeLabel}
     >
-      <X class={ICON} />
+      <X class={ICON} aria-hidden="true" />
     </Button>
   </div>
 
@@ -140,7 +145,7 @@
       aria-label={projectLabel}
       onclick={(e) => onNavClick(e, ROUTES.project)}
     >
-      <Folder class={cn(ICON, "shrink-0")} />
+      <Folder class={cn(ICON, "shrink-0")} aria-hidden="true" />
       {#if !iconOnly}
         <span class="truncate text-start">{projectLabel}</span>
       {/if}
@@ -153,7 +158,7 @@
       aria-label={profileLabel}
       onclick={(e) => onNavClick(e, ROUTES.profile)}
     >
-      <User class={cn(ICON, "shrink-0")} />
+      <User class={cn(ICON, "shrink-0")} aria-hidden="true" />
       {#if !iconOnly}
         <span class="truncate text-start">{profileLabel}</span>
       {/if}
@@ -171,7 +176,7 @@
           aria-label={languageLabel}
           title={`${languageLabel} (${langLabel})`}
         >
-          <Languages class={ICON_SM} />
+          <Languages class={ICON_SM} aria-hidden="true" />
         </Button>
         <Button
           type="button"
@@ -182,9 +187,9 @@
           title={themeLabel}
         >
           {#if isDark}
-            <Moon class={ICON} />
+            <Moon class={ICON} aria-hidden="true" />
           {:else}
-            <Sun class={ICON} />
+            <Sun class={ICON} aria-hidden="true" />
           {/if}
         </Button>
         <a
@@ -192,13 +197,14 @@
           target="_blank"
           rel="noopener noreferrer"
           class={cn(
-            "inline-flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors",
-            "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            "inline-flex items-center justify-center rounded-xl text-muted-foreground transition-colors",
+            HIT_TARGET,
+            "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-ring"
           )}
           title="GitHub"
           aria-label="GitHub"
         >
-          <GithubIcon class={ICON} />
+          <GithubIcon class={ICON} aria-hidden="true" />
         </a>
       </div>
     {:else}
@@ -206,39 +212,39 @@
         <button
           type="button"
           class={cn(
-            "group flex min-w-0 flex-1 items-center rounded-s-xl px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            "group flex min-w-0 flex-1 items-center rounded-s-xl px-2.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-ring",
             GAP_LOOSE
           )}
           onclick={onLangToggle}
           aria-label={languageLabel}
           title={languageLabel}
         >
-          <Languages class={cn(ICON_SM, "shrink-0")} />
+          <Languages class={cn(ICON_SM, "shrink-0")} aria-hidden="true" />
           <span class="truncate">{languageLabel}</span>
           <span class="ms-auto text-xs tabular-nums">{langLabel}</span>
         </button>
         <button
           type="button"
-          class="inline-flex items-center self-stretch border-s border-sidebar-border px-1.5 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          class={cn(footerIconBtn, "border-s border-sidebar-border")}
           onclick={() => toggleTheme()}
           aria-label={themeLabel}
           title={themeLabel}
         >
           {#if isDark}
-            <Moon class={cn(ICON, "rounded-md p-0.5")} />
+            <Moon class={ICON} aria-hidden="true" />
           {:else}
-            <Sun class={cn(ICON, "rounded-md p-0.5")} />
+            <Sun class={ICON} aria-hidden="true" />
           {/if}
         </button>
         <a
           href="https://github.com/tickernelz/opencode-mem"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center self-stretch rounded-e-xl border-s border-sidebar-border px-1.5 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          class={cn(footerIconBtn, "rounded-e-xl border-s border-sidebar-border")}
           title="GitHub"
           aria-label="GitHub"
         >
-          <GithubIcon class={ICON} />
+          <GithubIcon class={ICON} aria-hidden="true" />
         </a>
       </div>
     {/if}

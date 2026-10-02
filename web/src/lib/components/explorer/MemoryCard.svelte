@@ -124,6 +124,7 @@
       checked={opts.selected}
       onCheckedChange={(v) => onSelect?.(id, v === true)}
       class="shrink-0"
+      aria-label={`Select ${title}`}
     />
     <h3 class={cn(CARD_TITLE, "min-w-0 flex-1")}>
       <span class="truncate">{title}</span>

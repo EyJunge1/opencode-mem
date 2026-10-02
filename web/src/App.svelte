@@ -170,7 +170,7 @@
           onclick={() => (sidebarOpen = true)}
           aria-label={i18n.t("nav-menu")}
         >
-          <Menu class={ICON} />
+          <Menu class={ICON} aria-hidden="true" />
         </Button>
         <Button
           variant="ghost"
@@ -182,9 +182,9 @@
           aria-expanded={!sidebarCollapsed}
         >
           {#if sidebarCollapsed}
-            <PanelLeftOpen class={ICON} />
+            <PanelLeftOpen class={ICON} aria-hidden="true" />
           {:else}
-            <PanelLeftClose class={ICON} />
+            <PanelLeftClose class={ICON} aria-hidden="true" />
           {/if}
         </Button>
         <h1 class="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-foreground-bright">
@@ -209,7 +209,7 @@
               })}
             </span>
             {#if explorer.refreshing}
-              <Loader class={cn(ICON_SM, "animate-spin")} />
+              <Loader class={cn(ICON_SM, "animate-spin")} aria-hidden="true" />
             {/if}
           </div>
         {/if}
@@ -220,7 +220,7 @@
     <div class={PAGE_SHELL}>
       {#if explorer.showAuthWarning}
         <Alert variant="destructive">
-          <TriangleAlert />
+          <TriangleAlert aria-hidden="true" />
           <AlertDescription>{i18n.t("auth-warning-text")}</AlertDescription>
         </Alert>
       {/if}
@@ -253,21 +253,21 @@
 
             <div class={cn("flex shrink-0 items-center", GAP)}>
               <Button type="button" variant="outline" onclick={explorer.runCleanup}>
-                <Trash2 class={ICON_SM} />
+                <Trash2 class={ICON_SM} aria-hidden="true" />
                 {i18n.t("btn-cleanup")}
               </Button>
               <Button type="button" variant="outline" onclick={explorer.runDeduplication}>
-                <RefreshCw class={ICON_SM} />
+                <RefreshCw class={ICON_SM} aria-hidden="true" />
                 {i18n.t("btn-deduplicate")}
               </Button>
               <Button
                 variant="default"
-                size="icon-lg"
+                size="icon"
                 aria-label={i18n.t("btn-add-memory")}
                 title={i18n.t("btn-add-memory")}
                 onclick={() => (explorer.addOpen = true)}
               >
-                <Plus class={ICON_SM} />
+                <Plus class={ICON} aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -275,7 +275,7 @@
 
         {#if explorer.migrationNeeded}
           <Alert variant="destructive" class={STACK}>
-            <TriangleAlert />
+            <TriangleAlert aria-hidden="true" />
             <AlertDescription class={STACK}>
               <p>{explorer.migrationMessage || i18n.t("migration-mismatch")}</p>
               <label class={cn("flex items-start text-sm", GAP)}>

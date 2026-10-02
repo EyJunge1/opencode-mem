@@ -51,7 +51,7 @@
     <button
       type="button"
       class={cn(
-        "absolute top-1/2 right-10 inline-flex -translate-y-1/2 items-center justify-center text-muted-foreground transition active:scale-90 focus-ring",
+        "absolute top-1/2 right-10 inline-flex -translate-y-1/2 items-center justify-center text-muted-foreground transition-[color,transform] active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100 focus-ring",
         ICON_BTN_DENSE,
         HOVER_SURFACE
       )}
@@ -64,7 +64,7 @@
   <button
     type="button"
     class={cn(
-      "absolute top-1/2 right-1 inline-flex -translate-y-1/2 items-center justify-center text-muted-foreground transition active:scale-90 focus-ring",
+      "absolute top-1/2 right-1 inline-flex -translate-y-1/2 items-center justify-center text-muted-foreground transition-[color,transform] active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100 focus-ring",
       ICON_BTN_DENSE,
       HOVER_SURFACE
     )}

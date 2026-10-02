@@ -212,4 +212,8 @@ html.theme-switching *::after {
   [class*="toast-progress"] {
     animation: none;
   }
+
+  .animate-spin {
+    animation: none;
+  }
 }

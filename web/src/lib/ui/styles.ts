@@ -6,8 +6,12 @@ export const HOVER_SURFACE = "hover:bg-surface-hover hover:text-foreground-brigh
 
 export const ICON_WELL = `inline-flex items-center justify-center rounded-xl ${ACTIVE_ACCENT}`;
 
-/** Dense icon inside inputs (search affordance). */
-export const ICON_BTN_DENSE = "size-8 rounded-lg";
+/** Dense icon inside inputs (search affordance) — matches FIELD_INPUT h-10. */
+export const ICON_BTN_DENSE = "size-10 rounded-xl";
+
+/** Minimum interactive hit area (~40px; close to 44px a11y target). */
+export const HIT_TARGET = "size-10";
+export const HIT_TARGET_SM = "size-9";
 
 /** Standard icon sizes — prefer these over ad-hoc sizes. */
 export const ICON_XS = "size-3";

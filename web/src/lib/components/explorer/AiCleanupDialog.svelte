@@ -230,7 +230,7 @@
 >
   {#if phase === "loading"}
     <div class="flex flex-col items-center {GAP_LOOSE} py-10 text-muted-foreground">
-      <Loader class="size-6 animate-spin" />
+      <Loader class={cn(ICON, "size-6 animate-spin")} aria-hidden="true" />
       <span class="text-sm">{i18n.t("label-ai-cleanup-loading")}</span>
     </div>
   {:else if phase === "select"}
@@ -274,7 +274,7 @@
                   {truncate(it.description || "", 80)}
                 </span>
                 <span class="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                  <Target class={ICON_XS} />
+                  <Target class={ICON_XS} aria-hidden="true" />
                   {it.frequency || 0}{it.confidence != null ? ` | ${confidencePct(it)}%` : ""}
                 </span>
               </SelectableRow>
@@ -311,7 +311,7 @@
         {#if (pendingCleanup.changes.merged || []).length > 0}
           <div class={STACK_TIGHT}>
             <h4 class="flex items-center {GAP_TIGHT} text-sm font-medium">
-              <GitMerge class={ICON_SM} />
+              <GitMerge class={ICON_SM} aria-hidden="true" />
               {i18n.t("label-ai-cleanup-merged-header", {
                 count: pendingCleanup.changes.merged?.length || 0,
               })}
@@ -347,7 +347,7 @@
                     {/each}
                   </div>
                   <div class="text-muted-foreground self-center grid place-items-center">
-                    <ChevronRight class={ICON} />
+                    <ChevronRight class={ICON} aria-hidden="true" />
                   </div>
                   <div class="rounded-lg bg-primary/10 p-2 {STACK_DENSE}">
                     <div>{truncate(mainDesc, 120)}</div>
@@ -364,7 +364,7 @@
         {#if (pendingCleanup.changes.removed || []).length > 0}
           <div class={STACK_TIGHT}>
             <h4 class="flex items-center {GAP_TIGHT} text-sm font-medium">
-              <Trash2 class={ICON_SM} />
+              <Trash2 class={ICON_SM} aria-hidden="true" />
               {i18n.t("label-ai-cleanup-removed-header", {
                 count: pendingCleanup.changes.removed?.length || 0,
               })}
@@ -399,9 +399,9 @@
                 ({pendingCleanup.changes.kept?.length || 0})
               </span>
               {#if keptOpen}
-                <ChevronUp class={ICON_SM} />
+                <ChevronUp class={ICON_SM} aria-hidden="true" />
               {:else}
-                <ChevronDown class={ICON_SM} />
+                <ChevronDown class={ICON_SM} aria-hidden="true" />
               {/if}
             </button>
             {#if keptOpen}

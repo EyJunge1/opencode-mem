@@ -96,7 +96,11 @@
       </span>
     {/if}
     <ChevronDown
-      class={cn(ICON_SM, "transition-transform", open && "rotate-180")}
+      class={cn(
+        ICON_SM,
+        "transition-transform motion-reduce:transition-none",
+        open && "rotate-180"
+      )}
       aria-hidden="true"
     />
   </Button>
@@ -122,7 +126,10 @@
             type="button"
             role="menuitemcheckbox"
             aria-checked={!active}
-            class={cn("flex w-full cursor-pointer items-center px-2 py-1.5 text-left text-sm", GAP)}
+            class={cn(
+              "flex w-full cursor-pointer items-center px-2 py-2 text-left text-sm hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none",
+              GAP
+            )}
             onclick={clear}
           >
             <span
@@ -135,7 +142,7 @@
               aria-hidden="true"
             >
               {#if !active}
-                <Check class={ICON_XS} />
+                <Check class={ICON_XS} aria-hidden="true" />
               {/if}
             </span>
             <span class="min-w-0 flex-1 truncate font-normal">{allLabel}</span>
@@ -148,7 +155,7 @@
               role="menuitemcheckbox"
               aria-checked={on}
               class={cn(
-                "flex w-full cursor-pointer items-center px-2 py-1.5 text-left text-sm",
+                "flex w-full cursor-pointer items-center px-2 py-2 text-left text-sm hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none",
                 GAP
               )}
               onclick={() => toggle(tag.tag)}
@@ -163,7 +170,7 @@
                 aria-hidden="true"
               >
                 {#if on}
-                  <Check class={ICON_XS} />
+                  <Check class={ICON_XS} aria-hidden="true" />
                 {/if}
               </span>
               <span class="min-w-0 flex-1 truncate font-normal">{tag.displayName || tag.tag}</span>

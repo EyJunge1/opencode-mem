@@ -3,7 +3,7 @@
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Button from "$lib/components/ui/button.svelte";
   import type { PageSlice } from "$lib/pagination";
-  import { GAP, ICON_SM } from "$lib/ui/styles";
+  import { GAP, GAP_TIGHT, ICON_SM } from "$lib/ui/styles";
 
   type Props = {
     mode?: "pages" | "prev-next";
@@ -33,16 +33,28 @@
 
 {#if mode === "prev-next"}
   <div class="flex items-center {GAP}">
-    <Button variant="outline" size="icon-xs" disabled={!hasPrev} onclick={() => onDelta?.(-1)}>
+    <Button
+      variant="outline"
+      size="icon-xs"
+      disabled={!hasPrev}
+      aria-label="Previous page"
+      onclick={() => onDelta?.(-1)}
+    >
       <ChevronLeft class={ICON_SM} />
     </Button>
     <span class="text-xs text-muted-foreground tabular-nums">{pageInfo}</span>
-    <Button variant="outline" size="icon-xs" disabled={!hasNext} onclick={() => onDelta?.(1)}>
+    <Button
+      variant="outline"
+      size="icon-xs"
+      disabled={!hasNext}
+      aria-label="Next page"
+      onclick={() => onDelta?.(1)}
+    >
       <ChevronRight class={ICON_SM} />
     </Button>
   </div>
 {:else if page && page.total > pageSize}
-  <div class="flex flex-wrap items-center gap-1.5 pt-2">
+  <div class="flex flex-wrap items-center {GAP_TIGHT} pt-2">
     <span class="text-xs text-muted-foreground mr-2">
       {page.start + 1}-{Math.min(page.start + pageSize, page.total)} / {page.total}
     </span>

@@ -59,16 +59,23 @@
       </span>
     </div>
     <div class="flex shrink-0 items-center gap-1">
-      <Button variant="ghost" size="icon-xs" title={i18n.t("btn-edit") || "Edit"} onclick={onEdit}>
-        <PenLine class={ICON_SM} />
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        title={i18n.t("btn-edit") || "Edit"}
+        aria-label={i18n.t("btn-edit") || "Edit"}
+        onclick={onEdit}
+      >
+        <PenLine class={ICON_SM} aria-hidden="true" />
       </Button>
       <Button
         variant="destructive"
         size="icon-xs"
         title={i18n.t("btn-delete") || "Delete"}
+        aria-label={i18n.t("btn-delete") || "Delete"}
         onclick={onDelete}
       >
-        <Trash2 class={ICON_SM} />
+        <Trash2 class={ICON_SM} aria-hidden="true" />
       </Button>
     </div>
   </div>
@@ -87,13 +94,13 @@
         class="inline-flex items-center gap-1"
         title={i18n.t("label-evidence-tooltip", { count: item.frequency || 1 })}
       >
-        <Target class={ICON_SM} />
+        <Target class={ICON_SM} aria-hidden="true" />
         {item.frequency || 1}
       </span>
       {#if count > 0}
         <span>·</span>
         <span class="inline-flex items-center gap-1" {title}>
-          <Info class={ICON_SM} />
+          <Info class={ICON_SM} aria-hidden="true" />
           {count} evidence
         </span>
       {/if}

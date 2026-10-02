@@ -2,7 +2,7 @@
   import Plus from "@lucide/svelte/icons/plus";
   import X from "@lucide/svelte/icons/x";
   import Badge from "$lib/components/ui/badge.svelte";
-  import { GAP_TIGHT, ICON_SM, ICON_XS } from "$lib/ui/styles";
+  import { GAP_TIGHT, HIT_TARGET_SM, ICON_XS } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -106,14 +106,11 @@
       {#if !disabled}
         <button
           type="button"
-          class={cn(
-            "inline-flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground",
-            ICON_SM
-          )}
+          class="relative inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-ring before:absolute before:inset-[-6px] before:content-['']"
           aria-label={`Remove ${tag}`}
           onclick={() => removeTag(tag)}
         >
-          <X class={ICON_XS} />
+          <X class={ICON_XS} aria-hidden="true" />
         </button>
       {/if}
     </Badge>
@@ -124,7 +121,7 @@
       <input
         bind:this={inputEl}
         bind:value={draft}
-        class="h-5 w-28 min-w-0 rounded-lg border border-border bg-card px-2 text-xs text-foreground-bright outline-none focus-visible:border-primary"
+        class="h-5 w-28 min-w-0 rounded-lg border border-border bg-card px-2 text-xs text-foreground-bright outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
         {placeholder}
         aria-label={placeholder}
         {disabled}
@@ -140,7 +137,8 @@
             <button
               type="button"
               role="option"
-              class="flex w-full px-2 py-1 text-left text-xs hover:bg-surface-hover"
+              aria-selected="false"
+              class="flex w-full px-2 py-2 text-left text-xs hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none"
               onclick={() => pickSuggestion(suggestion)}
             >
               {suggestion}
@@ -153,7 +151,8 @@
     <button
       type="button"
       class={cn(
-        "inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition hover:border-primary/50 hover:text-primary",
+        "inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-[color,border-color] hover:border-primary/50 hover:text-primary focus-ring",
+        HIT_TARGET_SM,
         disabled && "pointer-events-none opacity-50"
       )}
       title={addLabel}
@@ -161,7 +160,7 @@
       {disabled}
       onclick={startAdd}
     >
-      <Plus class={ICON_XS} />
+      <Plus class={ICON_XS} aria-hidden="true" />
     </button>
   {/if}
 </div>

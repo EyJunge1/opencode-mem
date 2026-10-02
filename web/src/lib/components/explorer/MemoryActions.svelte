@@ -39,25 +39,39 @@
         size="icon-xs"
         class="text-primary hover:text-primary"
         title="Unpin"
+        aria-label="Unpin"
         onclick={() => onUnpin?.(id)}
       >
-        <PinOff class={ICON_SM} />
+        <PinOff class={ICON_SM} aria-hidden="true" />
       </Button>
     {:else}
-      <Button variant="ghost" size="icon-xs" title="Pin" onclick={() => onPin?.(id)}>
-        <Pin class={ICON_SM} />
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        title="Pin"
+        aria-label="Pin"
+        onclick={() => onPin?.(id)}
+      >
+        <Pin class={ICON_SM} aria-hidden="true" />
       </Button>
     {/if}
-    <Button variant="ghost" size="icon-xs" onclick={() => onEdit?.(id)}>
-      <PenLine class={ICON_SM} />
+    <Button
+      variant="ghost"
+      size="icon-xs"
+      title="Edit"
+      aria-label="Edit"
+      onclick={() => onEdit?.(id)}
+    >
+      <PenLine class={ICON_SM} aria-hidden="true" />
     </Button>
   {/if}
   <Button
     variant="destructive"
     size="icon-xs"
     title={deleteLabel}
+    aria-label={deleteLabel}
     onclick={() => onDelete?.(id, isLinked)}
   >
-    <Trash2 class={ICON_SM} />
+    <Trash2 class={ICON_SM} aria-hidden="true" />
   </Button>
 </div>

@@ -53,16 +53,19 @@
           {@render trailing()}
         {/if}
         {#if action}
-          <div class="shrink-0" onclick={(e) => e.stopPropagation()}>
+          <!-- Stop header toggle when clicking slot actions (icon buttons). -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="shrink-0" onpointerdown={(e) => e.stopPropagation()}>
             {@render action()}
           </div>
         {/if}
         <ChevronDown
           class={cn(
             ICON_SM,
-            "shrink-0 text-muted-foreground transition-transform",
+            "shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none",
             open && "rotate-180"
           )}
+          aria-hidden="true"
         />
       </button>
     {:else}

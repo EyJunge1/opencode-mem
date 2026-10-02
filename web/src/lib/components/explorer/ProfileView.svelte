@@ -140,7 +140,7 @@
   <EmptyState>{i18n.t("loading-profile")}</EmptyState>
 {:else if !profile?.exists}
   <div class={cn("flex flex-col items-center py-10 text-muted-foreground", GAP)}>
-    <UserX class="size-8" />
+    <UserX class="size-8" aria-hidden="true" />
     <p class="text-sm">{profile?.message || i18n.t("empty-preferences")}</p>
   </div>
 {:else if profileData}
@@ -154,15 +154,15 @@
       </span>
       <div class={cn("flex flex-wrap items-center", GAP_TIGHT)}>
         <Button type="button" variant="outline" onclick={() => onCleanup?.()}>
-          <Sparkles class={ICON_SM} />
+          <Sparkles class={ICON_SM} aria-hidden="true" />
           {i18n.t("btn-ai-cleanup")}
         </Button>
         <Button type="button" variant="outline" onclick={() => onRefresh?.()}>
-          <RefreshCw class={ICON_SM} />
+          <RefreshCw class={ICON_SM} aria-hidden="true" />
           {i18n.t("btn-refresh")}
         </Button>
         <Button type="button" variant="outline" onclick={() => (changelogOpen = true)}>
-          <RotateCcwClock class={ICON_SM} />
+          <RotateCcwClock class={ICON_SM} aria-hidden="true" />
           History
         </Button>
       </div>
@@ -172,7 +172,7 @@
       {#each sections as section (section.key)}
         <BorderedPanel title={i18n.t(section.titleKey)} collapsible>
           {#snippet leading()}
-            <span class={cn(ICON_WELL, "size-6")}>
+            <span class={cn(ICON_WELL, "size-6")} aria-hidden="true">
               <section.icon class={ICON_SM} />
             </span>
           {/snippet}
