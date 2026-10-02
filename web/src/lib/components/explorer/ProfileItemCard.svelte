@@ -14,6 +14,15 @@
     type ProfileField,
   } from "$lib/profile-utils";
   import type { ProfileItem } from "$lib/types";
+  import {
+    CARD_PAD,
+    GAP,
+    GAP_TIGHT,
+    ICON_SM,
+    META_CHIP,
+    STACK_TIGHT,
+    SURFACE_CARD,
+  } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -32,9 +41,9 @@
   const title = $derived(evidenceTitle(item));
 </script>
 
-<div class="space-y-2 rounded-xl border border-border bg-card px-3 py-3">
-  <div class="flex items-center gap-2">
-    <div class="flex min-w-0 flex-1 items-center gap-2">
+<div class={cn(SURFACE_CARD, CARD_PAD, STACK_TIGHT)}>
+  <div class={cn("flex items-center", GAP)}>
+    <div class={cn("flex min-w-0 flex-1 items-center", GAP)}>
       <h3 class={cn(CARD_TITLE, "min-w-0 truncate")}>
         {#if variant === "workflow"}
           {item.description || i18n.t("profile-workflows")}
@@ -43,7 +52,7 @@
         {/if}
       </h3>
       <span
-        class="inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card px-2 text-[10px] font-medium tabular-nums text-foreground"
+        class={cn(META_CHIP, "h-7 min-w-7 justify-center font-medium text-foreground")}
         title={`${pct}%`}
       >
         {pct}%
@@ -51,7 +60,7 @@
     </div>
     <div class="flex shrink-0 items-center gap-1">
       <Button variant="ghost" size="icon-xs" title={i18n.t("btn-edit") || "Edit"} onclick={onEdit}>
-        <PenLine class="size-3.5" />
+        <PenLine class={ICON_SM} />
       </Button>
       <Button
         variant="destructive"
@@ -59,7 +68,7 @@
         title={i18n.t("btn-delete") || "Delete"}
         onclick={onDelete}
       >
-        <Trash2 class="size-3.5" />
+        <Trash2 class={ICON_SM} />
       </Button>
     </div>
   </div>
@@ -73,18 +82,18 @@
   {/if}
 
   {#if item.evidence || item.frequency || variant === "workflow"}
-    <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <div class={cn("flex items-center text-xs text-muted-foreground", GAP_TIGHT)}>
       <span
         class="inline-flex items-center gap-1"
         title={i18n.t("label-evidence-tooltip", { count: item.frequency || 1 })}
       >
-        <Target class="size-3" />
+        <Target class={ICON_SM} />
         {item.frequency || 1}
       </span>
       {#if count > 0}
         <span>·</span>
         <span class="inline-flex items-center gap-1" {title}>
-          <Info class="size-3" />
+          <Info class={ICON_SM} />
           {count} evidence
         </span>
       {/if}

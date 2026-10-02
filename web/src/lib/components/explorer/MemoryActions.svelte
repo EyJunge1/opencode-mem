@@ -4,6 +4,7 @@
   import PinOff from "@lucide/svelte/icons/pin-off";
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import Button from "$lib/components/ui/button.svelte";
+  import { ICON_SM } from "$lib/ui/styles";
 
   type Props = {
     id: string;
@@ -30,7 +31,7 @@
   }: Props = $props();
 </script>
 
-<div class="flex items-center gap-1 shrink-0">
+<div class="flex shrink-0 items-center gap-1">
   {#if showPinEdit}
     {#if pinned}
       <Button
@@ -40,15 +41,15 @@
         title="Unpin"
         onclick={() => onUnpin?.(id)}
       >
-        <PinOff class="size-3.5" />
+        <PinOff class={ICON_SM} />
       </Button>
     {:else}
       <Button variant="ghost" size="icon-xs" title="Pin" onclick={() => onPin?.(id)}>
-        <Pin class="size-3.5" />
+        <Pin class={ICON_SM} />
       </Button>
     {/if}
     <Button variant="ghost" size="icon-xs" onclick={() => onEdit?.(id)}>
-      <PenLine class="size-3.5" />
+      <PenLine class={ICON_SM} />
     </Button>
   {/if}
   <Button
@@ -57,6 +58,6 @@
     title={deleteLabel}
     onclick={() => onDelete?.(id, isLinked)}
   >
-    <Trash2 class="size-3.5" />
+    <Trash2 class={ICON_SM} />
   </Button>
 </div>

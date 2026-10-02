@@ -18,7 +18,16 @@
   import { pageSlice } from "$lib/pagination";
   import { parseProfileField, type ProfileField } from "$lib/profile-utils";
   import type { ProfileItem, UserProfile } from "$lib/types";
-  import { ICON_WELL, TOOLBAR_BTN } from "$lib/ui/styles";
+  import {
+    GAP,
+    GAP_TIGHT,
+    ICON_SM,
+    ICON_WELL,
+    META_CHIP,
+    STACK_SECTION,
+    STACK_TIGHT,
+    TOOLBAR_BTN,
+  } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -130,43 +139,41 @@
 {#if loading && !profile}
   <EmptyState>{i18n.t("loading-profile")}</EmptyState>
 {:else if !profile?.exists}
-  <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+  <div class={cn("flex flex-col items-center py-10 text-muted-foreground", GAP)}>
     <UserX class="size-8" />
     <p class="text-sm">{profile?.message || i18n.t("empty-preferences")}</p>
   </div>
 {:else if profileData}
-  <div class="space-y-8">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <span
-        class="rounded-lg border border-border bg-card px-2.5 py-1 text-xs tabular-nums text-muted-foreground"
-      >
+  <div class={STACK_SECTION}>
+    <div class={cn("flex flex-wrap items-center justify-between", GAP)}>
+      <span class={META_CHIP}>
         {i18n.t("profile-meta", {
           count: profile.totalPromptsAnalyzed ?? 0,
           date: profile.lastAnalyzedAt ? formatDate(profile.lastAnalyzedAt) : "—",
         })}
       </span>
-      <div class="flex flex-wrap items-center gap-1.5">
+      <div class={cn("flex flex-wrap items-center", GAP_TIGHT)}>
         <button type="button" class={TOOLBAR_BTN} onclick={() => onCleanup?.()}>
-          <Sparkles class="size-[15px]" />
+          <Sparkles class={ICON_SM} />
           {i18n.t("btn-ai-cleanup")}
         </button>
         <button type="button" class={TOOLBAR_BTN} onclick={() => onRefresh?.()}>
-          <RefreshCw class="size-[15px]" />
+          <RefreshCw class={ICON_SM} />
           {i18n.t("btn-refresh")}
         </button>
         <button type="button" class={TOOLBAR_BTN} onclick={() => (changelogOpen = true)}>
-          <RotateCcwClock class="size-[15px]" />
+          <RotateCcwClock class={ICON_SM} />
           History
         </button>
       </div>
     </div>
 
-    <div class="space-y-8">
+    <div class={STACK_SECTION}>
       {#each sections as section (section.key)}
         <BorderedPanel title={i18n.t(section.titleKey)} collapsible>
           {#snippet leading()}
             <span class={cn(ICON_WELL, "size-6")}>
-              <section.icon class="size-3.5" />
+              <section.icon class={ICON_SM} />
             </span>
           {/snippet}
           {#snippet trailing()}
@@ -175,7 +182,7 @@
           {#if section.count === 0}
             <p class="text-sm text-muted-foreground">{i18n.t(section.emptyKey)}</p>
           {:else if section.grid}
-            <div class="space-y-2">
+            <div class={STACK_TIGHT}>
               {#each section.page.items as item, i (`${section.key}-${i}`)}
                 {@const profileItem = item as ProfileItem}
                 {@const idx = (section.type === "preferences" ? preferences : patterns).indexOf(
@@ -195,7 +202,7 @@
               onPageChange={(p) => setPage(section.key, p)}
             />
           {:else}
-            <div class="space-y-2">
+            <div class={STACK_TIGHT}>
               {#each section.page.items as entry (`wf-${(entry as { index: number }).index}`)}
                 {@const wf = entry as { item: ProfileItem; index: number }}
                 <ProfileItemCard

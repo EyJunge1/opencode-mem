@@ -2,6 +2,7 @@
   import Check from "@lucide/svelte/icons/check";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import ListFilter from "@lucide/svelte/icons/list-filter";
+  import { ICON_SM } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type TagOption = { tag: string; displayName?: string };
@@ -86,7 +87,7 @@
     {title}
     onclick={() => (open = !open)}
   >
-    <ListFilter class="size-[15px]" aria-hidden="true" />
+    <ListFilter class={ICON_SM} aria-hidden="true" />
     <span>{filterLabel}</span>
     {#if active}
       <span
@@ -96,7 +97,7 @@
       </span>
     {/if}
     <ChevronDown
-      class={cn("size-3.5 transition-transform", open && "rotate-180")}
+      class={cn(ICON_SM, "transition-transform", open && "rotate-180")}
       aria-hidden="true"
     />
   </button>

@@ -2,7 +2,7 @@
   import Search from "@lucide/svelte/icons/search";
   import X from "@lucide/svelte/icons/x";
   import type { HTMLInputAttributes } from "svelte/elements";
-  import { FIELD_INPUT, HOVER_SURFACE, ICON_BTN_DENSE } from "$lib/ui/styles";
+  import { FIELD_INPUT, HOVER_SURFACE, ICON, ICON_BTN_DENSE } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -72,6 +72,6 @@
     title="Search"
     onclick={handleSearch}
   >
-    <Search class="size-[18px]" aria-hidden="true" />
+    <Search class={ICON} aria-hidden="true" />
   </button>
 </div>

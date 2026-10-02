@@ -5,7 +5,7 @@
   import OctagonX from "@lucide/svelte/icons/octagon-x";
   import X from "@lucide/svelte/icons/x";
   import { TOAST_MS, type ToastItem, type ToastVariant } from "$lib/toast/toastStack";
-  import { HOVER_SURFACE } from "$lib/ui/styles";
+  import { HOVER_SURFACE, ICON, ICON_SM } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   const styles: Record<ToastVariant, { iconBg: string; iconColor: string; bar: string }> = {
@@ -53,13 +53,13 @@
       )}
     >
       {#if item.variant === "success"}
-        <CircleCheck class="size-[17px]" strokeWidth={2.25} aria-hidden="true" />
+        <CircleCheck class={ICON} strokeWidth={2.25} aria-hidden="true" />
       {:else if item.variant === "error"}
-        <OctagonX class="size-[17px]" strokeWidth={2.25} aria-hidden="true" />
+        <OctagonX class={ICON} strokeWidth={2.25} aria-hidden="true" />
       {:else if item.variant === "warning"}
-        <CircleAlert class="size-[17px]" strokeWidth={2.25} aria-hidden="true" />
+        <CircleAlert class={ICON} strokeWidth={2.25} aria-hidden="true" />
       {:else}
-        <Info class="size-[17px]" strokeWidth={2.25} aria-hidden="true" />
+        <Info class={ICON} strokeWidth={2.25} aria-hidden="true" />
       {/if}
     </span>
     <p class="min-w-0 flex-1 text-sm leading-snug font-medium text-foreground-bright">
@@ -79,7 +79,7 @@
         HOVER_SURFACE
       )}
     >
-      <X class="size-[15px]" aria-hidden="true" />
+      <X class={ICON_SM} aria-hidden="true" />
     </button>
   </div>
   <div

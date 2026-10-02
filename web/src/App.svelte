@@ -29,7 +29,16 @@
   import { createRouter } from "$lib/router.svelte";
   import { createMemoriesExplorer } from "$lib/stores/memories-explorer.svelte";
   import { createUserProfile } from "$lib/stores/user-profile.svelte";
-  import { HEADER_GUTTER, PAGE_SHELL, PAGE_TOOLBAR, TOOLBAR_BTN } from "$lib/ui/styles";
+  import {
+    GAP,
+    HEADER_GUTTER,
+    ICON_SM,
+    META_CHIP,
+    PAGE_SHELL,
+    PAGE_TOOLBAR,
+    STACK,
+    TOOLBAR_BTN,
+  } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   const SIDEBAR_COLLAPSED_KEY = "opencode-mem-sidebar-collapsed";
@@ -187,8 +196,8 @@
           </a>
         </h1>
         {#if router.view === "project"}
-          <div class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-            <span class="rounded-lg border border-border bg-card px-2.5 py-1 tabular-nums">
+          <div class={cn("flex shrink-0 items-center text-xs text-muted-foreground", GAP)}>
+            <span class={META_CHIP}>
               {i18n.t("text-total", {
                 count: getDisplayedMemoryCount(
                   explorer.isSearching,
@@ -199,7 +208,7 @@
               })}
             </span>
             {#if explorer.refreshing}
-              <Loader class="size-3.5 animate-spin" />
+              <Loader class={cn(ICON_SM, "animate-spin")} />
             {/if}
           </div>
         {/if}
@@ -217,7 +226,7 @@
 
       {#if router.view === "project"}
         <div class={PAGE_TOOLBAR}>
-          <div class="flex w-full min-w-0 items-center gap-2">
+          <div class={cn("flex w-full min-w-0 items-center", GAP)}>
             <TagFilter
               tags={explorer.tags}
               value={explorer.selectedTags}
@@ -241,13 +250,13 @@
               />
             </div>
 
-            <div class="flex shrink-0 items-center gap-2">
+            <div class={cn("flex shrink-0 items-center", GAP)}>
               <button type="button" class={TOOLBAR_BTN} onclick={explorer.runCleanup}>
-                <Trash2 class="size-[15px]" />
+                <Trash2 class={ICON_SM} />
                 {i18n.t("btn-cleanup")}
               </button>
               <button type="button" class={TOOLBAR_BTN} onclick={explorer.runDeduplication}>
-                <RefreshCw class="size-[15px]" />
+                <RefreshCw class={ICON_SM} />
                 {i18n.t("btn-deduplicate")}
               </button>
               <Button
@@ -257,18 +266,18 @@
                 title={i18n.t("btn-add-memory")}
                 onclick={() => (explorer.addOpen = true)}
               >
-                <Plus class="size-[15px]" />
+                <Plus class={ICON_SM} />
               </Button>
             </div>
           </div>
         </div>
 
         {#if explorer.migrationNeeded}
-          <Alert variant="destructive" class="space-y-3">
+          <Alert variant="destructive" class={STACK}>
             <TriangleAlert />
-            <AlertDescription class="space-y-3">
+            <AlertDescription class={STACK}>
               <p>{explorer.migrationMessage || i18n.t("migration-mismatch")}</p>
-              <label class="flex items-start gap-2 text-sm">
+              <label class={cn("flex items-start text-sm", GAP)}>
                 <Checkbox
                   checked={explorer.migrationConfirmed}
                   onCheckedChange={(v) => (explorer.migrationConfirmed = v === true)}
@@ -276,7 +285,7 @@
                 />
                 <span>{i18n.t("migration-understand")}</span>
               </label>
-              <div class="flex flex-wrap gap-2">
+              <div class={cn("flex flex-wrap", GAP)}>
                 <Button
                   variant="destructive"
                   size="sm"

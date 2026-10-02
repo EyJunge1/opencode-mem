@@ -10,6 +10,8 @@
   import { groupMemories, partitionPinnedGroups } from "$lib/group-memories";
   import { useI18n } from "$lib/i18n/context.svelte";
   import type { MemoryGroup, MemoryItem } from "$lib/types";
+  import { GAP, GAP_TIGHT, ICON_SM, STACK, STACK_LOOSE } from "$lib/ui/styles";
+  import { cn } from "$lib/utils";
 
   type Props = {
     memories: MemoryItem[];
@@ -113,8 +115,8 @@
   {/each}
 {/snippet}
 
-<div class="space-y-3">
-  <div class="flex items-center gap-2">
+<div class={STACK}>
+  <div class={cn("flex items-center", GAP)}>
     <Checkbox
       checked={allPageSelected}
       indeterminate={somePageSelected && !allPageSelected}
@@ -128,7 +130,7 @@
         {i18n.t("text-selected", { count: selectedCount })}
       </span>
     {/if}
-    <div class="ms-auto flex items-center gap-2">
+    <div class={cn("ms-auto flex items-center", GAP)}>
       {#if selectedCount > 0}
         <Button
           variant="destructive"
@@ -137,7 +139,7 @@
           title={i18n.t("btn-delete-selected")}
           onclick={onBulkDelete}
         >
-          <Trash2 class="size-3.5" />
+          <Trash2 class={ICON_SM} />
         </Button>
       {/if}
       <PaginationBar
@@ -150,7 +152,7 @@
     </div>
   </div>
 
-  <div class="space-y-3 min-h-32">
+  <div class={cn(STACK, "min-h-32")}>
     {#if loading && memories.length === 0}
       <EmptyState>{i18n.t("loading-init")}</EmptyState>
     {:else if error}
@@ -158,19 +160,21 @@
     {:else if groups.length === 0}
       <EmptyState>{i18n.t("empty-memories")}</EmptyState>
     {:else if partitioned.pinned.length > 0}
-      <div class="space-y-6">
-        <div class="space-y-3">
-          <div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Pin class="size-3.5 text-primary" />
+      <div class={STACK_LOOSE}>
+        <div class={STACK}>
+          <div class={cn("flex items-center text-xs font-medium text-muted-foreground", GAP_TIGHT)}>
+            <Pin class={cn(ICON_SM, "text-primary")} />
             {i18n.t("badge-pinned")}
             <span class="tabular-nums">({partitioned.pinned.length})</span>
           </div>
           {@render cards(partitioned.pinned)}
         </div>
         {#if partitioned.rest.length > 0}
-          <div class="space-y-3">
-            <div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Layers class="size-3.5" />
+          <div class={STACK}>
+            <div
+              class={cn("flex items-center text-xs font-medium text-muted-foreground", GAP_TIGHT)}
+            >
+              <Layers class={ICON_SM} />
               {i18n.t("section-all")}
               <span class="tabular-nums">({partitioned.rest.length})</span>
             </div>

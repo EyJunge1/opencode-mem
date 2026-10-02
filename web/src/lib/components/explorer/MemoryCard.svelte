@@ -16,6 +16,7 @@
     similarityLabel,
   } from "$lib/memory-display";
   import type { MemoryItem } from "$lib/types";
+  import { GAP, ICON_SM } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -81,7 +82,7 @@
 {/snippet}
 
 {#snippet dateMeta(dates: { createdDate: string; updatedDate: string | null }, id: string)}
-  <div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
+  <div class={cn("flex flex-wrap text-xs text-muted-foreground", "gap-3")}>
     <span>{i18n.t("date-created")} {dates.createdDate}</span>
     {#if dates.updatedDate}
       <span>{i18n.t("date-updated")} {dates.updatedDate}</span>
@@ -91,15 +92,15 @@
 {/snippet}
 
 {#snippet linkedHint(direction: "up" | "down", label: string)}
-  <div class="flex items-center gap-1 text-xs text-muted-foreground">
+  <div class={cn("flex items-center text-xs text-muted-foreground", "gap-1")}>
     {#if direction === "up"}
-      <ArrowUp class="size-3" />
+      <ArrowUp class={ICON_SM} />
       {label}
-      <ArrowDown class="size-3" />
+      <ArrowDown class={ICON_SM} />
     {:else}
-      <ArrowDown class="size-3" />
+      <ArrowDown class={ICON_SM} />
       {label}
-      <ArrowUp class="size-3" />
+      <ArrowUp class={ICON_SM} />
     {/if}
   </div>
 {/snippet}
@@ -118,7 +119,7 @@
     onDelete?: (id: string, isLinked: boolean) => void;
   }
 )}
-  <div class="flex items-center gap-2">
+  <div class={cn("flex items-center", GAP)}>
     <Checkbox
       checked={opts.selected}
       onCheckedChange={(v) => onSelect?.(id, v === true)}
@@ -175,7 +176,7 @@
 
     <div class="space-y-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5">
       <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <MessageCircle class="size-3.5 shrink-0" />
+        <MessageCircle class={cn(ICON_SM, "shrink-0")} />
         <span class="font-medium text-foreground/80">{i18n.t("badge-prompt")}</span>
         <span>·</span>
         <span>{formatDate(prompt.createdAt)}</span>
@@ -196,7 +197,7 @@
       onDelete: onDeletePrompt,
     })}
     <div class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-      <MessageCircle class="size-3.5" />
+      <MessageCircle class={ICON_SM} />
       <span>{formatDate(item.createdAt)}</span>
     </div>
     <p class="text-sm whitespace-pre-wrap break-words">{item.content}</p>

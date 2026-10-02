@@ -11,7 +11,7 @@
   import { navigate, ROUTES, shouldHandleSpaClick, type AppView } from "$lib/router";
   import { createTheme } from "$lib/theme.svelte";
   import { toggleTheme } from "$lib/theme";
-  import { ACTIVE_ACCENT, HOVER_SURFACE, ICON_WELL } from "$lib/ui/styles";
+  import { ACTIVE_ACCENT, HOVER_SURFACE, ICON, ICON_WELL } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -101,7 +101,7 @@
       onclick={(e) => onNavClick(e, ROUTES.home)}
     >
       <span class={cn(ICON_WELL, "size-11 shrink-0 rounded-xl")} aria-hidden="true">
-        <Brain class="size-[18px]" />
+        <Brain class={ICON} />
       </span>
       {#if !iconOnly}
         <span class="min-w-0 truncate text-xl font-bold text-foreground-bright">

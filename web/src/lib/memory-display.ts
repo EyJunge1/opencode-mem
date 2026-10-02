@@ -1,4 +1,5 @@
 import { formatDate } from "./format";
+import { CARD_PAD, GAP_TIGHT, STACK, STACK_TIGHT, SURFACE_CARD } from "./ui/styles";
 import { cn } from "./utils";
 import type { MemoryItem } from "./types";
 
@@ -31,8 +32,9 @@ export function memoryCardClass(opts: {
   spaced?: "tight" | "loose";
 }): string {
   return cn(
-    "rounded-xl border border-border bg-card px-3 py-3",
-    opts.spaced === "loose" ? "space-y-3" : "space-y-2",
+    SURFACE_CARD,
+    CARD_PAD,
+    opts.spaced === "loose" ? STACK : STACK_TIGHT,
     opts.selected && "ring-1 ring-primary/40",
     opts.pinned && "border-primary/35"
   );
@@ -40,4 +42,4 @@ export function memoryCardClass(opts: {
 
 /** In-card heading — not a floating notch (those are for editable form labels only). */
 export const CARD_TITLE =
-  "m-0 flex max-w-full items-center gap-1.5 text-sm font-semibold text-foreground-bright";
+  "m-0 flex max-w-full items-center " + GAP_TIGHT + " text-sm font-semibold text-foreground-bright";
