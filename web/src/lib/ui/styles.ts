@@ -20,6 +20,8 @@ export const GAP = "gap-2";
 /** Vertical stacks. */
 export const STACK_TIGHT = "space-y-2";
 export const STACK = "space-y-3";
+/** Dialog / form field groups. */
+export const STACK_FORM = "space-y-4";
 export const STACK_LOOSE = "space-y-6";
 /** Profile section rhythm (Preferences / Patterns / Workflows). */
 export const STACK_SECTION = "space-y-8";
@@ -36,10 +38,6 @@ export const CARD_PAD = "px-3 py-3";
 /** Compact meta chips (Total count, profile prompts · date). */
 export const META_CHIP =
   "inline-flex items-center rounded-lg border border-border bg-card px-2.5 py-1 text-xs tabular-nums text-muted-foreground";
-
-/** Sort/Filter toolbar control (Cleanup, Deduplicate, …) — matches outline Button + h-10 / rounded-xl. */
-export const TOOLBAR_BTN =
-  "inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2.5 text-sm text-foreground transition hover:bg-surface-hover hover:text-foreground-bright focus-ring disabled:pointer-events-none disabled:opacity-50";
 
 /** Horizontal page gutter. */
 export const PAGE_GUTTER = "px-[clamp(16px,3vw,40px)]";

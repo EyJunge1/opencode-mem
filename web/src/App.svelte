@@ -37,7 +37,6 @@
     PAGE_SHELL,
     PAGE_TOOLBAR,
     STACK,
-    TOOLBAR_BTN,
   } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
@@ -251,14 +250,14 @@
             </div>
 
             <div class={cn("flex shrink-0 items-center", GAP)}>
-              <button type="button" class={TOOLBAR_BTN} onclick={explorer.runCleanup}>
+              <Button type="button" variant="outline" onclick={explorer.runCleanup}>
                 <Trash2 class={ICON_SM} />
                 {i18n.t("btn-cleanup")}
-              </button>
-              <button type="button" class={TOOLBAR_BTN} onclick={explorer.runDeduplication}>
+              </Button>
+              <Button type="button" variant="outline" onclick={explorer.runDeduplication}>
                 <RefreshCw class={ICON_SM} />
                 {i18n.t("btn-deduplicate")}
-              </button>
+              </Button>
               <Button
                 variant="default"
                 size="icon-lg"

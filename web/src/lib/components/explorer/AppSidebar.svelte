@@ -11,7 +11,7 @@
   import { navigate, ROUTES, shouldHandleSpaClick, type AppView } from "$lib/router";
   import { createTheme } from "$lib/theme.svelte";
   import { toggleTheme } from "$lib/theme";
-  import { ACTIVE_ACCENT, HOVER_SURFACE, ICON, ICON_WELL } from "$lib/ui/styles";
+  import { ACTIVE_ACCENT, GAP, HOVER_SURFACE, ICON, ICON_SM, ICON_WELL } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -151,50 +151,58 @@
 
   <div class={cn("mt-auto", iconOnly ? "p-2" : "p-3")}>
     {#if iconOnly}
-      <div class="flex flex-col items-center gap-1">
-        <button
+      <div class={cn("flex flex-col items-center", "gap-1")}>
+        <Button
           type="button"
-          class="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          variant="ghost"
+          size="icon-sm"
           onclick={onLangToggle}
           aria-label={languageLabel}
           title={`${languageLabel} (${langLabel})`}
         >
-          <Languages class="size-3.5" />
-        </button>
-        <button
+          <Languages class={ICON_SM} />
+        </Button>
+        <Button
           type="button"
-          class="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          variant="ghost"
+          size="icon-sm"
           onclick={() => toggleTheme()}
           aria-label={themeLabel}
           title={themeLabel}
         >
           {#if isDark}
-            <Moon class="size-4" />
+            <Moon class={ICON} />
           {:else}
-            <Sun class="size-4" />
+            <Sun class={ICON} />
           {/if}
-        </button>
+        </Button>
         <a
           href="https://github.com/tickernelz/opencode-mem"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          class={cn(
+            "inline-flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors",
+            "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )}
           title="GitHub"
           aria-label="GitHub"
         >
-          <GithubIcon class="size-4" />
+          <GithubIcon class={ICON} />
         </a>
       </div>
     {:else}
-      <div class="flex w-full items-center rounded-lg border border-sidebar-border/80 bg-card/70">
+      <div class="flex w-full items-center rounded-xl border border-sidebar-border/80 bg-card/70">
         <button
           type="button"
-          class="group flex min-w-0 flex-1 items-center gap-2 rounded-s-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          class={cn(
+            "group flex min-w-0 flex-1 items-center rounded-s-xl px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            GAP
+          )}
           onclick={onLangToggle}
           aria-label={languageLabel}
           title={languageLabel}
         >
-          <Languages class="size-3.5 shrink-0" />
+          <Languages class={cn(ICON_SM, "shrink-0")} />
           <span class="truncate">{languageLabel}</span>
           <span class="ms-auto text-xs tabular-nums">{langLabel}</span>
         </button>
@@ -206,20 +214,20 @@
           title={themeLabel}
         >
           {#if isDark}
-            <Moon class="size-4 rounded-md p-0.5" />
+            <Moon class={cn(ICON, "rounded-md p-0.5")} />
           {:else}
-            <Sun class="size-4 rounded-md p-0.5" />
+            <Sun class={cn(ICON, "rounded-md p-0.5")} />
           {/if}
         </button>
         <a
           href="https://github.com/tickernelz/opencode-mem"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center self-stretch rounded-e-lg border-s border-sidebar-border px-1.5 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          class="inline-flex items-center self-stretch rounded-e-xl border-s border-sidebar-border px-1.5 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           title="GitHub"
           aria-label="GitHub"
         >
-          <GithubIcon class="size-4" />
+          <GithubIcon class={ICON} />
         </a>
       </div>
     {/if}

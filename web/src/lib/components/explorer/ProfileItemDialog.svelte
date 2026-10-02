@@ -10,6 +10,8 @@
   import { useI18n } from "$lib/i18n/context.svelte";
   import type { ProfileField } from "$lib/profile-utils";
   import type { ProfileItem } from "$lib/types";
+  import { GAP, ICON_SM, STACK_FORM, STACK_TIGHT } from "$lib/ui/styles";
+  import { cn } from "$lib/utils";
 
   type Props = {
     open?: boolean;
@@ -121,7 +123,7 @@
 </script>
 
 <AppDialog bind:open {title} class="sm:max-w-lg" onOpenChange={handleOpenChange}>
-  <form id="profile-item-form" class="space-y-4" onsubmit={submit}>
+  <form id="profile-item-form" class={STACK_FORM} onsubmit={submit}>
     {#if isEdit || deleteStep === "1"}
       {#if !isWorkflow}
         <FormField id="profile-item-category" label={i18n.t("label-category")} value={category}>
@@ -138,9 +140,9 @@
       </FormField>
       {#if isWorkflow && isEdit}
         <FormField label={i18n.t("label-steps")} floating={false} spacing="normal">
-          <div class="space-y-2">
+          <div class={STACK_TIGHT}>
             {#each steps as step, i (i)}
-              <div class="flex items-center gap-2">
+              <div class={cn("flex items-center", GAP)}>
                 <span class="text-xs text-muted-foreground w-5 tabular-nums">
                   {i + 1}
                 </span>
@@ -157,7 +159,7 @@
                   />
                 </FormField>
                 <Button type="button" variant="ghost" size="icon-xs" onclick={() => removeStep(i)}>
-                  <X class="size-3.5" />
+                  <X class={ICON_SM} />
                 </Button>
               </div>
             {/each}

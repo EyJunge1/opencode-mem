@@ -27,6 +27,8 @@
   } from "$lib/profile-utils";
   import { toggleInSet } from "$lib/set-utils";
   import type { PendingCleanup, UserProfile } from "$lib/types";
+  import { STACK_FORM, STACK_TIGHT } from "$lib/ui/styles";
+  import { cn } from "$lib/utils";
 
   type Props = {
     open?: boolean;
@@ -236,7 +238,7 @@
           </Button>
         </div>
       </div>
-      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+      <div class={cn("min-h-0 flex-1 overflow-y-auto pr-1", STACK_FORM)}>
         {#each sortedCatKeys as cat (cat)}
           {@const items = [...cats[cat].pref, ...cats[cat].pat, ...cats[cat].wf]}
           <div class="space-y-1.5">
@@ -291,9 +293,9 @@
           </Button>
         </div>
       </div>
-      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+      <div class={cn("min-h-0 flex-1 overflow-y-auto pr-1", STACK_FORM)}>
         {#if (pendingCleanup.changes.merged || []).length > 0}
-          <div class="space-y-2">
+          <div class={STACK_TIGHT}>
             <h4 class="flex items-center gap-1.5 text-sm font-medium">
               <GitMerge class="size-3.5" />
               {i18n.t("label-ai-cleanup-merged-header", {
@@ -305,7 +307,7 @@
               {@const mainDesc = m.result || ""}
               {@const mainSteps = findStepsById(m.ids[0], pendingCleanup.old)}
               {@const mergeChecked = acceptedMerged.has(mi)}
-              <div class="rounded-xl border border-border p-3 space-y-2">
+              <div class={cn("rounded-xl border border-border p-3", STACK_TIGHT)}>
                 <SelectableRow checked={mergeChecked} onToggle={(next) => toggleMerged(mi, next)}>
                   <span>{i18n.t("label-ai-cleanup-merge-check")}</span>
                 </SelectableRow>
@@ -346,7 +348,7 @@
         {/if}
 
         {#if (pendingCleanup.changes.removed || []).length > 0}
-          <div class="space-y-2">
+          <div class={STACK_TIGHT}>
             <h4 class="flex items-center gap-1.5 text-sm font-medium">
               <Trash2 class="size-3.5" />
               {i18n.t("label-ai-cleanup-removed-header", {
@@ -357,7 +359,7 @@
               {@const desc = findDescById(r.id, pendingCleanup.old)}
               {@const steps = findStepsById(r.id, pendingCleanup.old)}
               {@const removeChecked = acceptedRemoved.has(ri)}
-              <div class="rounded-xl border border-border p-3 space-y-2">
+              <div class={cn("rounded-xl border border-border p-3", STACK_TIGHT)}>
                 <SelectableRow checked={removeChecked} onToggle={(next) => toggleRemoved(ri, next)}>
                   <span>{i18n.t("label-ai-cleanup-remove-check")}</span>
                 </SelectableRow>
@@ -372,7 +374,7 @@
         {/if}
 
         {#if (pendingCleanup.changes.kept || []).length > 0}
-          <div class="space-y-2">
+          <div class={STACK_TIGHT}>
             <button
               type="button"
               class="flex items-center gap-1.5 text-sm font-medium"

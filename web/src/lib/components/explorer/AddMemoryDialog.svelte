@@ -8,6 +8,7 @@
   import { useI18n } from "$lib/i18n/context.svelte";
   import { MEMORY_TYPES } from "$lib/memory-types";
   import type { TagInfo } from "$lib/types";
+  import { STACK_FORM } from "$lib/ui/styles";
 
   type Props = {
     open?: boolean;
@@ -52,7 +53,7 @@
   class="sm:max-w-lg"
   onOpenChange={handleOpenChange}
 >
-  <form id="add-memory-form" class="space-y-4" onsubmit={submit}>
+  <form id="add-memory-form" class={STACK_FORM} onsubmit={submit}>
     <div class="grid gap-3 sm:grid-cols-2">
       <FormField id="add-tag" label={i18n.t("label-tag")} value={tag}>
         <NativeSelect id="add-tag" required bind:value={tag}>

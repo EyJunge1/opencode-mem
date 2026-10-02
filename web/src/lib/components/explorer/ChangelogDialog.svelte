@@ -5,6 +5,8 @@
   import ScrollArea from "$lib/components/ui/scroll-area.svelte";
   import { formatDate } from "$lib/format";
   import { useI18n } from "$lib/i18n/context.svelte";
+  import { GAP, STACK } from "$lib/ui/styles";
+  import { cn } from "$lib/utils";
 
   type ChangelogEntry = {
     version: number;
@@ -63,10 +65,10 @@
     {:else if entries.length === 0}
       <EmptyState class="py-6">{i18n.t("empty-changelog")}</EmptyState>
     {:else}
-      <div class="space-y-3 pr-3">
+      <div class={cn(STACK, "pr-3")}>
         {#each entries as entry, i (`${entry.version}-${i}`)}
-          <div class="rounded-lg border border-border p-3 space-y-1">
-            <div class="flex flex-wrap items-center gap-2 text-xs">
+          <div class={cn("rounded-xl border border-border p-3", "space-y-1")}>
+            <div class={cn("flex flex-wrap items-center text-xs", GAP)}>
               <span class="font-medium">v{entry.version}</span>
               <span class="text-muted-foreground">{entry.changeType}</span>
               <span class="text-muted-foreground ml-auto">

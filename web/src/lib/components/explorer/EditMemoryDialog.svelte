@@ -7,6 +7,7 @@
   import Textarea from "$lib/components/ui/textarea.svelte";
   import { useI18n } from "$lib/i18n/context.svelte";
   import { MEMORY_TYPES } from "$lib/memory-types";
+  import { STACK_FORM } from "$lib/ui/styles";
 
   type Props = {
     open?: boolean;
@@ -60,7 +61,7 @@
   class="sm:max-w-lg"
   onOpenChange={handleOpenChange}
 >
-  <form id="edit-memory-form" class="space-y-4" onsubmit={submit}>
+  <form id="edit-memory-form" class={STACK_FORM} onsubmit={submit}>
     <FormField id="edit-type" label={i18n.t("label-type")} value={draftType}>
       <NativeSelect id="edit-type" bind:value={draftType}>
         <option value=""></option>

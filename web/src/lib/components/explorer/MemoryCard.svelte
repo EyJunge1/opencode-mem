@@ -16,7 +16,7 @@
     similarityLabel,
   } from "$lib/memory-display";
   import type { MemoryItem } from "$lib/types";
-  import { GAP, ICON_SM } from "$lib/ui/styles";
+  import { GAP, GAP_TIGHT, ICON_SM, STACK_TIGHT } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -174,8 +174,8 @@
     {@render tagsRow(memory.tags, memory.id)}
     {@render markdownBody(memory.content)}
 
-    <div class="space-y-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5">
-      <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <div class={cn(STACK_TIGHT, "rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5")}>
+      <div class={cn("flex items-center text-xs text-muted-foreground", GAP_TIGHT)}>
         <MessageCircle class={cn(ICON_SM, "shrink-0")} />
         <span class="font-medium text-foreground/80">{i18n.t("badge-prompt")}</span>
         <span>·</span>

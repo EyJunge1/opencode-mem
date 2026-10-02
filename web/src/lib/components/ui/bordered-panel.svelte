@@ -2,6 +2,7 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import type { Snippet } from "svelte";
   import { cn } from "$lib/utils";
+  import { ICON_SM, STACK } from "$lib/ui/styles";
 
   type Props = {
     title: string;
@@ -35,7 +36,10 @@
 
 <section class={cn("min-w-0", className)}>
   <div
-    class="rounded-xl border border-border bg-card px-4 py-4 space-y-3 [--floating-label-bg:var(--card)]"
+    class={cn(
+      "rounded-xl border border-border bg-card px-4 py-4 [--floating-label-bg:var(--card)]",
+      STACK
+    )}
   >
     {#if collapsible}
       <button
@@ -60,7 +64,8 @@
         {/if}
         <ChevronDown
           class={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
+            ICON_SM,
+            "shrink-0 text-muted-foreground transition-transform",
             open && "rotate-180"
           )}
         />

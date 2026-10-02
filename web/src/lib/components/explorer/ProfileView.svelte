@@ -10,6 +10,7 @@
   import ChangelogDialog from "./ChangelogDialog.svelte";
   import ProfileItemCard from "./ProfileItemCard.svelte";
   import ProfileItemDialog from "./ProfileItemDialog.svelte";
+  import Button from "$lib/components/ui/button.svelte";
   import BorderedPanel from "$lib/components/ui/bordered-panel.svelte";
   import EmptyState from "$lib/components/ui/empty-state.svelte";
   import PaginationBar from "$lib/components/ui/pagination-bar.svelte";
@@ -26,7 +27,6 @@
     META_CHIP,
     STACK_SECTION,
     STACK_TIGHT,
-    TOOLBAR_BTN,
   } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
@@ -153,18 +153,18 @@
         })}
       </span>
       <div class={cn("flex flex-wrap items-center", GAP_TIGHT)}>
-        <button type="button" class={TOOLBAR_BTN} onclick={() => onCleanup?.()}>
+        <Button type="button" variant="outline" onclick={() => onCleanup?.()}>
           <Sparkles class={ICON_SM} />
           {i18n.t("btn-ai-cleanup")}
-        </button>
-        <button type="button" class={TOOLBAR_BTN} onclick={() => onRefresh?.()}>
+        </Button>
+        <Button type="button" variant="outline" onclick={() => onRefresh?.()}>
           <RefreshCw class={ICON_SM} />
           {i18n.t("btn-refresh")}
-        </button>
-        <button type="button" class={TOOLBAR_BTN} onclick={() => (changelogOpen = true)}>
+        </Button>
+        <Button type="button" variant="outline" onclick={() => (changelogOpen = true)}>
           <RotateCcwClock class={ICON_SM} />
           History
-        </button>
+        </Button>
       </div>
     </div>
 

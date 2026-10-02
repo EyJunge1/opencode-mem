@@ -4,6 +4,7 @@
   import AppDialog from "$lib/components/ui/app-dialog.svelte";
   import DialogActions from "$lib/components/ui/dialog-actions.svelte";
   import { useI18n } from "$lib/i18n/context.svelte";
+  import { STACK } from "$lib/ui/styles";
 
   type Props = {
     open?: boolean;
@@ -110,7 +111,7 @@
   showCloseButton={!running}
   onOpenChange={handleOpenChange}
 >
-  <div class="space-y-3">
+  <div class={STACK}>
     <p class="text-sm text-muted-foreground">{status}</p>
     <div class="h-2 rounded-full bg-muted overflow-hidden">
       <div
