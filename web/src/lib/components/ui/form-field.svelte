@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { HTMLAttributes } from "svelte/elements";
-  import { STACK_TIGHT } from "$lib/ui/styles";
+  import { STACK_DENSE, STACK_TIGHT } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -40,7 +40,7 @@
 </script>
 
 {#if srOnly || !floating}
-  <div class={cn(spacing === "tight" ? "space-y-1" : STACK_TIGHT, className)} {...rest}>
+  <div class={cn(spacing === "tight" ? STACK_DENSE : STACK_TIGHT, className)} {...rest}>
     <label
       for={id}
       class={cn(

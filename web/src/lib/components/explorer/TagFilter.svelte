@@ -2,7 +2,8 @@
   import Check from "@lucide/svelte/icons/check";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import ListFilter from "@lucide/svelte/icons/list-filter";
-  import { ICON_SM } from "$lib/ui/styles";
+  import Button from "$lib/components/ui/button.svelte";
+  import { FIELD_INPUT, GAP, ICON_SM, ICON_XS } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type TagOption = { tag: string; displayName?: string };
@@ -75,12 +76,10 @@
 </script>
 
 <div class="relative shrink-0" bind:this={root}>
-  <button
+  <Button
     type="button"
-    class={cn(
-      "inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2.5 text-sm text-foreground transition hover:bg-surface-hover",
-      active && "border-primary/50 text-primary"
-    )}
+    variant="outline"
+    class={cn(active && "border-primary/50 text-primary")}
     aria-expanded={open}
     aria-haspopup="dialog"
     aria-label={title}
@@ -100,7 +99,7 @@
       class={cn(ICON_SM, "transition-transform", open && "rotate-180")}
       aria-hidden="true"
     />
-  </button>
+  </Button>
 
   {#if open}
     <div
@@ -113,7 +112,7 @@
       <div class="p-2">
         <input
           bind:value={query}
-          class="mb-2 flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground-bright shadow-xs outline-none placeholder:text-muted-foreground/50 focus-ring"
+          class={cn(FIELD_INPUT, "mb-2 h-9")}
           placeholder={searchPlaceholder}
           aria-label={searchPlaceholder}
         />
@@ -123,7 +122,7 @@
             type="button"
             role="menuitemcheckbox"
             aria-checked={!active}
-            class="flex w-full cursor-pointer items-center gap-2 px-2 py-1.5 text-left text-sm"
+            class={cn("flex w-full cursor-pointer items-center px-2 py-1.5 text-left text-sm", GAP)}
             onclick={clear}
           >
             <span
@@ -136,7 +135,7 @@
               aria-hidden="true"
             >
               {#if !active}
-                <Check class="size-3" />
+                <Check class={ICON_XS} />
               {/if}
             </span>
             <span class="min-w-0 flex-1 truncate font-normal">{allLabel}</span>
@@ -148,7 +147,10 @@
               type="button"
               role="menuitemcheckbox"
               aria-checked={on}
-              class="flex w-full cursor-pointer items-center gap-2 px-2 py-1.5 text-left text-sm"
+              class={cn(
+                "flex w-full cursor-pointer items-center px-2 py-1.5 text-left text-sm",
+                GAP
+              )}
               onclick={() => toggle(tag.tag)}
             >
               <span
@@ -161,7 +163,7 @@
                 aria-hidden="true"
               >
                 {#if on}
-                  <Check class="size-3" />
+                  <Check class={ICON_XS} />
                 {/if}
               </span>
               <span class="min-w-0 flex-1 truncate font-normal">{tag.displayName || tag.tag}</span>
@@ -171,14 +173,15 @@
           {/each}
         </div>
         <div class="bg-border -mx-2 my-1 h-px" aria-hidden="true"></div>
-        <button
+        <Button
           type="button"
-          class="mt-2 inline-flex h-9 w-full items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium shadow-xs transition hover:bg-surface-hover hover:text-foreground-bright disabled:opacity-50"
+          variant="outline"
+          class="mt-2 w-full"
           disabled={!active}
           onclick={clear}
         >
           {clearLabel}
-        </button>
+        </Button>
       </div>
     </div>
   {/if}

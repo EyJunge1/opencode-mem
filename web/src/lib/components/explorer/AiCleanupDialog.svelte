@@ -27,7 +27,19 @@
   } from "$lib/profile-utils";
   import { toggleInSet } from "$lib/set-utils";
   import type { PendingCleanup, UserProfile } from "$lib/types";
-  import { STACK_FORM, STACK_TIGHT } from "$lib/ui/styles";
+  import {
+    GAP,
+    GAP_LOOSE,
+    GAP_TIGHT,
+    GAP_WIDE,
+    ICON,
+    ICON_SM,
+    ICON_XS,
+    STACK_DENSE,
+    STACK_DENSE_MD,
+    STACK_FORM,
+    STACK_TIGHT,
+  } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -211,19 +223,19 @@
 <AppDialog
   bind:open
   title={i18n.t("label-ai-cleanup-title")}
-  class="grid! sm:max-w-2xl max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden gap-4"
+  class="grid! sm:max-w-2xl max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden {GAP_WIDE}"
   onOpenChange={handleOpenChange}
 >
   {#if phase === "loading"}
-    <div class="flex flex-col items-center gap-3 py-10 text-muted-foreground">
+    <div class="flex flex-col items-center {GAP_LOOSE} py-10 text-muted-foreground">
       <Loader class="size-6 animate-spin" />
       <span class="text-sm">{i18n.t("label-ai-cleanup-loading")}</span>
     </div>
   {:else if phase === "select"}
-    <div class="flex min-h-0 flex-col gap-3 overflow-hidden">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="flex min-h-0 flex-col {GAP_LOOSE} overflow-hidden">
+      <div class="flex flex-wrap items-center justify-between {GAP}">
         <h3 class="text-sm font-medium">{i18n.t("label-ai-cleanup-select")}</h3>
-        <div class="flex flex-wrap gap-1.5">
+        <div class="flex flex-wrap {GAP_TIGHT}">
           <Button variant="secondary" size="xs" onclick={selectAll}>
             {i18n.t("label-ai-cleanup-select-all")}
           </Button>
@@ -241,8 +253,8 @@
       <div class={cn("min-h-0 flex-1 overflow-y-auto pr-1", STACK_FORM)}>
         {#each sortedCatKeys as cat (cat)}
           {@const items = [...cats[cat].pref, ...cats[cat].pat, ...cats[cat].wf]}
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2">
+          <div class={STACK_DENSE_MD}>
+            <div class="flex items-center {GAP}">
               <span class="text-xs rounded-full bg-muted px-2 py-0.5">{cat}</span>
               <span class="text-xs text-muted-foreground">{items.length} items</span>
             </div>
@@ -260,7 +272,7 @@
                   {truncate(it.description || "", 80)}
                 </span>
                 <span class="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                  <Target class="size-3" />
+                  <Target class={ICON_XS} />
                   {it.frequency || 0}{it.confidence != null ? ` | ${confidencePct(it)}%` : ""}
                 </span>
               </SelectableRow>
@@ -268,7 +280,7 @@
           </div>
         {/each}
       </div>
-      <div class="flex items-center justify-between gap-2 pt-1">
+      <div class="flex items-center justify-between {GAP} pt-1">
         <span class="text-xs text-muted-foreground">
           {i18n.t("label-ai-cleanup-selected", { count: selectedCount })}
         </span>
@@ -276,15 +288,15 @@
       </div>
     </div>
   {:else if phase === "diff" && pendingCleanup}
-    <div class="flex min-h-0 flex-col gap-3 overflow-hidden">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="flex min-h-0 flex-col {GAP_LOOSE} overflow-hidden">
+      <div class="flex flex-wrap items-center justify-between {GAP}">
         <span class="text-xs text-muted-foreground">
           {i18n.t("label-ai-cleanup-changes-selected", {
             selected: diffSelectedCount,
             total: diffTotalCount,
           })}
         </span>
-        <div class="flex gap-2">
+        <div class="flex {GAP}">
           <Button variant="link" size="xs" onclick={selectAllDiff}>
             {i18n.t("label-ai-cleanup-select-all")}
           </Button>
@@ -296,8 +308,8 @@
       <div class={cn("min-h-0 flex-1 overflow-y-auto pr-1", STACK_FORM)}>
         {#if (pendingCleanup.changes.merged || []).length > 0}
           <div class={STACK_TIGHT}>
-            <h4 class="flex items-center gap-1.5 text-sm font-medium">
-              <GitMerge class="size-3.5" />
+            <h4 class="flex items-center {GAP_TIGHT} text-sm font-medium">
+              <GitMerge class={ICON_SM} />
               {i18n.t("label-ai-cleanup-merged-header", {
                 count: pendingCleanup.changes.merged?.length || 0,
               })}
@@ -311,13 +323,13 @@
                 <SelectableRow checked={mergeChecked} onToggle={(next) => toggleMerged(mi, next)}>
                   <span>{i18n.t("label-ai-cleanup-merge-check")}</span>
                 </SelectableRow>
-                <div class="grid gap-2 sm:grid-cols-[1fr_auto_1fr] items-start text-sm">
-                  <div class="space-y-1.5">
+                <div class="grid {GAP} sm:grid-cols-[1fr_auto_1fr] items-start text-sm">
+                  <div class={STACK_DENSE_MD}>
                     {#each mergedFrom as id (id)}
                       {@const desc = findDescById(id, pendingCleanup.old)}
                       {@const steps = findStepsById(id, pendingCleanup.old)}
                       {#if desc}
-                        <div class="rounded-lg bg-muted/50 p-2 space-y-1">
+                        <div class="rounded-lg bg-muted/50 p-2 {STACK_DENSE}">
                           <div>
                             <span class="text-[10px] rounded bg-muted px-1.5 py-0.5">
                               {profileTypeLabel(id, typeLabels)}
@@ -333,9 +345,9 @@
                     {/each}
                   </div>
                   <div class="text-muted-foreground self-center grid place-items-center">
-                    <ChevronRight class="size-4" />
+                    <ChevronRight class={ICON} />
                   </div>
-                  <div class="rounded-lg bg-primary/10 p-2 space-y-1">
+                  <div class="rounded-lg bg-primary/10 p-2 {STACK_DENSE}">
                     <div>{truncate(mainDesc, 120)}</div>
                     {#if mainSteps?.length}
                       <WorkflowSteps steps={mainSteps} variant="inline" />
@@ -349,8 +361,8 @@
 
         {#if (pendingCleanup.changes.removed || []).length > 0}
           <div class={STACK_TIGHT}>
-            <h4 class="flex items-center gap-1.5 text-sm font-medium">
-              <Trash2 class="size-3.5" />
+            <h4 class="flex items-center {GAP_TIGHT} text-sm font-medium">
+              <Trash2 class={ICON_SM} />
               {i18n.t("label-ai-cleanup-removed-header", {
                 count: pendingCleanup.changes.removed?.length || 0,
               })}
@@ -377,7 +389,7 @@
           <div class={STACK_TIGHT}>
             <button
               type="button"
-              class="flex items-center gap-1.5 text-sm font-medium"
+              class="flex items-center {GAP_TIGHT} text-sm font-medium"
               onclick={() => (keptOpen = !keptOpen)}
             >
               {i18n.t("label-ai-cleanup-kept")}
@@ -385,13 +397,13 @@
                 ({pendingCleanup.changes.kept?.length || 0})
               </span>
               {#if keptOpen}
-                <ChevronUp class="size-3.5" />
+                <ChevronUp class={ICON_SM} />
               {:else}
-                <ChevronDown class="size-3.5" />
+                <ChevronDown class={ICON_SM} />
               {/if}
             </button>
             {#if keptOpen}
-              <div class="space-y-1">
+              <div class={STACK_DENSE}>
                 {#each pendingCleanup.changes.kept || [] as k, ki (ki)}
                   <div class="text-xs text-muted-foreground rounded bg-muted/40 px-2 py-1">
                     {k}

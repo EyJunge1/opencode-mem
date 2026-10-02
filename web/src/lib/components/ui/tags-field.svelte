@@ -2,6 +2,7 @@
   import Plus from "@lucide/svelte/icons/plus";
   import X from "@lucide/svelte/icons/x";
   import Badge from "$lib/components/ui/badge.svelte";
+  import { GAP_TIGHT, ICON_SM, ICON_XS } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -98,18 +99,21 @@
   });
 </script>
 
-<div class={cn("relative flex flex-wrap items-center gap-1.5", className)} bind:this={root}>
+<div class={cn("relative flex flex-wrap items-center", GAP_TIGHT, className)} bind:this={root}>
   {#each tags as tag (tag)}
     <Badge variant="outline" class="gap-1 font-normal">
       {tag}
       {#if !disabled}
         <button
           type="button"
-          class="inline-flex size-3.5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+          class={cn(
+            "inline-flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground",
+            ICON_SM
+          )}
           aria-label={`Remove ${tag}`}
           onclick={() => removeTag(tag)}
         >
-          <X class="size-3" />
+          <X class={ICON_XS} />
         </button>
       {/if}
     </Badge>
@@ -157,7 +161,7 @@
       {disabled}
       onclick={startAdd}
     >
-      <Plus class="size-3" />
+      <Plus class={ICON_XS} />
     </button>
   {/if}
 </div>

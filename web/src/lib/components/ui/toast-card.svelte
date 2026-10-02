@@ -5,7 +5,7 @@
   import OctagonX from "@lucide/svelte/icons/octagon-x";
   import X from "@lucide/svelte/icons/x";
   import { TOAST_MS, type ToastItem, type ToastVariant } from "$lib/toast/toastStack";
-  import { HOVER_SURFACE, ICON, ICON_SM } from "$lib/ui/styles";
+  import { GAP_LOOSE, HOVER_SURFACE, ICON, ICON_SM } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   const styles: Record<ToastVariant, { iconBg: string; iconColor: string; bar: string }> = {
@@ -41,13 +41,14 @@
 >
   <div
     class={cn(
-      "flex items-center gap-3 px-3.5 py-3 transition-opacity duration-200",
+      "flex items-center px-3.5 py-3 transition-opacity duration-200",
+      GAP_LOOSE,
       dimmed ? "opacity-0" : "opacity-100"
     )}
   >
     <span
       class={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-lg",
+        "flex size-8 shrink-0 items-center justify-center rounded-xl",
         style.iconBg,
         style.iconColor
       )}
@@ -75,7 +76,7 @@
         onDismiss(item.id);
       }}
       class={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition focus-ring",
+        "flex size-7 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition focus-ring",
         HOVER_SURFACE
       )}
     >

@@ -16,7 +16,7 @@
     similarityLabel,
   } from "$lib/memory-display";
   import type { MemoryItem } from "$lib/types";
-  import { GAP, GAP_TIGHT, ICON_SM, STACK_TIGHT } from "$lib/ui/styles";
+  import { GAP, GAP_LOOSE, GAP_TIGHT, ICON_SM, STACK_TIGHT } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -82,7 +82,7 @@
 {/snippet}
 
 {#snippet dateMeta(dates: { createdDate: string; updatedDate: string | null }, id: string)}
-  <div class={cn("flex flex-wrap text-xs text-muted-foreground", "gap-3")}>
+  <div class={cn("flex flex-wrap text-xs text-muted-foreground", GAP_LOOSE)}>
     <span>{i18n.t("date-created")} {dates.createdDate}</span>
     {#if dates.updatedDate}
       <span>{i18n.t("date-updated")} {dates.updatedDate}</span>
@@ -196,7 +196,7 @@
       linkedHint: promptIsLinked ? i18n.t("badge-linked") : undefined,
       onDelete: onDeletePrompt,
     })}
-    <div class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+    <div class={cn("flex flex-wrap items-center text-xs text-muted-foreground", GAP_TIGHT)}>
       <MessageCircle class={ICON_SM} />
       <span>{formatDate(item.createdAt)}</span>
     </div>

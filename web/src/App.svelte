@@ -31,6 +31,7 @@
   import { createUserProfile } from "$lib/stores/user-profile.svelte";
   import {
     GAP,
+    GAP_LOOSE,
     HEADER_GUTTER,
     ICON_SM,
     META_CHIP,
@@ -160,7 +161,7 @@
           : "border-border bg-background/95 backdrop-blur-md"
       )}
     >
-      <div class={`flex w-full items-center gap-3 ${HEADER_GUTTER}`}>
+      <div class={`flex w-full items-center ${GAP_LOOSE} ${HEADER_GUTTER}`}>
         <Button
           variant="ghost"
           size="icon"

@@ -2,6 +2,7 @@
   import CheckIcon from "@lucide/svelte/icons/check";
   import MinusIcon from "@lucide/svelte/icons/minus";
   import { Checkbox as CheckboxPrimitive } from "bits-ui";
+  import { ICON_SM } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = CheckboxPrimitive.RootProps & { class?: string };
@@ -30,9 +31,9 @@
       class="pointer-events-none grid place-content-center text-current [&>svg]:size-3.5"
     >
       {#if isIndeterminate}
-        <MinusIcon class="size-3.5" />
+        <MinusIcon class={ICON_SM} />
       {:else if isChecked}
-        <CheckIcon class="size-3.5" />
+        <CheckIcon class={ICON_SM} />
       {/if}
     </div>
   {/snippet}

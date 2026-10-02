@@ -9,15 +9,20 @@ export const ICON_WELL = `inline-flex items-center justify-center rounded-xl ${A
 /** Dense icon inside inputs (search affordance). */
 export const ICON_BTN_DENSE = "size-8 rounded-lg";
 
-/** Standard icon sizes — prefer these over ad-hoc `size-[Npx]`. */
+/** Standard icon sizes — prefer these over ad-hoc sizes. */
+export const ICON_XS = "size-3";
 export const ICON_SM = "size-3.5";
 export const ICON = "size-4";
 
 /** Inline flex gaps. */
 export const GAP_TIGHT = "gap-1.5";
 export const GAP = "gap-2";
+export const GAP_LOOSE = "gap-3";
+export const GAP_WIDE = "gap-4";
 
 /** Vertical stacks. */
+export const STACK_DENSE = "space-y-1";
+export const STACK_DENSE_MD = "space-y-1.5";
 export const STACK_TIGHT = "space-y-2";
 export const STACK = "space-y-3";
 /** Dialog / form field groups. */
@@ -39,6 +44,10 @@ export const CARD_PAD = "px-3 py-3";
 export const META_CHIP =
   "inline-flex items-center rounded-lg border border-border bg-card px-2.5 py-1 text-xs tabular-nums text-muted-foreground";
 
+/** Sidebar / chrome nav row (Project, Profile). */
+export const NAV_ITEM =
+  "flex w-full items-center rounded-xl text-sm font-semibold transition-colors";
+
 /** Horizontal page gutter. */
 export const PAGE_GUTTER = "px-[clamp(16px,3vw,40px)]";
 
@@ -46,7 +55,7 @@ export const PAGE_GUTTER = "px-[clamp(16px,3vw,40px)]";
 export const HEADER_GUTTER = "px-3 md:px-4";
 
 /** Toolbar under the header line — same left/right rhythm as the page shell. */
-export const PAGE_TOOLBAR = `flex flex-col gap-3 -mx-[clamp(16px,3vw,40px)] mb-4 ${PAGE_GUTTER} py-3`;
+export const PAGE_TOOLBAR = `flex flex-col ${GAP_LOOSE} -mx-[clamp(16px,3vw,40px)] mb-4 ${PAGE_GUTTER} py-3`;
 
 /** Page content shell — full-bleed, no max-width. */
 export const PAGE_SHELL =

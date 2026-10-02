@@ -11,7 +11,15 @@
   import { navigate, ROUTES, shouldHandleSpaClick, type AppView } from "$lib/router";
   import { createTheme } from "$lib/theme.svelte";
   import { toggleTheme } from "$lib/theme";
-  import { ACTIVE_ACCENT, GAP, HOVER_SURFACE, ICON, ICON_SM, ICON_WELL } from "$lib/ui/styles";
+  import {
+    ACTIVE_ACCENT,
+    GAP_LOOSE,
+    HOVER_SURFACE,
+    ICON,
+    ICON_SM,
+    ICON_WELL,
+    NAV_ITEM,
+  } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -62,8 +70,8 @@
 
   function navClass(active: boolean) {
     return cn(
-      "flex w-full items-center rounded-xl text-sm font-semibold transition-colors",
-      iconOnly ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
+      NAV_ITEM,
+      iconOnly ? "justify-center px-0 py-2.5" : cn(GAP_LOOSE, "px-3 py-2.5"),
       active ? ACTIVE_ACCENT : cn("text-muted-foreground", HOVER_SURFACE)
     );
   }
@@ -88,13 +96,16 @@
   )}
 >
   <div
-    class={cn("flex shrink-0 items-center py-4", iconOnly ? "justify-center px-2" : "gap-3 px-4")}
+    class={cn(
+      "flex shrink-0 items-center py-4",
+      iconOnly ? "justify-center px-2" : cn(GAP_LOOSE, "px-4")
+    )}
   >
     <a
       href={ROUTES.home}
       class={cn(
-        "flex min-w-0 items-center rounded-lg transition-colors hover:opacity-90",
-        iconOnly ? "justify-center" : "flex-1 gap-3"
+        "flex min-w-0 items-center rounded-xl transition-colors hover:opacity-90",
+        iconOnly ? "justify-center" : cn("flex-1", GAP_LOOSE)
       )}
       title={brand}
       aria-label={brand}
@@ -116,7 +127,7 @@
       onclick={() => setOpen(false)}
       aria-label={closeLabel}
     >
-      <X class="size-4" />
+      <X class={ICON} />
     </Button>
   </div>
 
@@ -196,7 +207,7 @@
           type="button"
           class={cn(
             "group flex min-w-0 flex-1 items-center rounded-s-xl px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            GAP
+            GAP_LOOSE
           )}
           onclick={onLangToggle}
           aria-label={languageLabel}

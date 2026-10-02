@@ -10,7 +10,7 @@
 <textarea
   data-slot="textarea"
   class={cn(
-    "border-input placeholder:text-transparent flex field-sizing-content min-h-20 w-full rounded-lg border bg-card px-2.5 py-2.5 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50",
+    "border-input placeholder:text-transparent flex field-sizing-content min-h-20 w-full rounded-xl border bg-card px-2.5 py-2.5 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50",
     "focus-visible:border-primary focus-visible:ring-0",
     "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
     className
