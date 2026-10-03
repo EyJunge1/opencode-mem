@@ -32,6 +32,18 @@ This plugin uses embedded Turso (`@tursodatabase/database`) with `F32_BLOB` vect
 - Vector search uses exact cosine distance via `vector_distance_cos` (no DiskANN / approximate index).
 - Auto-capture and user profile learning require an AI provider that can return structured/tool-call output. Memory search/add/list still work without auto-capture provider configuration.
 
+### Hardware / resource expectations
+
+opencode-mem does **not** require a GPU. Local embeddings run on CPU via `@huggingface/transformers` and ONNX (there is no MLX backend). Extra VRAM is not needed.
+
+| Workload                                                      | Typical extra resources                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Local embeddings** (default `Xenova/nomic-embed-text-v1`)   | About **0.5–2 GB RAM** while the model is loaded, depending on the Hugging Face id you pick. First use downloads the model; disk cache lives under `{storagePath}/.cache` (default `~/.opencode-mem/data/.cache`) and is often **hundreds of MB to ~1–2 GB** per model. |
+| **Remote embeddings** (`embeddingApiUrl` + `embeddingApiKey`) | Negligible local ML RAM — only plugin + Turso overhead.                                                                                                                                                                                                                 |
+| **Database / plugin**                                         | Turso/libSQL on disk under `storagePath`. Size grows with how many memories you store, not with GPU memory.                                                                                                                                                             |
+
+Platform limits above still apply (no Intel Mac `darwin/x64`; use Apple Silicon, Linux, Windows, or a remote embedding endpoint). See [Choosing / configuring embeddings](#choosing--configuring-embeddings).
+
 ### Upgrading from legacy SQLite shards
 
 Startup recovers interrupted re-embed swaps, converts libSQL DiskANN indexes to the current Turso engine, and then verifies or upgrades the legacy shard schema. Engine conversion runs even when a store already has a completed legacy migration marker, and preserves stored vectors without re-embedding. Each converted database is backed up as `<database>.pre-tursodb-<timestamp>.bak`.
@@ -156,6 +168,14 @@ That phrase in the feature list is **auto-capture**: after a conversation, a bac
 ### User profile
 
 The **User Profile** is a separate, cross-project summary of how you like to work (preferences, habits). It is updated on an interval (`userProfileAnalysisInterval`, default every 10 analyzed prompts), shown in the web UI’s profile view, and readable via `memory({ mode: "profile" })`. You do not populate it by hand for normal use — profile learning fills it when a provider is ready. Output language follows `autoCaptureLanguage` (default `"auto"`, mirroring the language of your prompts), the same setting used for auto-captured memories.
+
+**“No profile found. Keep chatting to build your profile.”** is the expected empty state, not a crash. Profile learning needs:
+
+1. Auto-capture running with a reachable provider (`opencodeProvider` + `opencodeModel`, or a complete manual fallback with `memoryModel` + `memoryApiUrl`).
+2. Enough session prompts since the last analysis — at least `userProfileAnalysisInterval` (default **10**).
+3. That provider to support structured/tool-call output (same requirement as auto-capture).
+
+If you have chatted for a while and still see the message, check that auto-capture is actually firing in the logs and that the configured provider succeeds (failed profile analysis no longer hides behind a generic empty state when the provider errors).
 
 ### Web UI
 
