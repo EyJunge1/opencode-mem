@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { InstallIde, InstallResult } from "./install.js";
+import type { InstallIde } from "./install/catalog.js";
+import type { InstallResult } from "./install/types.js";
 
 const BEGIN = "<!-- opencode-mem:begin -->";
 const END = "<!-- opencode-mem:end -->";

@@ -1,46 +1,22 @@
 /**
  * Multi-agent provenance for memories.
  * Stored in memory metadata JSON — no schema migration required.
+ *
+ * Coding-agent host labels are derived from the install catalog so IDE lists
+ * cannot drift. Non-host provenance (mcp/web/import/unknown) stays local.
  */
 
+import { INSTALL_HOST_PLATFORM_SOURCES } from "../cli/install/catalog.js";
+
+const NON_HOST_PROVENANCE = ["mcp", "web", "import", "unknown"] as const;
+
 const KNOWN: ReadonlySet<string> = new Set([
-  "opencode",
-  "mcp",
-  "web",
-  "cursor",
-  "claude",
-  "codex",
-  "gemini",
-  "antigravity",
-  "windsurf",
-  "kimi",
-  "openclaw",
-  "goose",
-  "warp",
-  "copilot",
-  "grok",
-  "import",
-  "unknown",
+  ...INSTALL_HOST_PLATFORM_SOURCES,
+  ...NON_HOST_PROVENANCE,
 ]);
 
 export type PlatformSource =
-  | "opencode"
-  | "mcp"
-  | "web"
-  | "cursor"
-  | "claude"
-  | "codex"
-  | "gemini"
-  | "antigravity"
-  | "windsurf"
-  | "kimi"
-  | "openclaw"
-  | "goose"
-  | "warp"
-  | "copilot"
-  | "grok"
-  | "import"
-  | "unknown";
+  (typeof INSTALL_HOST_PLATFORM_SOURCES)[number] | (typeof NON_HOST_PROVENANCE)[number];
 
 /** Env override used by MCP hosts / install snippets. */
 export const PLATFORM_SOURCE_ENV = "OPENCODE_MEM_PLATFORM";

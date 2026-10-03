@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { InstallIde } from "./install.js";
+import type { InstallIde } from "./install/catalog.js";
 
 function userHome(): string {
   return process.env.HOME || process.env.USERPROFILE || homedir();
