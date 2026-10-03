@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { WebServer } from "../src/services/web-server.js";
-import { AUTH_HEADER, getOrCreateAuthToken } from "../src/services/auth-token.js";
+import { WebServer } from "../src/runtime/http/web-server.js";
+import { AUTH_HEADER, getOrCreateAuthToken } from "../src/runtime/http/auth-token.js";
 import {
   writeRuntimeInfo,
   clearRuntimeInfo,
   readRuntimeInfo,
-} from "../src/services/runtime-info.js";
+} from "../src/runtime/http/runtime-info.js";
 
 describe("standalone serve + MCP health", () => {
   it("health reports service identity and is discoverable", async () => {

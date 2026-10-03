@@ -1,7 +1,7 @@
 import { CONFIG, initConfig } from "../config.js";
 import { findHealthyRuntimeBaseUrl } from "../runtime/client.js";
-import { readRuntimeInfo } from "../services/runtime-info.js";
-import { AUTH_HEADER, getOrCreateAuthToken } from "../services/auth-token.js";
+import { readRuntimeInfo } from "../runtime/http/runtime-info.js";
+import { AUTH_HEADER, getOrCreateAuthToken } from "../runtime/http/auth-token.js";
 import {
   detectInstalledHosts,
   isHostConfigured,

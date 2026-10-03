@@ -29,11 +29,11 @@ function runIsolated(scriptBody: string): { stdout: string; exitCode: number } {
 
 describe("memory-tool-service", () => {
   it("executes help without warming embeddings", () => {
-    const clientUrl = new URL("../src/services/client.js", import.meta.url).href;
+    const clientUrl = new URL("../src/memory/client.js", import.meta.url).href;
     const configUrl = new URL("../src/config.js", import.meta.url).href;
-    const tagsUrl = new URL("../src/services/tags.js", import.meta.url).href;
-    const languageUrl = new URL("../src/services/language-detector.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
+    const tagsUrl = new URL("../src/memory/tags.js", import.meta.url).href;
+    const languageUrl = new URL("../src/infra/language-detector.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/memory/tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";
@@ -75,12 +75,12 @@ test("help", async () => {
   });
 
   it("formats MCP search results as compact snippets", () => {
-    const clientUrl = new URL("../src/services/client.js", import.meta.url).href;
+    const clientUrl = new URL("../src/memory/client.js", import.meta.url).href;
     const configUrl = new URL("../src/config.js", import.meta.url).href;
-    const tagsUrl = new URL("../src/services/tags.js", import.meta.url).href;
-    const languageUrl = new URL("../src/services/language-detector.js", import.meta.url).href;
-    const privacyUrl = new URL("../src/services/privacy.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
+    const tagsUrl = new URL("../src/memory/tags.js", import.meta.url).href;
+    const languageUrl = new URL("../src/infra/language-detector.js", import.meta.url).href;
+    const privacyUrl = new URL("../src/infra/privacy.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/memory/tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";
@@ -130,12 +130,12 @@ test("mcp search", async () => {
   });
 
   it("formats MCP timeline results as compact chronological snippets", () => {
-    const clientUrl = new URL("../src/services/client.js", import.meta.url).href;
+    const clientUrl = new URL("../src/memory/client.js", import.meta.url).href;
     const configUrl = new URL("../src/config.js", import.meta.url).href;
-    const tagsUrl = new URL("../src/services/tags.js", import.meta.url).href;
-    const languageUrl = new URL("../src/services/language-detector.js", import.meta.url).href;
-    const privacyUrl = new URL("../src/services/privacy.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
+    const tagsUrl = new URL("../src/memory/tags.js", import.meta.url).href;
+    const languageUrl = new URL("../src/infra/language-detector.js", import.meta.url).href;
+    const privacyUrl = new URL("../src/infra/privacy.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/memory/tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";
@@ -189,9 +189,9 @@ test("mcp timeline", async () => {
   });
 
   it("returns memories for MCP get", () => {
-    const clientUrl = new URL("../src/services/client.js", import.meta.url).href;
+    const clientUrl = new URL("../src/memory/client.js", import.meta.url).href;
     const configUrl = new URL("../src/config.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/memory/tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";

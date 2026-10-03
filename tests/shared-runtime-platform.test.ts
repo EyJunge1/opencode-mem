@@ -4,7 +4,7 @@ import {
   resolvePlatformSource,
   platformSourceFromMetadata,
   PLATFORM_SOURCE_ENV,
-} from "../src/services/platform-source.js";
+} from "../src/shared/platform-source.js";
 import { detectInstalledHosts } from "../src/cli/install.js";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,7 +14,7 @@ import {
   getSharedRuntimeBridge,
   isUsingSharedRuntime,
 } from "../src/runtime/bridge.js";
-import { executeMemoryTool } from "../src/services/memory-tool/index.js";
+import { executeMemoryTool } from "../src/memory/tool/index.js";
 
 describe("platformSource", () => {
   it("normalizes and resolves env / explicit values", () => {

@@ -2,10 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { ensureSharedRuntimeClient, type SharedRuntimeClient } from "../runtime/client.js";
-import {
-  MCP_SEARCH_DEFAULT_LIMIT,
-  MCP_TIMELINE_DEFAULT_LIMIT,
-} from "../services/memory-tool/index.js";
+import { MCP_SEARCH_DEFAULT_LIMIT, MCP_TIMELINE_DEFAULT_LIMIT } from "../memory/tool/index.js";
 
 function textResult(payload: unknown) {
   return {

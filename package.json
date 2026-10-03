@@ -22,8 +22,8 @@
       "types": "./dist/v2/plugin.d.ts"
     },
     "./tags": {
-      "import": "./dist/services/tags.js",
-      "types": "./dist/services/tags.d.ts"
+      "import": "./dist/memory/tags.js",
+      "types": "./dist/memory/tags.d.ts"
     },
     "./mcp": {
       "import": "./dist/mcp/server.js",

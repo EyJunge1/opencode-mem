@@ -1,10 +1,10 @@
 import { CONFIG, initConfig } from "../config.js";
-import { log } from "../services/logger.js";
-import { ensureTursoReady } from "../services/turso/ready.js";
-import { WebAuth } from "../services/web-auth.js";
-import { startWebServer, type WebServer } from "../services/web-server.js";
-import { clearRuntimeInfo, writeRuntimeInfo } from "../services/runtime-info.js";
-import { memoryClient } from "../services/client.js";
+import { log } from "../infra/logger.js";
+import { ensureTursoReady } from "../storage/turso/ready.js";
+import { WebAuth } from "../runtime/http/web-auth.js";
+import { startWebServer, type WebServer } from "../runtime/http/web-server.js";
+import { clearRuntimeInfo, writeRuntimeInfo } from "../runtime/http/runtime-info.js";
+import { memoryClient } from "../memory/client.js";
 
 export interface ServeOptions {
   directory?: string;

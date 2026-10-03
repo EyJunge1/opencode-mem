@@ -1,10 +1,10 @@
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { stripJsoncComments } from "./services/jsonc.js";
-import { resolveSecretValue } from "./services/secret-resolver.js";
-import { isPlaceholderApiKey } from "./services/ai/api-key-placeholder.js";
-import { getDefaultInjectionMarkers } from "./services/injected-prompt-filter.js";
+import { stripJsoncComments } from "./infra/jsonc.js";
+import { resolveSecretValue } from "./infra/secret-resolver.js";
+import { isPlaceholderApiKey } from "./ai/api-key-placeholder.js";
+import { getDefaultInjectionMarkers } from "./memory/injected-prompt-filter.js";
 
 const CONFIG_DIR = join(homedir(), ".config", "opencode");
 const DATA_DIR = join(homedir(), ".opencode-mem");

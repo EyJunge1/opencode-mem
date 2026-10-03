@@ -1,8 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { AUTH_HEADER, getOrCreateAuthToken } from "../services/auth-token.js";
+import { AUTH_HEADER, getOrCreateAuthToken } from "../runtime/http/auth-token.js";
 import { CONFIG, initConfig } from "../config.js";
-import { readRuntimeInfo } from "../services/runtime-info.js";
-import { log } from "../services/logger.js";
+import { readRuntimeInfo } from "../runtime/http/runtime-info.js";
+import { log } from "../infra/logger.js";
 
 const HEALTH_TIMEOUT_MS = 800;
 const START_WAIT_MS = 45_000;

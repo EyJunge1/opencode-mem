@@ -1,7 +1,7 @@
 import type { MemoryType } from "../../types/index.js";
-import type { MemoryScope } from "../../services/client.js";
-import { executeMemoryTool } from "../../services/memory-tool/index.js";
-import type { MemoryToolMode } from "../../services/memory-tool/types.js";
+import type { MemoryScope } from "../../memory/client.js";
+import { executeMemoryTool } from "../../memory/tool/index.js";
+import type { MemoryToolMode } from "../../memory/tool/types.js";
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {

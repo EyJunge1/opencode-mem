@@ -1,11 +1,11 @@
 import type { MemoryType } from "../../types/index.js";
-import type { MemoryScope } from "../../services/client.js";
+import type { MemoryScope } from "../../memory/client.js";
 import {
   mcpGetMemories,
   mcpSearchMemories,
   mcpTimelineMemories,
   mcpWriteMemory,
-} from "../../services/memory-tool/index.js";
+} from "../../memory/tool/index.js";
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {

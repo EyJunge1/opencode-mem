@@ -75,7 +75,7 @@ If a shard becomes incompatible (for example after changing `embeddingDimensions
 
 ## Schema migrations
 
-Local Turso shards and auxiliary databases (`metadata.db`, `user-prompts.db`, `user-profiles.db`, `ai-sessions.db`) are upgraded with ordered `PRAGMA user_version` migrations in `src/services/turso/schema-migrations.ts`. Migrations are idempotent: starting the plugin applies only pending versions.
+Local Turso shards and auxiliary databases (`metadata.db`, `user-prompts.db`, `user-profiles.db`, `ai-sessions.db`) are upgraded with ordered `PRAGMA user_version` migrations in `src/storage/turso/schema-migrations.ts`. Migrations are idempotent: starting the plugin applies only pending versions.
 
 ## Getting Started
 

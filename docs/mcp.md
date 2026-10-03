@@ -72,6 +72,37 @@ OpenCode plugin + MCP
 
 MCP hosts use `/api/mcp/*`. OpenCode attach uses `/api/runtime/tool` so search/list match in-process responses (full `content` / `similarity`, not snippets).
 
+### Source layout
+
+Thematic top-level modules (no `services/` catch-all):
+
+```text
+src/
+  shared/           hosts + platform-source + api schemas
+  cli/              serve / mcp / install / status
+  mcp/              stdio only
+  runtime/          client, bridge, http/ (MCP + REST/Web)
+  hosts/opencode/   OpenCode plugin orchestration
+  memory/           CRUD, capture, learning, tags, embedding, tool/, user-prompt/
+  storage/          turso/ + shard/migration services
+  ai/               providers, sessions, OpenCode AI helpers
+  user-profile/     profile manager + learning lock
+  infra/            logger, privacy, jsonc, onnx, secrets, …
+  config.ts         root config
+  plugin.ts         package plugin entry (V1+V2)
+  index.ts          re-exports hosts/opencode helpers
+  v2/               OpenCode v2 adapter
+  types/            shared domain types
+  utils/            small pure helpers
+```
+
+Guardrails:
+
+1. Import shared-process APIs from `runtime/client.js` and `runtime/bridge.js` only.
+2. New HTTP endpoints for MCP / shared runtime go under `runtime/http/`.
+3. Host detection, MCP config writers, and host platform labels live in `shared/hosts.ts` + `cli/install/` — never under `storage/` / `ai/` / `memory/` storage internals.
+4. Priming and config formats stay under `cli/install/`.
+
 ### Progressive tools (token-aware)
 
 | Tool              | Role                                                       |
@@ -135,19 +166,16 @@ New coding-agent hosts go through the existing install catalog — **not** throu
 3. Optional project priming via `priming` on the host spec + `install/priming.ts`.
 4. Cover detection/config in `tests/install-ide.test.ts` (and status coverage if needed).
 
-Do **not** put host detection, MCP config writers, or `platformSource` labels under `services/` storage/AI modules.
+Do **not** put host detection, MCP config writers, or `platformSource` labels under `storage/`, `ai/`, or low-level memory persistence modules.
 
-## Deferred structure (post-MVP)
+## Follow-ups (optional)
 
-Keep this branch focused on multi-host wiring. After merge, cut the `services/` god-folder along the same pattern as `cli/install/`:
+Still deferred (not required for the thematic layout):
 
-1. HTTP/Web (`web-server.ts`, `api-handlers.ts`, auth/cors) → `runtime/http/` + optional `web/`
-2. Memory CRUD / capture / learning → `services/memory/` (or sibling packages)
-3. OpenCode plugin orchestration out of root `index.ts` → e.g. `hosts/opencode/`
-4. `platform-source.ts` next to `shared/hosts.ts`
-5. Split oversized files (`api-handlers.ts`, `user-profile-manager.ts`, `config.ts`) only after domain packages exist
+1. Drop leftover `--ide` / `InstallIde` aliases once callers use `--host` / `HostId`.
+2. Split oversized files (`runtime/http/api-handlers.ts`, `user-profile/user-profile-manager.ts`, `config.ts`).
 
-Do **not** big-bang rename `turso/`, `memory-tool/`, or `cli/install/` — those boundaries already work.
+Do **not** big-bang rename `storage/turso/`, `memory/tool/`, or `cli/install/` — those boundaries already work.
 
 ## Notes
 
