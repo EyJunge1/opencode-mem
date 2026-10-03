@@ -37,7 +37,12 @@ import {
   handleApplyCleanup,
   handleUpdateProfileItem,
 } from "./api-handlers.js";
-import { mcpGetMemories, mcpSearchMemories, mcpWriteMemory } from "./memory-tool-service.js";
+import {
+  mcpGetMemories,
+  mcpSearchMemories,
+  mcpTimelineMemories,
+  mcpWriteMemory,
+} from "./memory-tool-service.js";
 import type { MemoryType } from "../types/index.js";
 import type { MemoryScope } from "./client.js";
 
@@ -497,6 +502,24 @@ export class WebServer {
         const result = await mcpSearchMemories(
           {
             query: body.query ?? "",
+            limit: body.limit,
+            scope: body.scope,
+          },
+          { directory: cwd, platformSource: body.platformSource }
+        );
+        return this.jsonResponse(result);
+      }
+
+      if (path === "/api/mcp/timeline" && method === "POST") {
+        const body = (await req.json().catch(() => ({}))) as {
+          limit?: number;
+          scope?: MemoryScope;
+          cwd?: string;
+          platformSource?: string;
+        };
+        const cwd = typeof body.cwd === "string" && body.cwd.trim() ? body.cwd : process.cwd();
+        const result = await mcpTimelineMemories(
+          {
             limit: body.limit,
             scope: body.scope,
           },

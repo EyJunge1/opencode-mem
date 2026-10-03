@@ -16,6 +16,7 @@ export interface McpRuntimeClient {
     limit?: number;
     scope?: "project" | "all-projects";
   }): Promise<object>;
+  timeline(args: { limit?: number; scope?: "project" | "all-projects" }): Promise<object>;
   get(ids: string[]): Promise<object>;
   write(args: {
     action: "add" | "forget" | "profile";
@@ -122,6 +123,14 @@ export async function ensureMcpRuntimeClient(directory = process.cwd()): Promise
     directory,
     async search(args) {
       const res = await fetch(`${baseUrl}/api/mcp/search`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ ...args, cwd: directory }),
+      });
+      return (await res.json()) as object;
+    },
+    async timeline(args) {
+      const res = await fetch(`${baseUrl}/api/mcp/timeline`, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({ ...args, cwd: directory }),

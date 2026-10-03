@@ -129,6 +129,65 @@ test("mcp search", async () => {
     expect(stdout).toContain("pass");
   });
 
+  it("formats MCP timeline results as compact chronological snippets", () => {
+    const clientUrl = new URL("../src/services/client.js", import.meta.url).href;
+    const configUrl = new URL("../src/config.js", import.meta.url).href;
+    const tagsUrl = new URL("../src/services/tags.js", import.meta.url).href;
+    const languageUrl = new URL("../src/services/language-detector.js", import.meta.url).href;
+    const privacyUrl = new URL("../src/services/privacy.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/services/memory-tool-service.js", import.meta.url).href;
+
+    const { exitCode, stdout } = runIsolated(`
+import { mock, expect, test } from "bun:test";
+
+mock.module(${JSON.stringify(clientUrl)}, () => ({
+  memoryClient: {
+    warmup: async () => {},
+    ensureStorageReady: async () => {},
+    getEmbeddingInitError: () => null,
+    listMemories: async () => ({
+      success: true,
+      memories: [
+        {
+          id: "mem_old",
+          summary: "B".repeat(400),
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    }),
+  },
+}));
+mock.module(${JSON.stringify(configUrl)}, () => ({
+  CONFIG: { autoCaptureLanguage: "en", memory: { defaultScope: "project" } },
+  isConfigured: () => true,
+}));
+mock.module(${JSON.stringify(tagsUrl)}, () => ({
+  getTags: () => ({
+    user: { userEmail: "u@example.com" },
+    project: { tag: "opencode_project_abc" },
+  }),
+}));
+mock.module(${JSON.stringify(languageUrl)}, () => ({ getLanguageName: () => "English" }));
+mock.module(${JSON.stringify(privacyUrl)}, () => ({
+  stripPrivateContent: (s) => s,
+  isFullyPrivate: () => false,
+}));
+
+test("mcp timeline", async () => {
+  const { mcpTimelineMemories, MCP_SNIPPET_MAX_CHARS } = await import(${JSON.stringify(serviceUrl)});
+  const result = await mcpTimelineMemories({ limit: 5 }, { directory: "/tmp" });
+  expect(result.success).toBe(true);
+  expect(result.memories[0].id).toBe("mem_old");
+  expect(result.memories[0].createdAt).toBe("2026-01-01T00:00:00.000Z");
+  expect(result.memories[0].snippet.length).toBeLessThanOrEqual(MCP_SNIPPET_MAX_CHARS);
+  expect(result.hint).toContain("memory_get");
+});
+`);
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("pass");
+  });
+
   it("returns memories for MCP get", () => {
     const clientUrl = new URL("../src/services/client.js", import.meta.url).href;
     const configUrl = new URL("../src/config.js", import.meta.url).href;

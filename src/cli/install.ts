@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { detectInstalledIdes } from "./ide-detect.js";
+import { installIdePriming } from "./ide-priming.js";
 
 /** Prefer HOME/USERPROFILE so tests and custom environments can redirect writes. */
 export function resolveUserHome(): string {
@@ -192,14 +193,23 @@ function multiPathResult(
   primary: InstallResult,
   extras: InstallResult[]
 ): InstallResult {
-  const also = extras.map((e) => e.path);
+  const also = [...(primary.also ?? []), ...extras.map((e) => e.path)];
+  const uniqueAlso = [...new Set(also)];
+  const baseDetail = primary.detail.split("; also ")[0] ?? primary.detail;
   return {
     ide,
     path: primary.path,
     action: combineActions([primary.action, ...extras.map((e) => e.action)]),
-    detail: extras.length === 0 ? primary.detail : `${primary.detail}; also ${also.join(", ")}`,
-    also: also.length > 0 ? also : undefined,
+    detail: uniqueAlso.length === 0 ? baseDetail : `${baseDetail}; also ${uniqueAlso.join(", ")}`,
+    also: uniqueAlso.length > 0 ? uniqueAlso : undefined,
   };
+}
+
+/** Project-local session priming (rules / CLAUDE.md) for MCP-only hosts. */
+function withPriming(ide: InstallIde, primary: InstallResult, projectDir?: string): InstallResult {
+  const priming = installIdePriming(ide, projectDir);
+  if (!priming.length) return primary;
+  return multiPathResult(ide, primary, priming);
 }
 
 function ensureParentDir(filePath: string): void {
@@ -467,7 +477,7 @@ function installOpencode(projectDir?: string, launch?: McpLaunchSpec): InstallRe
     data.plugin = plugins;
   }
 
-  // Also register progressive MCP tools (plugin = deep hooks; MCP = memory_search/get/write).
+  // Also register progressive MCP tools (plugin = deep hooks; MCP = timeline/search/get/write).
   const userLaunch = withoutLaunchDirectory(launch ?? resolveMcpLaunch(undefined, "opencode"));
   const mcpExisting =
     data.mcp && typeof data.mcp === "object" && !Array.isArray(data.mcp)
@@ -672,7 +682,7 @@ export function installIde(
         projectLaunch,
         "cursor"
       );
-      return multiPathResult("cursor", user, [project]);
+      return withPriming("cursor", multiPathResult("cursor", user, [project]), projectDir);
     }
     case "claude": {
       const user = installJsonMcp("claude", ".claude.json", userLaunch);
@@ -683,7 +693,7 @@ export function installIde(
         projectLaunch,
         "claude"
       );
-      return multiPathResult("claude", user, [project]);
+      return withPriming("claude", multiPathResult("claude", user, [project]), projectDir);
     }
     case "codex": {
       const user = installTomlMcp("codex", join(".codex", "config.toml"), userLaunch);
@@ -704,7 +714,7 @@ export function installIde(
         projectLaunch,
         "gemini"
       );
-      return multiPathResult("gemini", primary, [project]);
+      return withPriming("gemini", multiPathResult("gemini", primary, [project]), projectDir);
     }
     case "antigravity": {
       // Official: ~/.gemini/config/mcp_config.json + project .agents/mcp_config.json
@@ -721,17 +731,23 @@ export function installIde(
         projectLaunch,
         "antigravity"
       );
-      return multiPathResult("antigravity", primary, [project]);
+      return withPriming(
+        "antigravity",
+        multiPathResult("antigravity", primary, [project]),
+        projectDir
+      );
     }
     case "opencode":
       return installOpencode(projectDir, userLaunch);
-    case "windsurf":
+    case "windsurf": {
       // Official: only global ~/.codeium/windsurf/mcp_config.json
-      return installJsonMcp(
+      const primary = installJsonMcp(
         "windsurf",
         join(".codeium", "windsurf", "mcp_config.json"),
         userLaunch
       );
+      return withPriming("windsurf", primary, projectDir);
+    }
     case "kimi": {
       const json = installJsonMcp("kimi", join(".kimi-code", "mcp.json"), userLaunch);
       if (!projectDir) return json;
@@ -741,7 +757,7 @@ export function installIde(
         projectLaunch,
         "kimi"
       );
-      return multiPathResult("kimi", json, [project]);
+      return withPriming("kimi", multiPathResult("kimi", json, [project]), projectDir);
     }
     case "openclaw":
       return mergeOpenClawServers(

@@ -54,16 +54,33 @@ Cursor / Claude / Codex / Gemini / Windsurf / Kimi / …
 
 OpenCode plugin + MCP
   → preferSharedRuntime? attach to serve : in-process
-  → MCP tools: memory_search / memory_get / memory_write
+  → MCP tools: memory_timeline / memory_search / memory_get / memory_write
 ```
 
 ### Progressive tools (token-aware)
 
-| Tool            | Role                               |
-| --------------- | ---------------------------------- |
-| `memory_search` | Compact index (+ `platformSource`) |
-| `memory_get`    | Full content for selected ids      |
-| `memory_write`  | add / forget / profile             |
+| Tool              | Role                                                       |
+| ----------------- | ---------------------------------------------------------- |
+| `memory_timeline` | Recent memories chronologically (session-start continuity) |
+| `memory_search`   | Compact topical index (+ `platformSource`)                 |
+| `memory_get`      | Full content for selected ids                              |
+| `memory_write`    | add / forget / profile                                     |
+
+Workflow: `memory_timeline` or `memory_search` → pick ids → `memory_get` (batch).
+
+### Session priming (project `--cwd`)
+
+For hosts without OpenCode-depth hooks, `install --cwd` also writes lightweight priming so the agent knows to call MCP at session start:
+
+| Host                 | Priming file                                     |
+| -------------------- | ------------------------------------------------ |
+| Cursor               | `.cursor/rules/opencode-mem.mdc` (`alwaysApply`) |
+| Claude               | `CLAUDE.md` marked block                         |
+| Windsurf             | `.windsurf/rules/opencode-mem.md`                |
+| Gemini / Antigravity | `GEMINI.md` marked block                         |
+| Kimi                 | `.kimi-code/rules/opencode-mem.md`               |
+
+OpenCode keeps native auto-capture / compaction inject — no priming file needed.
 
 ## Commands
 
@@ -93,5 +110,6 @@ opencode-mem status [--cwd DIR]
 ## Notes
 
 - This is **MCP-first** multi-agent (faster + cheaper to maintain than native hooks per host).
+- Progressive recall mirrors claude-mem-style disclosure (`timeline`/`search` → `get`); capture outside OpenCode stays agent-initiated (`memory_write`) plus project priming rules.
 - OpenCode keeps deep auto-capture / compaction / profile learning; when attached, capture **writes** go through the shared runtime.
 - Auth: `~/.opencode-mem/.auth-token`. Runtime pointer: `~/.opencode-mem/runtime.json`.

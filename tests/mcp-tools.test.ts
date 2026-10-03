@@ -5,11 +5,19 @@ import { createMcpServer } from "../src/mcp/server.js";
 import type { McpRuntimeClient } from "../src/mcp/runtime-client.js";
 
 describe("MCP server progressive tools", () => {
-  it("exposes search → get progressive disclosure tools", async () => {
+  it("exposes timeline → search → get progressive disclosure tools", async () => {
     const calls: string[] = [];
     const fakeClient: McpRuntimeClient = {
       baseUrl: "http://127.0.0.1:9",
       directory: "/tmp",
+      timeline: async (args) => {
+        calls.push(`timeline:${args.limit ?? "default"}`);
+        return {
+          success: true,
+          memories: [{ id: "1", createdAt: "2026-01-01T00:00:00.000Z", snippet: "recent" }],
+          hint: "Call memory_get",
+        };
+      },
       search: async (args) => {
         calls.push(`search:${args.query}`);
         return {
@@ -36,7 +44,14 @@ describe("MCP server progressive tools", () => {
     try {
       const listed = await client.listTools();
       const names = listed.tools.map((t) => t.name).sort();
-      expect(names).toEqual(["memory_get", "memory_search", "memory_write"]);
+      expect(names).toEqual(["memory_get", "memory_search", "memory_timeline", "memory_write"]);
+
+      const timeline = await client.callTool({
+        name: "memory_timeline",
+        arguments: { limit: 5 },
+      });
+      expect(JSON.stringify(timeline)).toContain("memory_get");
+      expect(calls).toContain("timeline:5");
 
       const search = await client.callTool({
         name: "memory_search",

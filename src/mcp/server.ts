@@ -2,7 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { ensureMcpRuntimeClient, type McpRuntimeClient } from "./runtime-client.js";
-import { MCP_SEARCH_DEFAULT_LIMIT } from "../services/memory-tool-service.js";
+import {
+  MCP_SEARCH_DEFAULT_LIMIT,
+  MCP_TIMELINE_DEFAULT_LIMIT,
+} from "../services/memory-tool-service.js";
 
 function textResult(payload: unknown) {
   return {
@@ -27,6 +30,29 @@ export async function createMcpServer(
     name: "opencode-mem",
     version: "2.28.3",
   });
+
+  server.registerTool(
+    "memory_timeline",
+    {
+      description:
+        "List recent project memories chronologically (compact id + createdAt + snippet). " +
+        "Call at session start for continuity, then memory_get for full text. Prefer over dumping full memories.",
+      inputSchema: {
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe(`Max memories (default ${MCP_TIMELINE_DEFAULT_LIMIT})`),
+        scope: z
+          .enum(["project", "all-projects"])
+          .optional()
+          .describe("Timeline scope (default: project)"),
+      },
+    },
+    async ({ limit, scope }) => textResult(await client.timeline({ limit, scope }))
+  );
 
   server.registerTool(
     "memory_search",
@@ -56,7 +82,7 @@ export async function createMcpServer(
     "memory_get",
     {
       description:
-        "Fetch full memory content by ids returned from memory_search. Prefer batching ids.",
+        "Fetch full memory content by ids returned from memory_timeline or memory_search. Prefer batching ids.",
       inputSchema: {
         ids: z.array(z.string()).min(1).describe("Memory ids to fetch"),
       },

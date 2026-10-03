@@ -230,13 +230,24 @@ describe("installIde writers", () => {
 
     const cursor = installIde("cursor", { projectDir: project, launch });
     expect(cursor.also).toContain(join(project, ".cursor", "mcp.json"));
+    expect(cursor.also).toContain(join(project, ".cursor", "rules", "opencode-mem.mdc"));
     const cursorProject = JSON.parse(readFileSync(join(project, ".cursor", "mcp.json"), "utf-8"));
     expect(cursorProject.mcpServers["opencode-mem"].env.OPENCODE_MEM_DIRECTORY).toBe(project);
     const cursorUser = JSON.parse(readFileSync(join(home, ".cursor", "mcp.json"), "utf-8"));
     expect(cursorUser.mcpServers["opencode-mem"].env.OPENCODE_MEM_DIRECTORY).toBeUndefined();
+    const cursorRule = readFileSync(join(project, ".cursor", "rules", "opencode-mem.mdc"), "utf-8");
+    expect(cursorRule).toContain("alwaysApply: true");
+    expect(cursorRule).toContain("memory_timeline");
 
     const claude = installIde("claude", { projectDir: project, launch });
     expect(claude.also).toContain(join(project, ".mcp.json"));
+    expect(claude.also).toContain(join(project, "CLAUDE.md"));
+    const claudeMd = readFileSync(join(project, "CLAUDE.md"), "utf-8");
+    expect(claudeMd).toContain("opencode-mem:begin");
+    expect(claudeMd).toContain("memory_timeline");
+
+    const windsurf = installIde("windsurf", { projectDir: project, launch });
+    expect(windsurf.also).toContain(join(project, ".windsurf", "rules", "opencode-mem.md"));
 
     const copilot = installIde("copilot", { projectDir: project, launch });
     expect(copilot.also).toContain(join(project, ".vscode", "mcp.json"));

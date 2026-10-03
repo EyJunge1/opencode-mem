@@ -44,6 +44,8 @@ export interface MemoryToolContext {
 
 /** Default compact search limit for MCP progressive disclosure. */
 export const MCP_SEARCH_DEFAULT_LIMIT = 5;
+/** Default chronological timeline limit for MCP progressive disclosure. */
+export const MCP_TIMELINE_DEFAULT_LIMIT = 10;
 /** Max characters kept in an MCP search snippet. */
 export const MCP_SNIPPET_MAX_CHARS = 160;
 
@@ -91,7 +93,7 @@ export async function executeMemoryTool(
 
   const mode = args.mode || "help";
   const bridge = getSharedRuntimeBridge();
-  if (bridge && ["add", "search", "forget", "profile"].includes(mode)) {
+  if (bridge && ["add", "search", "list", "forget", "profile"].includes(mode)) {
     return executeMemoryToolViaBridge(args, ctx, bridge);
   }
 
@@ -114,6 +116,13 @@ async function executeMemoryToolViaBridge(
         if (!args.query) return JSON.stringify({ success: false, error: "query required" });
         const result = await bridge.search({
           query: args.query,
+          limit: args.limit,
+          scope: args.scope,
+        });
+        return JSON.stringify(result);
+      }
+      case "list": {
+        const result = await bridge.timeline({
           limit: args.limit,
           scope: args.scope,
         });
@@ -514,6 +523,53 @@ export async function mcpSearchMemories(
       ...(r.platformSource ? { platformSource: r.platformSource } : {}),
     })),
     hint: "Call memory_get with promising ids to fetch full content.",
+  };
+}
+
+/**
+ * Chronological compact index for MCP progressive disclosure.
+ * Use at session start (or after search) before memory_get.
+ */
+export async function mcpTimelineMemories(
+  args: {
+    limit?: number;
+    scope?: MemoryScope;
+  },
+  ctx: MemoryToolContext
+): Promise<object> {
+  const limit = Math.min(Math.max(args.limit ?? MCP_TIMELINE_DEFAULT_LIMIT, 1), 20);
+  const raw = await executeMemoryTool(
+    {
+      mode: "list",
+      limit,
+      scope: args.scope,
+    },
+    ctx
+  );
+  const parsed = JSON.parse(raw) as {
+    success: boolean;
+    error?: string;
+    count?: number;
+    memories?: Array<{
+      id?: string;
+      content?: string;
+      createdAt?: string;
+    }>;
+  };
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error ?? "timeline failed" };
+  }
+
+  return {
+    success: true,
+    count: parsed.memories?.length ?? 0,
+    memories: (parsed.memories ?? []).map((m) => ({
+      id: m.id,
+      createdAt: m.createdAt,
+      snippet: snippetFromContent(String(m.content ?? "")),
+    })),
+    hint: "Call memory_get with promising ids to fetch full content. Use memory_search for topical queries.",
   };
 }
 

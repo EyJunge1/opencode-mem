@@ -65,6 +65,10 @@ describe("shared runtime bridge", () => {
         calls.push(`search:${query}`);
         return { success: true, results: [], hint: "memory_get" };
       },
+      timeline: async ({ limit }) => {
+        calls.push(`timeline:${limit ?? "default"}`);
+        return { success: true, memories: [], hint: "memory_get" };
+      },
       get: async () => ({ success: true, memories: [] }),
       write: async ({ action, platformSource }) => {
         calls.push(`write:${action}:${platformSource}`);
