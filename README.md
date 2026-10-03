@@ -9,6 +9,16 @@
 
 A persistent memory system for AI coding agents that enables long-term context retention across sessions using local vector database technology.
 
+**Multi-agent (MCP):** one shared runtime for common coding agents:
+
+```bash
+npx -y opencode-mem install --ide auto --cwd "$PWD"   # or: --ide all
+npx -y opencode-mem serve --cwd "$PWD"
+npx -y opencode-mem status
+```
+
+Supports Cursor, Claude Code, Codex, Gemini/Antigravity, Windsurf, Kimi, OpenClaw, Goose, Warp, Copilot, Grok, plus native OpenCode (plugin + MCP). With `--cwd`, project-local MCP configs are written too. See [docs/mcp.md](docs/mcp.md).
+
 ## Core Features
 
 Local Turso/libSQL database with native vector search, persistent project memories, automatic user profile learning, unified memory-prompt timeline, full-featured web UI, intelligent prompt-based memory extraction, multi-provider AI support (OpenAI, Anthropic), 12+ local embedding models, smart deduplication, and built-in privacy protection.

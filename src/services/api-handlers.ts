@@ -380,6 +380,7 @@ export async function handleAddMemory(data: {
   projectPath?: string;
   projectName?: string;
   gitRepoUrl?: string;
+  platformSource?: string;
 }): Promise<ApiResponse<{ id: string }>> {
   try {
     if (!data.content || !data.containerTag) {
@@ -423,7 +424,10 @@ export async function handleAddMemory(data: {
         projectPath: data.projectPath,
         projectName: data.projectName,
         gitRepoUrl: data.gitRepoUrl,
-        metadata: JSON.stringify({ source: "api" }),
+        metadata: JSON.stringify({
+          source: "api",
+          platformSource: data.platformSource ?? "web",
+        }),
       };
       const db = await tursoConnectionManager.getConnection(shard.dbPath);
       await tursoVectorSearch.insertVector(db, record);

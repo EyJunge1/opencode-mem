@@ -1,0 +1,97 @@
+# Multi-agent MCP setup
+
+opencode-mem wires common coding agents via MCP + one shared local runtime.
+
+Related: [Issue #366](https://github.com/tickernelz/opencode-mem/issues/366).
+
+## Quick start
+
+```bash
+# Detect every installed agent and write MCP (or OpenCode plugin) configs
+npx -y opencode-mem install --ide auto --cwd "$PWD"
+
+# Or install every supported harness
+npx -y opencode-mem install --ide all --cwd "$PWD"
+
+# One shared runtime for all agents
+npx -y opencode-mem serve --cwd "$PWD"
+npx -y opencode-mem status
+```
+
+Restart IDEs after install. `status` shows detected vs configured agents. OpenCode attaches to a healthy `serve` when `preferSharedRuntime` is on (default).
+
+With `--cwd`, install also writes **project-local** MCP configs (and pins `OPENCODE_MEM_DIRECTORY` there only). User-global configs stay multi-project safe (no baked directory).
+
+## Supported agents
+
+| IDE / `--ide` | Config written                                                                            | `OPENCODE_MEM_PLATFORM` |
+| ------------- | ----------------------------------------------------------------------------------------- | ----------------------- |
+| `cursor`      | `~/.cursor/mcp.json` (+ project `.cursor/mcp.json`)                                       | `cursor`                |
+| `claude`      | `~/.claude.json` (+ project `.mcp.json`)                                                  | `claude`                |
+| `codex`       | `~/.codex/config.toml` (+ project `.codex/config.toml`)                                   | `codex`                 |
+| `gemini`      | `~/.gemini/settings.json` (+ project `.gemini/settings.json`)                             | `gemini`                |
+| `antigravity` | `~/.gemini/config/mcp_config.json` (+ project `.agents/mcp_config.json`)                  | `antigravity`           |
+| `opencode`    | `~/.config/opencode/opencode.json` **plugin + MCP** (+ project `opencode.json`)           | `opencode`              |
+| `windsurf`    | `~/.codeium/windsurf/mcp_config.json`                                                     | `windsurf`              |
+| `kimi`        | `~/.kimi-code/mcp.json` (+ project `.kimi-code/mcp.json`)                                 | `kimi`                  |
+| `openclaw`    | `~/.openclaw/openclaw.json` → `mcp.servers`                                               | `openclaw`              |
+| `goose`       | `~/.config/goose/config.yaml` extension (`envs:`)                                         | `goose`                 |
+| `warp`        | `~/.warp/.mcp.json` (+ project `.warp/.mcp.json`)                                         | `warp`                  |
+| `copilot`     | VS Code User `mcp.json` (`servers`) + `~/.copilot/mcp-config.json` (+ `.vscode/mcp.json`) | `copilot`               |
+| `grok`        | `~/.grok/config.toml` (+ project `.grok/config.toml`)                                     | `grok`                  |
+| `all`         | every row above                                                                           | per-ide                 |
+| `auto`        | only detected installs                                                                    | per-ide                 |
+
+Aliases: `claude-code`→`claude`, `codex-cli`→`codex`, `antigravity-cli`→`antigravity`, `github-copilot`→`copilot`.
+
+## Architecture
+
+```text
+Cursor / Claude / Codex / Gemini / Windsurf / Kimi / …
+  → MCP stdio (`opencode-mem mcp`)
+    → shared serve (HTTP)
+      → Turso + embeddings + Web UI
+
+OpenCode plugin + MCP
+  → preferSharedRuntime? attach to serve : in-process
+  → MCP tools: memory_search / memory_get / memory_write
+```
+
+### Progressive tools (token-aware)
+
+| Tool            | Role                               |
+| --------------- | ---------------------------------- |
+| `memory_search` | Compact index (+ `platformSource`) |
+| `memory_get`    | Full content for selected ids      |
+| `memory_write`  | add / forget / profile             |
+
+## Commands
+
+```bash
+opencode-mem serve [--host HOST] [--port PORT] [--cwd DIR]
+opencode-mem mcp [--cwd DIR]
+opencode-mem install --ide <ide[,ide]|all|auto> [--cwd DIR]
+opencode-mem status [--cwd DIR]
+```
+
+## Env overrides
+
+| Env                                  | Purpose                                        |
+| ------------------------------------ | ---------------------------------------------- |
+| `OPENCODE_MEM_DIRECTORY`             | Project root for shards (project configs only) |
+| `OPENCODE_MEM_PLATFORM`              | Provenance stamp (set per IDE by `install`)    |
+| `OPENCODE_MEM_STORAGE_PATH`          | Override data directory                        |
+| `OPENCODE_MEM_PREFER_SHARED_RUNTIME` | OpenCode attach vs in-process                  |
+
+## Single-owner playbook
+
+1. `opencode-mem serve --cwd "$PWD"`
+2. `opencode-mem install --ide auto --cwd "$PWD"`
+3. Open OpenCode → attaches to serve; other agents via MCP → same serve
+4. `opencode-mem status` → one healthy URL + agent coverage
+
+## Notes
+
+- This is **MCP-first** multi-agent (faster + cheaper to maintain than native hooks per host).
+- OpenCode keeps deep auto-capture / compaction / profile learning; when attached, capture **writes** go through the shared runtime.
+- Auth: `~/.opencode-mem/.auth-token`. Runtime pointer: `~/.opencode-mem/runtime.json`.

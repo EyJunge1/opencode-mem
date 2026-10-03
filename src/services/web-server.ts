@@ -37,6 +37,9 @@ import {
   handleApplyCleanup,
   handleUpdateProfileItem,
 } from "./api-handlers.js";
+import { mcpGetMemories, mcpSearchMemories, mcpWriteMemory } from "./memory-tool-service.js";
+import type { MemoryType } from "../types/index.js";
+import type { MemoryScope } from "./client.js";
 
 /**
  * Runtime-portable HTTP server handle.
@@ -477,7 +480,63 @@ export class WebServer {
           success: true,
           status: "ok",
           authEnabled: auth?.isEnabled() ?? false,
+          service: "opencode-mem",
+          pid: process.pid,
         });
+      }
+
+      if (path === "/api/mcp/search" && method === "POST") {
+        const body = (await req.json().catch(() => ({}))) as {
+          query?: string;
+          limit?: number;
+          scope?: MemoryScope;
+          cwd?: string;
+          platformSource?: string;
+        };
+        const cwd = typeof body.cwd === "string" && body.cwd.trim() ? body.cwd : process.cwd();
+        const result = await mcpSearchMemories(
+          {
+            query: body.query ?? "",
+            limit: body.limit,
+            scope: body.scope,
+          },
+          { directory: cwd, platformSource: body.platformSource }
+        );
+        return this.jsonResponse(result);
+      }
+
+      if (path === "/api/mcp/get" && method === "POST") {
+        const body = (await req.json().catch(() => ({}))) as { ids?: string[] };
+        const ids = Array.isArray(body.ids) ? body.ids.map(String) : [];
+        const result = await mcpGetMemories(ids);
+        return this.jsonResponse(result);
+      }
+
+      if (path === "/api/mcp/write" && method === "POST") {
+        const body = (await req.json().catch(() => ({}))) as {
+          action?: "add" | "forget" | "profile";
+          content?: string;
+          tags?: string;
+          type?: MemoryType;
+          memoryId?: string;
+          cwd?: string;
+          platformSource?: string;
+        };
+        if (!body.action) {
+          return this.jsonResponse({ success: false, error: "action required" }, 400);
+        }
+        const cwd = typeof body.cwd === "string" && body.cwd.trim() ? body.cwd : process.cwd();
+        const result = await mcpWriteMemory(
+          {
+            action: body.action,
+            content: body.content,
+            tags: body.tags,
+            type: body.type,
+            memoryId: body.memoryId,
+          },
+          { directory: cwd, platformSource: body.platformSource ?? "mcp" }
+        );
+        return this.jsonResponse(result);
       }
 
       if (path === "/" || path === "/index.html") {

@@ -438,6 +438,54 @@ export class LocalMemoryClient {
       return { success: false as const, error: errorMessage, results: [], total: 0, timing: 0 };
     }
   }
+
+  async getMemoriesByIds(memoryIds: string[]) {
+    try {
+      await this.initialize();
+
+      const uniqueIds = [...new Set(memoryIds.map((id) => id.trim()).filter(Boolean))];
+      if (uniqueIds.length === 0) {
+        return { success: true as const, memories: [] as Array<Record<string, unknown>> };
+      }
+
+      const userShards = await tursoShardManager.getAllShards("user", "");
+      const projectShards = await tursoShardManager.getAllShards("project", "");
+      const allShards = [...userShards, ...projectShards];
+      const found = new Map<string, Record<string, unknown>>();
+
+      for (const shard of allShards) {
+        if (found.size === uniqueIds.length) break;
+        const db = await tursoConnectionManager.getConnection(shard.dbPath);
+        for (const id of uniqueIds) {
+          if (found.has(id)) continue;
+          const memory = await tursoVectorSearch.getMemoryById(db, id);
+          if (!memory) continue;
+          found.set(id, {
+            id: memory.id,
+            content: memory.content,
+            type: memory.type,
+            tags: memory.tags ? String(memory.tags).split(",").filter(Boolean) : [],
+            createdAt: safeToISOString(memory.created_at),
+            containerTag: memory.container_tag,
+          });
+        }
+      }
+
+      const memories = uniqueIds
+        .map((id) => found.get(id))
+        .filter((m): m is Record<string, unknown> => m !== undefined);
+
+      return { success: true as const, memories };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log("getMemoriesByIds: error", { error: errorMessage });
+      return {
+        success: false as const,
+        error: errorMessage,
+        memories: [] as Array<Record<string, unknown>>,
+      };
+    }
+  }
 }
 
 export const memoryClient = new LocalMemoryClient();

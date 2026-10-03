@@ -164,22 +164,41 @@ async function capturePrompt(
             ? `${summaryResult.summary}\n\nTags: ${summaryResult.tags.join(", ")}`
             : summaryResult.summary;
 
-        const result = await memoryClient.addMemory(summaryWithTags, tags.project.tag, {
-          source: "auto-capture" as any,
-          type: summaryResult.type as any,
-          tags: summaryResult.tags,
-          sessionID,
-          promptId: prompt.id,
-          captureTimestamp: Date.now(),
-          displayName: tags.project.displayName,
-          userName: tags.project.userName,
-          userEmail: tags.project.userEmail,
-          projectPath: tags.project.projectPath,
-          projectName: tags.project.projectName,
-          gitRepoUrl: tags.project.gitRepoUrl,
-        });
+        const { getSharedRuntimeBridge } = await import("./shared-runtime-bridge.js");
+        const bridge = getSharedRuntimeBridge();
+        let result: { success: boolean; id?: string; error?: string };
+        if (bridge) {
+          const remote = (await bridge.write({
+            action: "add",
+            content: summaryWithTags,
+            tags: summaryResult.tags?.join(","),
+            type: summaryResult.type,
+            platformSource: "opencode",
+          })) as { success?: boolean; id?: string; error?: string };
+          result = {
+            success: remote.success === true,
+            id: remote.id,
+            error: remote.error,
+          };
+        } else {
+          result = await memoryClient.addMemory(summaryWithTags, tags.project.tag, {
+            source: "auto-capture" as any,
+            type: summaryResult.type as any,
+            tags: summaryResult.tags,
+            sessionID,
+            promptId: prompt.id,
+            captureTimestamp: Date.now(),
+            platformSource: "opencode",
+            displayName: tags.project.displayName,
+            userName: tags.project.userName,
+            userEmail: tags.project.userEmail,
+            projectPath: tags.project.projectPath,
+            projectName: tags.project.projectName,
+            gitRepoUrl: tags.project.gitRepoUrl,
+          });
+        }
 
-        if (result.success) {
+        if (result.success && result.id) {
           await userPromptManager.linkMemoryToPrompt(prompt.id, result.id);
           await userPromptManager.markAsCaptured(prompt.id);
           claimedPromptId = null;
@@ -203,7 +222,13 @@ async function capturePrompt(
           }
           return;
         } else {
-          throw new Error(`Memory persistence failed: ${result.error || "database write failed"}`);
+          throw new Error(
+            `Memory persistence failed: ${
+              result.success && !result.id
+                ? "shared runtime returned no memory id"
+                : result.error || "database write failed"
+            }`
+          );
         }
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
