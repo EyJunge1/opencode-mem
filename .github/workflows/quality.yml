@@ -16,8 +16,8 @@ permissions:
 jobs:
   check:
     name: check
-    # Pin explicitly: ubuntu-latest migrates to 26.04 starting 2026-10-19.
-    runs-on: ubuntu-24.04
+    # Prefer the new GA image; matrix jobs still cover 24.04 + 26.04.
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 

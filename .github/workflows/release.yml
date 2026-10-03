@@ -9,8 +9,8 @@ jobs:
   release:
     # Canonical publish only — fork tag pushes lack NPM_TOKEN and must not fail noisily.
     if: github.repository == 'tickernelz/opencode-mem'
-    # Pin explicitly: ubuntu-latest migrates to 26.04 starting 2026-10-19.
-    runs-on: ubuntu-24.04
+    # Prefer the new GA image; smoke/embedding still cover 24.04 + 26.04.
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
