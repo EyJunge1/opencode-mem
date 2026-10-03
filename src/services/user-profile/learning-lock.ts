@@ -425,7 +425,12 @@ export async function tryAcquireProfileLearningLock(
   const ownerToken = randomUUID();
 
   try {
-    return await withCoordinationDb(async (db) => {
+    type AcquireDecision =
+      | { kind: "acquired" }
+      | { kind: "skip" }
+      | { kind: "cas"; oldToken: string; previousPid: number };
+
+    const decision = await withCoordinationDb(async (db): Promise<AcquireDecision> => {
       const inserted = await db.run(
         `INSERT INTO profile_learning_lock
                 (name, owner_token, pid, boot_id, starttime, acquired_at)
@@ -434,7 +439,7 @@ export async function tryAcquireProfileLearningLock(
         [LOCK_NAME, ownerToken, identity.pid, identity.bootId, identity.starttime, Date.now()]
       );
       if (inserted === 1) {
-        return releaseFn(ownerToken);
+        return { kind: "acquired" };
       }
 
       const row = await db.get(
@@ -445,7 +450,7 @@ export async function tryAcquireProfileLearningLock(
       if (!row) {
         // Released between our failed INSERT and the SELECT. Treat as
         // contention: skip this round, the next idle event retries.
-        return null;
+        return { kind: "skip" };
       }
 
       await casTestHooks("select", row);
@@ -456,18 +461,35 @@ export async function tryAcquireProfileLearningLock(
           directory,
           reason: parsed.reason,
         });
-        return null;
+        return { kind: "skip" };
       }
 
       if (!ownerIsDefinitelyDead(parsed.owner, identity)) {
         // Live holder, EPERM, or uncertain identity: never reclaim, never
         // guess, and no TTL is allowed to override this.
-        return null;
+        return { kind: "skip" };
       }
 
-      await casTestHooks("update");
+      return {
+        kind: "cas",
+        oldToken: parsed.owner.ownerToken,
+        previousPid: parsed.owner.pid,
+      };
+    });
 
-      const claimed = await db.run(
+    if (decision.kind === "acquired") {
+      return releaseFn(ownerToken);
+    }
+    if (decision.kind === "skip") {
+      return null;
+    }
+
+    // Park outside the DB session so cas-race competitors (and Windows
+    // single-owner opens) are not blocked by a held coordination handle.
+    await casTestHooks("update");
+
+    const claimed = await withCoordinationDb(async (db) =>
+      db.run(
         `UPDATE profile_learning_lock
               SET owner_token = ?, pid = ?, boot_id = ?, starttime = ?, acquired_at = ?
               WHERE name = ? AND owner_token = ?`,
@@ -478,19 +500,19 @@ export async function tryAcquireProfileLearningLock(
           identity.starttime,
           Date.now(),
           LOCK_NAME,
-          parsed.owner.ownerToken,
+          decision.oldToken,
         ]
-      );
-      if (claimed === 1) {
-        log("profile-learning lock: reclaimed lock from dead owner", {
-          directory,
-          previousPid: parsed.owner.pid,
-        });
-        return releaseFn(ownerToken);
-      }
-      // Lost the CAS race to another reclaimer.
-      return null;
-    });
+      )
+    );
+    if (claimed === 1) {
+      log("profile-learning lock: reclaimed lock from dead owner", {
+        directory,
+        previousPid: decision.previousPid,
+      });
+      return releaseFn(ownerToken);
+    }
+    // Lost the CAS race to another reclaimer.
+    return null;
   } catch (error) {
     log("profile-learning lock: coordination database unavailable, refusing to acquire", {
       directory,
