@@ -90,6 +90,32 @@ async function withCoordinationDb<T>(fn: (db: TursoDb) => Promise<T>): Promise<T
   }
 }
 
+const LOCK_OPEN_ERROR_RE =
+  /File is locked by another process|already open|Locking error|busy|SQLITE_BUSY/i;
+
+function isCoordinationLockError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return LOCK_OPEN_ERROR_RE.test(message);
+}
+
+/** Retry briefly when another process still owns the coordination file. */
+async function withCoordinationDbRetry<T>(fn: (db: TursoDb) => Promise<T>): Promise<T> {
+  const attempts = 8;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await withCoordinationDb(fn);
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts - 1 || !isCoordinationLockError(error)) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 15 + attempt * 25));
+    }
+  }
+  throw lastError;
+}
+
 /**
  * Reads the machine's current boot id. The value is only used as a dead
  * signal when it matches a known platform format; anything unreadable or
@@ -347,7 +373,7 @@ function releaseFn(ownerToken: string): () => Promise<void> {
     if (released) return;
     released = true;
     try {
-      await withCoordinationDb(async (db) => {
+      await withCoordinationDbRetry(async (db) => {
         await db.run(`DELETE FROM profile_learning_lock WHERE name = ? AND owner_token = ?`, [
           LOCK_NAME,
           ownerToken,
@@ -430,7 +456,7 @@ export async function tryAcquireProfileLearningLock(
       | { kind: "skip" }
       | { kind: "cas"; oldToken: string; previousPid: number };
 
-    const decision = await withCoordinationDb(async (db): Promise<AcquireDecision> => {
+    const decision = await withCoordinationDbRetry(async (db): Promise<AcquireDecision> => {
       const inserted = await db.run(
         `INSERT INTO profile_learning_lock
                 (name, owner_token, pid, boot_id, starttime, acquired_at)
@@ -488,7 +514,7 @@ export async function tryAcquireProfileLearningLock(
     // single-owner opens) are not blocked by a held coordination handle.
     await casTestHooks("update");
 
-    const claimed = await withCoordinationDb(async (db) =>
+    const claimed = await withCoordinationDbRetry(async (db) =>
       db.run(
         `UPDATE profile_learning_lock
               SET owner_token = ?, pid = ?, boot_id = ?, starttime = ?, acquired_at = ?
@@ -528,7 +554,7 @@ export async function tryAcquireProfileLearningLock(
  */
 export async function isProfileLearningLockHeld(): Promise<boolean> {
   try {
-    return await withCoordinationDb(async (db) => {
+    return await withCoordinationDbRetry(async (db) => {
       const row = await db.get(`SELECT 1 AS ok FROM profile_learning_lock WHERE name = ? LIMIT 1`, [
         LOCK_NAME,
       ]);

@@ -1,5 +1,13 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { connect } from "@tursodatabase/database";
@@ -145,6 +153,8 @@ async function plantOwner(dir: string, owner: PlantedOwner): Promise<void> {
         owner.acquiredAt ?? Date.now(),
       ]
     );
+    // Flush WAL so freshly spawned workers always see the planted row.
+    await db.run(`PRAGMA wal_checkpoint(TRUNCATE)`);
   });
 }
 
@@ -256,8 +266,22 @@ describe("cross-process profile learning lock (SQL coordination DB)", () => {
     // Both sides must have observed the SAME stale owner token before
     // either CAS fires; PLL_CAS_HOOKS parks each UPDATE until go.update,
     // making the shared-snapshot precondition deterministic.
-    await waitBarrier(dir, "seen.a");
-    await waitBarrier(dir, "seen.b");
+    try {
+      await waitBarrier(dir, "seen.a");
+      await waitBarrier(dir, "seen.b");
+    } catch (error) {
+      const [ra, rb] = await Promise.all([a.result, b.result]);
+      throw new Error(
+        `${String(error)}\n` +
+          `a: exit=${ra.exitCode} out=${JSON.stringify(ra.parsed)} err=${ra.stderr}\n` +
+          `b: exit=${rb.exitCode} out=${JSON.stringify(rb.parsed)} err=${rb.stderr}\n` +
+          `barriers=${readdirSync(dir)
+            .filter((name) => name.startsWith("hs."))
+            .sort()
+            .join(",")}`,
+        { cause: error }
+      );
+    }
     const tokenA = readFileSync(barrierPath(dir, "token.a"), "utf-8");
     const tokenB = readFileSync(barrierPath(dir, "token.b"), "utf-8");
     expect(tokenA).toBe(tokenB);
