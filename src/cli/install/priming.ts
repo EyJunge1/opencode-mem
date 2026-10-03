@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { InstallIde } from "./install/catalog.js";
-import type { InstallResult } from "./install/types.js";
+import { getHostSpec, type HostId } from "../../shared/hosts.js";
+import type { InstallResult } from "./types.js";
 
 const BEGIN = "<!-- opencode-mem:begin -->";
 const END = "<!-- opencode-mem:end -->";
@@ -38,7 +38,7 @@ function upsertMarkedBlock(existing: string, block: string): string {
 }
 
 function writeMarkedTextFile(
-  ide: InstallIde,
+  ide: HostId,
   path: string,
   block: string,
   detail: string
@@ -72,70 +72,46 @@ function cursorRulesContent(): string {
 }
 
 /**
- * Write host-native priming hints so MCP-only agents know to call
+ * Write host-native priming hints so MCP-only hosts know to call
  * memory_timeline / memory_search without native SessionStart hooks.
  * Only project-local files (needs --cwd) — never mutates user docs globally.
  */
-export function installIdePriming(ide: InstallIde, projectDir?: string): InstallResult[] {
+export function installIdePriming(ide: HostId, projectDir?: string): InstallResult[] {
   if (!projectDir) return [];
+  const priming = getHostSpec(ide).priming;
+  if (!priming) return [];
 
-  switch (ide) {
-    case "cursor":
+  const path = join(projectDir, priming.relPath);
+
+  switch (priming.kind) {
+    case "cursor-mdc": {
+      const before = existsSync(path) ? readFileSync(path, "utf-8") : "";
+      const after = cursorRulesContent();
+      if (before !== after) {
+        ensureParentDir(path);
+        writeFileSync(path, after, { mode: 0o600 });
+      }
       return [
-        (() => {
-          const path = join(projectDir, ".cursor", "rules", "opencode-mem.mdc");
-          const before = existsSync(path) ? readFileSync(path, "utf-8") : "";
-          const after = cursorRulesContent();
-          if (before !== after) {
-            ensureParentDir(path);
-            writeFileSync(path, after, { mode: 0o600 });
-          }
-          return {
-            ide,
-            path,
-            action: fileAction(before, after),
-            detail: "Cursor alwaysApply rule → memory_timeline priming",
-          } satisfies InstallResult;
-        })(),
-      ];
-    case "claude":
-      return [
-        writeMarkedTextFile(
+        {
           ide,
-          join(projectDir, "CLAUDE.md"),
-          `## Project memory (opencode-mem)\n\n${MEMORY_PRIMING_BODY}`,
-          "CLAUDE.md priming block → memory_timeline"
-        ),
+          path,
+          action: fileAction(before, after),
+          detail: priming.detail,
+        },
       ];
-    case "windsurf":
-      return [
-        writeMarkedTextFile(
-          ide,
-          join(projectDir, ".windsurf", "rules", "opencode-mem.md"),
-          MEMORY_PRIMING_BODY,
-          "Windsurf rules priming → memory_timeline"
-        ),
-      ];
-    case "antigravity":
-    case "gemini":
-      return [
-        writeMarkedTextFile(
-          ide,
-          join(projectDir, "GEMINI.md"),
-          `## Project memory (opencode-mem)\n\n${MEMORY_PRIMING_BODY}`,
-          "GEMINI.md priming block → memory_timeline"
-        ),
-      ];
-    case "kimi":
-      return [
-        writeMarkedTextFile(
-          ide,
-          join(projectDir, ".kimi-code", "rules", "opencode-mem.md"),
-          MEMORY_PRIMING_BODY,
-          "Kimi rules priming → memory_timeline"
-        ),
-      ];
-    default:
+    }
+    case "marked-section": {
+      const body = priming.heading
+        ? `${priming.heading}\n\n${MEMORY_PRIMING_BODY}`
+        : MEMORY_PRIMING_BODY;
+      return [writeMarkedTextFile(ide, path, body, priming.detail)];
+    }
+    case "rules-md":
+      return [writeMarkedTextFile(ide, path, MEMORY_PRIMING_BODY, priming.detail)];
+    default: {
+      const _exhaustive: never = priming.kind;
+      void _exhaustive;
       return [];
+    }
   }
 }

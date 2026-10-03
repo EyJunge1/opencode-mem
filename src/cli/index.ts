@@ -5,7 +5,7 @@ import { parseIdeList, runInstall, SUPPORTED_IDES, IDE_NEXT_STEPS } from "./inst
 import { printStatus } from "./status.js";
 
 function printHelp(): void {
-  console.log(`opencode-mem — local memory runtime for coding agents
+  console.log(`opencode-mem — local memory runtime for coding-agent hosts
 
 Usage:
   opencode-mem serve [--host HOST] [--port PORT] [--cwd DIR]
@@ -17,7 +17,7 @@ Usage:
 Commands:
   serve     Start the standalone HTTP + Web UI runtime (Turso + embeddings owner)
   mcp       Start the MCP stdio server (proxies to serve; auto-starts serve if needed)
-  install   Write MCP (or OpenCode plugin) config for coding agents
+  install   Write MCP (or OpenCode plugin) config for coding-agent hosts
   status    Show whether a shared runtime is healthy
 
 Install IDEs:

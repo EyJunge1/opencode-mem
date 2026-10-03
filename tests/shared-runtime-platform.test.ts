@@ -5,7 +5,7 @@ import {
   platformSourceFromMetadata,
   PLATFORM_SOURCE_ENV,
 } from "../src/services/platform-source.js";
-import { detectInstalledIdes } from "../src/cli/ide-detect.js";
+import { detectInstalledIdes } from "../src/cli/install.js";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -34,7 +34,7 @@ describe("platformSource", () => {
 });
 
 describe("detectInstalledIdes", () => {
-  it("finds agents from home layout", () => {
+  it("finds hosts from home layout", () => {
     const home = mkdtempSync(join(tmpdir(), "opencode-mem-ide-detect-"));
     try {
       mkdirSync(join(home, ".cursor"));

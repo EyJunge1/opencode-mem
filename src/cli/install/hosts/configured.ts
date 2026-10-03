@@ -1,48 +1,34 @@
-import { join } from "node:path";
-import type { InstallIde } from "../catalog.js";
+import { getHostSpec, type HostId } from "../../../shared/hosts.js";
 import { jsonHasMcpServer } from "../formats/json.js";
 import { openClawHasMcp } from "../formats/openclaw.js";
 import { tomlHasMcp } from "../formats/toml.js";
 import { gooseHasMcp } from "../formats/yaml-goose.js";
-import { copilotCliMcpPath, resolveUserHome, vscodeUserMcpPath } from "../paths.js";
+import { resolveUserHome } from "../paths.js";
 import { opencodeIsConfigured } from "./opencode.js";
 
 /**
  * Whether a host config file already contains an opencode-mem MCP / plugin entry.
  * Used by `status` to show install coverage without mutating files.
  */
-export function isIdeConfigured(ide: InstallIde): boolean {
+export function isIdeConfigured(ide: HostId): boolean {
   const home = resolveUserHome();
+  const spec = getHostSpec(ide);
   try {
-    switch (ide) {
-      case "cursor":
-        return jsonHasMcpServer(join(home, ".cursor", "mcp.json"));
-      case "claude":
-        return jsonHasMcpServer(join(home, ".claude.json"));
-      case "codex":
-        return tomlHasMcp(join(home, ".codex", "config.toml"));
-      case "gemini":
-        return jsonHasMcpServer(join(home, ".gemini", "settings.json"));
-      case "antigravity":
-        return jsonHasMcpServer(join(home, ".gemini", "config", "mcp_config.json"));
+    switch (spec.configKind) {
+      case "json-mcpServers":
+        return spec.userConfigPaths(home).some((p) => jsonHasMcpServer(p));
+      case "toml":
+        return spec.userConfigPaths(home).some((p) => tomlHasMcp(p));
+      case "openclaw":
+        return spec.userConfigPaths(home).some((p) => openClawHasMcp(p));
+      case "goose-yaml":
+        return spec.userConfigPaths(home).some((p) => gooseHasMcp(p));
       case "opencode":
         return opencodeIsConfigured();
-      case "windsurf":
-        return jsonHasMcpServer(join(home, ".codeium", "windsurf", "mcp_config.json"));
-      case "kimi":
-        return jsonHasMcpServer(join(home, ".kimi-code", "mcp.json"));
-      case "openclaw":
-        return openClawHasMcp(join(home, ".openclaw", "openclaw.json"));
-      case "goose":
-        return gooseHasMcp(join(home, ".config", "goose", "config.yaml"));
-      case "warp":
-        return jsonHasMcpServer(join(home, ".warp", ".mcp.json"));
       case "copilot":
-        return jsonHasMcpServer(vscodeUserMcpPath()) || jsonHasMcpServer(copilotCliMcpPath());
-      case "grok":
-        return tomlHasMcp(join(home, ".grok", "config.toml"));
+        return spec.userConfigPaths(home).some((p) => jsonHasMcpServer(p));
       default: {
-        const _exhaustive: never = ide;
+        const _exhaustive: never = spec.configKind;
         void _exhaustive;
         return false;
       }

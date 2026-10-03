@@ -9,7 +9,7 @@
 
 A persistent memory system for AI coding agents that enables long-term context retention across sessions using local vector database technology.
 
-**Multi-agent (MCP):** one shared runtime for common coding agents:
+**Multi-host (MCP):** one shared runtime for common coding-agent hosts:
 
 ```bash
 npx -y opencode-mem install --ide auto --cwd "$PWD"   # or: --ide all

@@ -2,8 +2,12 @@ import { CONFIG, initConfig } from "../config.js";
 import { findHealthyRuntimeBaseUrl } from "../mcp/runtime-client.js";
 import { readRuntimeInfo } from "../services/runtime-info.js";
 import { AUTH_HEADER, getOrCreateAuthToken } from "../services/auth-token.js";
-import { detectInstalledIdes } from "./ide-detect.js";
-import { isIdeConfigured, SUPPORTED_IDES, type InstallIde } from "./install.js";
+import {
+  detectInstalledIdes,
+  isIdeConfigured,
+  SUPPORTED_IDES,
+  type InstallIde,
+} from "./install.js";
 
 export interface IdeCoverage {
   ide: InstallIde;
@@ -61,7 +65,7 @@ export async function collectStatus(directory = process.cwd()): Promise<StatusRe
     );
   } else {
     advice.push(
-      `Shared runtime is up at ${healthyUrl} — point all agents at the same store (single owner).`
+      `Shared runtime is up at ${healthyUrl} — point all hosts at the same store (single owner).`
     );
     advice.push(
       "Auth token for /api/* lives at ~/.opencode-mem/.auth-token (MCP sends it automatically)."
@@ -74,9 +78,9 @@ export async function collectStatus(directory = process.cwd()): Promise<StatusRe
       `Detected but not configured: ${missing.map((m) => m.ide).join(", ")} — run: opencode-mem install --ide auto --cwd "$PWD"`
     );
   } else if (agents.some((a) => a.configured)) {
-    advice.push("Configured agent MCP/plugin entries look present.");
+    advice.push("Configured host MCP/plugin entries look present.");
   } else {
-    advice.push('No agent configs found yet. Run: opencode-mem install --ide auto --cwd "$PWD"');
+    advice.push('No host configs found yet. Run: opencode-mem install --ide auto --cwd "$PWD"');
   }
 
   // Touch token creation so first MCP call does not race token file creation.
@@ -115,7 +119,7 @@ export async function printStatus(directory = process.cwd()): Promise<void> {
     );
   }
   console.log(`  auth header:    ${AUTH_HEADER}`);
-  console.log(`agents:`);
+  console.log(`hosts:`);
   for (const agent of report.agents) {
     if (!agent.detected && !agent.configured) continue;
     const flags = [

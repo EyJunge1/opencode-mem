@@ -2,11 +2,11 @@
  * Multi-agent provenance for memories.
  * Stored in memory metadata JSON — no schema migration required.
  *
- * Coding-agent host labels are derived from the install catalog so IDE lists
+ * Coding-agent host labels come from the shared host catalog so IDE lists
  * cannot drift. Non-host provenance (mcp/web/import/unknown) stays local.
  */
 
-import { INSTALL_HOST_PLATFORM_SOURCES } from "../cli/install/catalog.js";
+import { INSTALL_HOST_PLATFORM_SOURCES } from "../shared/hosts.js";
 
 const NON_HOST_PROVENANCE = ["mcp", "web", "import", "unknown"] as const;
 

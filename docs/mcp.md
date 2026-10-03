@@ -1,28 +1,30 @@
-# Multi-agent MCP setup
+# Multi-host MCP setup
 
-opencode-mem wires common coding agents via MCP + one shared local runtime.
+opencode-mem wires common coding-agent **hosts** (Cursor, Claude, Codex, …) via MCP + one shared local runtime.
 
 Related: [Issue #366](https://github.com/tickernelz/opencode-mem/issues/366).
+
+> Naming: **host** = Cursor / Claude / … (this doc). OpenCode **session agents** (build, orchestrator, …) and the internal structured-output agent are separate concepts.
 
 ## Quick start
 
 ```bash
-# Detect every installed agent and write MCP (or OpenCode plugin) configs
+# Detect every installed host and write MCP (or OpenCode plugin) configs
 npx -y opencode-mem install --ide auto --cwd "$PWD"
 
 # Or install every supported harness
 npx -y opencode-mem install --ide all --cwd "$PWD"
 
-# One shared runtime for all agents
+# One shared runtime for all hosts
 npx -y opencode-mem serve --cwd "$PWD"
 npx -y opencode-mem status
 ```
 
-Restart IDEs after install. `status` shows detected vs configured agents. OpenCode attaches to a healthy `serve` when `preferSharedRuntime` is on (default).
+Restart IDEs after install. `status` shows detected vs configured hosts. OpenCode attaches to a healthy `serve` when `preferSharedRuntime` is on (default).
 
 With `--cwd`, install also writes **project-local** MCP configs (and pins `OPENCODE_MEM_DIRECTORY` there only). User-global configs stay multi-project safe (no baked directory).
 
-## Supported agents
+## Supported hosts
 
 | IDE / `--ide` | Config written                                                                            | `OPENCODE_MEM_PLATFORM` |
 | ------------- | ----------------------------------------------------------------------------------------- | ----------------------- |
@@ -104,12 +106,12 @@ opencode-mem status [--cwd DIR]
 
 1. `opencode-mem serve --cwd "$PWD"`
 2. `opencode-mem install --ide auto --cwd "$PWD"`
-3. Open OpenCode → attaches to serve; other agents via MCP → same serve
-4. `opencode-mem status` → one healthy URL + agent coverage
+3. Open OpenCode → attaches to serve; other hosts via MCP → same serve
+4. `opencode-mem status` → one healthy URL + host coverage
 
 ## Notes
 
-- This is **MCP-first** multi-agent (faster + cheaper to maintain than native hooks per host).
-- Progressive recall mirrors claude-mem-style disclosure (`timeline`/`search` → `get`); capture outside OpenCode stays agent-initiated (`memory_write`) plus project priming rules.
+- This is **MCP-first** multi-host wiring (faster + cheaper to maintain than native hooks per host).
+- Progressive recall mirrors claude-mem-style disclosure (`timeline`/`search` → `get`); capture outside OpenCode stays host-initiated (`memory_write`) plus project priming rules.
 - OpenCode keeps deep auto-capture / compaction / profile learning; when attached, capture **writes** go through the shared runtime.
 - Auth: `~/.opencode-mem/.auth-token`. Runtime pointer: `~/.opencode-mem/runtime.json`.

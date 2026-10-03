@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
+import { copilotCliMcpPathForHome, vscodeUserMcpPathForHome } from "../../shared/hosts.js";
 import type { InstallIde } from "./catalog.js";
 import type { InstallResult } from "./types.js";
 
@@ -52,17 +53,9 @@ export function multiPathResult(
 }
 
 export function vscodeUserMcpPath(): string {
-  const home = resolveUserHome();
-  if (process.platform === "darwin") {
-    return join(home, "Library", "Application Support", "Code", "User", "mcp.json");
-  }
-  if (process.platform === "win32") {
-    const appData = process.env.APPDATA || join(home, "AppData", "Roaming");
-    return join(appData, "Code", "User", "mcp.json");
-  }
-  return join(home, ".config", "Code", "User", "mcp.json");
+  return vscodeUserMcpPathForHome(resolveUserHome());
 }
 
 export function copilotCliMcpPath(): string {
-  return join(resolveUserHome(), ".copilot", "mcp-config.json");
+  return copilotCliMcpPathForHome(resolveUserHome());
 }

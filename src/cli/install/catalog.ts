@@ -1,70 +1,19 @@
-import { detectInstalledIdes } from "../ide-detect.js";
-
 /**
- * Coding agents / harnesses we can wire via MCP.
- * Native OpenCode plugin remains first-class; everything else gets MCP config.
- *
- * Single source of truth for installable host IDs — PlatformSource host labels
- * are derived from this list (plus non-host provenance like web/import).
+ * CLI-facing install catalog — re-exports shared host IDs and adds parseIdeList.
  */
-export type InstallIde =
-  | "cursor"
-  | "claude"
-  | "codex"
-  | "gemini"
-  | "antigravity"
-  | "opencode"
-  | "windsurf"
-  | "kimi"
-  | "openclaw"
-  | "goose"
-  | "warp"
-  | "copilot"
-  | "grok";
 
-export const SUPPORTED_IDES: InstallIde[] = [
-  "cursor",
-  "claude",
-  "codex",
-  "gemini",
-  "antigravity",
-  "opencode",
-  "windsurf",
-  "kimi",
-  "openclaw",
-  "goose",
-  "warp",
-  "copilot",
-  "grok",
-];
+import { detectInstalledIdes } from "./detect.js";
+import {
+  HOST_IDS,
+  IDE_ALIASES,
+  IDE_NEXT_STEPS,
+  INSTALL_HOST_PLATFORM_SOURCES,
+  SUPPORTED_IDES,
+  type HostId,
+} from "../../shared/hosts.js";
 
-/** Host labels that appear as `platformSource` provenance for coding agents. */
-export const INSTALL_HOST_PLATFORM_SOURCES: readonly InstallIde[] = SUPPORTED_IDES;
-
-/** Common aliases from docs / host CLIs → canonical InstallIde. */
-export const IDE_ALIASES: Record<string, InstallIde> = {
-  "codex-cli": "codex",
-  "claude-code": "claude",
-  "github-copilot": "copilot",
-  "antigravity-cli": "antigravity",
-};
-
-/** Restart / enable hints shown after install. */
-export const IDE_NEXT_STEPS: Record<InstallIde, string> = {
-  cursor: "Restart Cursor (MCP → Tools) so opencode-mem loads",
-  claude: "Restart Claude Code / Claude Desktop so MCP tools appear",
-  codex: "Restart Codex CLI, then verify with /mcp",
-  gemini: "Restart Gemini CLI so ~/.gemini MCP settings reload",
-  antigravity: "Restart Antigravity / Gemini so mcp_config reloads",
-  opencode: "Restart OpenCode — plugin + MCP both registered",
-  windsurf: "Restart Windsurf so mcp_config.json reloads",
-  kimi: "Restart Kimi Code so mcp.json + config.toml reload",
-  openclaw: "Restart OpenClaw so ~/.openclaw/mcp.json reloads",
-  goose: "Restart Goose so the opencode-mem extension loads",
-  warp: "Restart Warp so ~/.warp/mcp.json reloads",
-  copilot: "Reload VS Code / Copilot Chat window so User mcp.json loads",
-  grok: "Restart Grok so ~/.grok/mcp.json reloads",
-};
+export type InstallIde = HostId;
+export { HOST_IDS, IDE_ALIASES, IDE_NEXT_STEPS, INSTALL_HOST_PLATFORM_SOURCES, SUPPORTED_IDES };
 
 export function resolveIdeAlias(raw: string): string {
   return IDE_ALIASES[raw] ?? raw;
@@ -80,7 +29,7 @@ export function parseIdeList(raw: string | undefined): InstallIde[] {
     const detected = detectInstalledIdes();
     if (detected.length === 0) {
       throw new Error(
-        "No coding agents detected under your home directory. Pass --ide explicitly."
+        "No coding-agent hosts detected under your home directory. Pass --ide explicitly."
       );
     }
     return detected;
