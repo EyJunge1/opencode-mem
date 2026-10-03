@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { copilotCliMcpPathForHome, vscodeUserMcpPathForHome } from "../../shared/hosts.js";
-import type { InstallIde } from "./catalog.js";
+import type { InstallHost } from "./catalog.js";
 import type { InstallResult } from "./types.js";
 
 /** Prefer HOME/USERPROFILE so tests and custom environments can redirect writes. */
@@ -36,7 +36,7 @@ export function combineActions(actions: Array<InstallResult["action"]>): Install
 }
 
 export function multiPathResult(
-  ide: InstallIde,
+  host: InstallHost,
   primary: InstallResult,
   extras: InstallResult[]
 ): InstallResult {
@@ -44,7 +44,7 @@ export function multiPathResult(
   const uniqueAlso = [...new Set(also)];
   const baseDetail = primary.detail.split("; also ")[0] ?? primary.detail;
   return {
-    ide,
+    host,
     path: primary.path,
     action: combineActions([primary.action, ...extras.map((e) => e.action)]),
     detail: uniqueAlso.length === 0 ? baseDetail : `${baseDetail}; also ${uniqueAlso.join(", ")}`,

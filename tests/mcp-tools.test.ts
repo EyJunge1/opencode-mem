@@ -34,6 +34,7 @@ describe("MCP server progressive tools", () => {
         calls.push(`write:${args.action}`);
         return { success: true, message: "ok" };
       },
+      executeTool: async () => ({ success: false, error: "not used by MCP stdio" }),
     };
 
     const { server } = await createMcpServer("/tmp", fakeClient);

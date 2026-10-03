@@ -52,7 +52,7 @@ export function installGooseYaml(launch: McpLaunchSpec): InstallResult {
   ensureParentDir(path);
   writeFileSync(path, after.endsWith("\n") ? after : `${after}\n`, { mode: 0o600 });
   return {
-    ide: "goose",
+    host: "goose",
     path,
     action: fileAction(before, after),
     detail: `extensions.opencode-mem → ${launch.command} ${launch.args.join(" ")}`,

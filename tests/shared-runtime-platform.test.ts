@@ -5,7 +5,7 @@ import {
   platformSourceFromMetadata,
   PLATFORM_SOURCE_ENV,
 } from "../src/services/platform-source.js";
-import { detectInstalledIdes } from "../src/cli/install.js";
+import { detectInstalledHosts } from "../src/cli/install.js";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,7 +13,7 @@ import {
   setSharedRuntimeBridge,
   getSharedRuntimeBridge,
   isUsingSharedRuntime,
-} from "../src/services/shared-runtime-bridge.js";
+} from "../src/runtime/bridge.js";
 import { executeMemoryTool } from "../src/services/memory-tool/index.js";
 
 describe("platformSource", () => {
@@ -33,7 +33,7 @@ describe("platformSource", () => {
   });
 });
 
-describe("detectInstalledIdes", () => {
+describe("detectInstalledHosts", () => {
   it("finds hosts from home layout", () => {
     const home = mkdtempSync(join(tmpdir(), "opencode-mem-ide-detect-"));
     try {
@@ -42,7 +42,7 @@ describe("detectInstalledIdes", () => {
       mkdirSync(join(home, ".codeium", "windsurf"), { recursive: true });
       mkdirSync(join(home, ".kimi-code"));
       writeFileSync(join(home, ".claude.json"), "{}");
-      const found = detectInstalledIdes(home);
+      const found = detectInstalledHosts(home);
       expect(found).toContain("cursor");
       expect(found).toContain("codex");
       expect(found).toContain("claude");
@@ -56,23 +56,29 @@ describe("detectInstalledIdes", () => {
 });
 
 describe("shared runtime bridge", () => {
-  it("routes add/search through the bridge when set", async () => {
+  it("routes add/search through full executeTool shapes when set", async () => {
     const calls: string[] = [];
     setSharedRuntimeBridge({
       baseUrl: "http://127.0.0.1:9",
       directory: "/tmp",
-      search: async ({ query }) => {
-        calls.push(`search:${query}`);
-        return { success: true, results: [], hint: "memory_get" };
-      },
-      timeline: async ({ limit }) => {
-        calls.push(`timeline:${limit ?? "default"}`);
-        return { success: true, memories: [], hint: "memory_get" };
-      },
+      search: async () => ({ success: true, results: [], hint: "memory_get" }),
+      timeline: async () => ({ success: true, memories: [], hint: "memory_get" }),
       get: async () => ({ success: true, memories: [] }),
-      write: async ({ action, platformSource }) => {
-        calls.push(`write:${action}:${platformSource}`);
-        return { success: true, id: "mem_bridge" };
+      write: async () => ({ success: true, id: "mem_bridge" }),
+      executeTool: async ({ mode, query, platformSource }) => {
+        calls.push(`tool:${mode}:${query ?? ""}:${platformSource ?? ""}`);
+        if (mode === "search") {
+          return {
+            success: true,
+            query,
+            count: 1,
+            results: [{ id: "1", content: "full hello", similarity: 90 }],
+          };
+        }
+        if (mode === "add") {
+          return { success: true, id: "mem_bridge", platformSource };
+        }
+        return { success: true };
       },
     });
 
@@ -85,7 +91,7 @@ describe("shared runtime bridge", () => {
         )
       );
       expect(add.success).toBe(true);
-      expect(calls).toContain("write:add:opencode");
+      expect(calls).toContain("tool:add::opencode");
 
       const search = JSON.parse(
         await executeMemoryTool(
@@ -94,7 +100,9 @@ describe("shared runtime bridge", () => {
         )
       );
       expect(search.success).toBe(true);
-      expect(calls).toContain("search:hello");
+      expect(search.results?.[0]?.content).toBe("full hello");
+      expect(search.results?.[0]?.similarity).toBe(90);
+      expect(calls).toContain("tool:search:hello:opencode");
       expect(getSharedRuntimeBridge()?.baseUrl).toBe("http://127.0.0.1:9");
     } finally {
       setSharedRuntimeBridge(null);

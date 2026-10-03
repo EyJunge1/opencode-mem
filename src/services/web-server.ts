@@ -38,6 +38,7 @@ import {
   handleUpdateProfileItem,
 } from "./api-handlers.js";
 import { handleMcpApiRoute } from "../runtime/http/mcp-routes.js";
+import { handleRuntimeApiRoute } from "../runtime/http/runtime-routes.js";
 
 /**
  * Runtime-portable HTTP server handle.
@@ -482,6 +483,9 @@ export class WebServer {
           pid: process.pid,
         });
       }
+
+      const runtimeResponse = await handleRuntimeApiRoute(req, path, method);
+      if (runtimeResponse) return runtimeResponse;
 
       const mcpResponse = await handleMcpApiRoute(req, path, method);
       if (mcpResponse) return mcpResponse;

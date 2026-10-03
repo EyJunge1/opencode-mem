@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { InstallIde } from "../catalog.js";
+import type { InstallHost } from "../catalog.js";
 import { ensureParentDir, fileAction, resolveUserHome } from "../paths.js";
 import type { InstallResult, McpLaunchSpec } from "../types.js";
 
@@ -51,7 +51,7 @@ export function mergeCodexToml(existing: string, section: string): string {
 export function installTomlMcpAt(
   path: string,
   launch: McpLaunchSpec,
-  ide: InstallIde
+  host: InstallHost
 ): InstallResult {
   const before = existsSync(path) ? readFileSync(path, "utf-8") : "";
   const section = formatTomlMcpSection(launch);
@@ -59,7 +59,7 @@ export function installTomlMcpAt(
   ensureParentDir(path);
   writeFileSync(path, after.endsWith("\n") ? after : `${after}\n`, { mode: 0o600 });
   return {
-    ide,
+    host,
     path,
     action: fileAction(before, after),
     detail: `mcp_servers.opencode-mem → ${launch.command} ${launch.args.join(" ")}`,
@@ -67,11 +67,11 @@ export function installTomlMcpAt(
 }
 
 export function installTomlMcp(
-  ide: InstallIde,
+  host: InstallHost,
   relativePath: string,
   launch: McpLaunchSpec
 ): InstallResult {
-  return installTomlMcpAt(join(resolveUserHome(), relativePath), launch, ide);
+  return installTomlMcpAt(join(resolveUserHome(), relativePath), launch, host);
 }
 
 export function tomlHasMcp(path: string): boolean {

@@ -10,7 +10,7 @@ function userHome(): string {
  * Detect installed coding-agent hosts by well-known config / app directories
  * from the shared HostSpec catalog.
  */
-export function detectInstalledIdes(home = userHome()): HostId[] {
+export function detectInstalledHosts(home = userHome()): HostId[] {
   const found: HostId[] = [];
   for (const spec of HOST_SPECS) {
     if (spec.detectPaths(home).some((p) => existsSync(p))) {
@@ -19,3 +19,6 @@ export function detectInstalledIdes(home = userHome()): HostId[] {
   }
   return found;
 }
+
+/** @deprecated Use `detectInstalledHosts`. */
+export const detectInstalledIdes = detectInstalledHosts;

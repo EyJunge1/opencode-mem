@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { InstallIde } from "../catalog.js";
+import type { InstallHost } from "../catalog.js";
 import { ensureParentDir, fileAction, resolveUserHome } from "../paths.js";
 import type { InstallResult, McpLaunchSpec } from "../types.js";
 
@@ -35,7 +35,7 @@ export function mergeJsonMcpServers(
   path: string,
   key: "mcpServers" | "mcp",
   launch: McpLaunchSpec,
-  ide: InstallIde,
+  host: InstallHost,
   serverName = "opencode-mem"
 ): InstallResult {
   const before = existsSync(path) ? readFileSync(path, "utf-8") : "";
@@ -49,7 +49,7 @@ export function mergeJsonMcpServers(
   writeJsonFile(path, data);
   const after = readFileSync(path, "utf-8");
   return {
-    ide,
+    host,
     path,
     action: fileAction(before, after),
     detail: `${key}.${serverName} → ${launch.command} ${launch.args.join(" ")}`,
@@ -60,7 +60,7 @@ export function mergeJsonMcpServers(
 export function mergeVscodeServersMcp(
   path: string,
   launch: McpLaunchSpec,
-  ide: InstallIde,
+  host: InstallHost,
   serverName = "opencode-mem"
 ): InstallResult {
   const before = existsSync(path) ? readFileSync(path, "utf-8") : "";
@@ -82,7 +82,7 @@ export function mergeVscodeServersMcp(
   writeJsonFile(path, data);
   const after = readFileSync(path, "utf-8");
   return {
-    ide,
+    host,
     path,
     action: fileAction(before, after),
     detail: `servers.${serverName} → ${launch.command} ${launch.args.join(" ")}`,
@@ -90,12 +90,12 @@ export function mergeVscodeServersMcp(
 }
 
 export function installJsonMcp(
-  ide: InstallIde,
+  host: InstallHost,
   relativePath: string,
   launch: McpLaunchSpec,
   key: "mcpServers" | "mcp" = "mcpServers"
 ): InstallResult {
-  return mergeJsonMcpServers(join(resolveUserHome(), relativePath), key, launch, ide);
+  return mergeJsonMcpServers(join(resolveUserHome(), relativePath), key, launch, host);
 }
 
 export function jsonHasMcpServer(path: string, name = "opencode-mem"): boolean {

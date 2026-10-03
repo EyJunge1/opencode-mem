@@ -21,7 +21,7 @@ export function mergeOpenClawServers(path: string, launch: McpLaunchSpec): Insta
   writeJsonFile(path, data);
   const after = readFileSync(path, "utf-8");
   return {
-    ide: "openclaw",
+    host: "openclaw",
     path,
     action: fileAction(before, after),
     detail: `mcp.servers.opencode-mem → ${launch.command} ${launch.args.join(" ")}`,

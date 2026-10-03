@@ -4,7 +4,7 @@ import { getLanguageName } from "../language-detector.js";
 import { stripPrivateContent, isFullyPrivate } from "../privacy.js";
 import { getTags } from "../tags.js";
 import { resolvePlatformSource } from "../platform-source.js";
-import { getSharedRuntimeBridge } from "../shared-runtime-bridge.js";
+import { getSharedRuntimeBridge } from "../../runtime/bridge.js";
 import { formatSearchResults, type MemoryToolArgs, type MemoryToolContext } from "./types.js";
 
 /**
@@ -12,7 +12,9 @@ import { formatSearchResults, type MemoryToolArgs, type MemoryToolContext } from
  * HTTP MCP endpoints, and (indirectly) the MCP stdio server.
  *
  * When a shared runtime bridge is active (OpenCode attached to `serve`), common
- * modes are proxied over HTTP so Turso/embeddings stay single-owner.
+ * modes are proxied over `/api/runtime/tool` so Turso/embeddings stay
+ * single-owner and response shapes match in-process plugin results.
+ * MCP progressive compression stays on `/api/mcp/*` only.
  */
 export async function executeMemoryTool(
   args: MemoryToolArgs,
@@ -43,54 +45,22 @@ async function executeMemoryToolViaBridge(
   const platformSource = resolvePlatformSource(ctx.platformSource);
 
   try {
-    switch (mode) {
-      case "help":
-        return executeMemoryToolLocal({ mode: "help" }, ctx);
-      case "search": {
-        if (!args.query) return JSON.stringify({ success: false, error: "query required" });
-        const result = await bridge.search({
-          query: args.query,
-          limit: args.limit,
-          scope: args.scope,
-        });
-        return JSON.stringify(result);
-      }
-      case "list": {
-        const result = await bridge.timeline({
-          limit: args.limit,
-          scope: args.scope,
-        });
-        return JSON.stringify(result);
-      }
-      case "add": {
-        const result = await bridge.write({
-          action: "add",
-          content: args.content,
-          tags: args.tags,
-          type: args.type,
-          platformSource,
-        });
-        return JSON.stringify(result);
-      }
-      case "forget": {
-        const result = await bridge.write({
-          action: "forget",
-          memoryId: args.memoryId,
-          platformSource,
-        });
-        return JSON.stringify(result);
-      }
-      case "profile": {
-        const result = await bridge.write({
-          action: "profile",
-          content: args.content,
-          platformSource,
-        });
-        return JSON.stringify(result);
-      }
-      default:
-        return executeMemoryToolLocal(args, ctx);
+    if (mode === "help") {
+      return executeMemoryToolLocal({ mode: "help" }, ctx);
     }
+
+    const result = await bridge.executeTool({
+      mode,
+      content: args.content,
+      query: args.query,
+      tags: args.tags,
+      type: args.type,
+      memoryId: args.memoryId,
+      limit: args.limit,
+      scope: args.scope,
+      platformSource,
+    });
+    return JSON.stringify(result);
   } catch (error) {
     return JSON.stringify({
       success: false,

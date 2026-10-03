@@ -164,12 +164,12 @@ async function capturePrompt(
             ? `${summaryResult.summary}\n\nTags: ${summaryResult.tags.join(", ")}`
             : summaryResult.summary;
 
-        const { getSharedRuntimeBridge } = await import("./shared-runtime-bridge.js");
+        const { getSharedRuntimeBridge } = await import("../runtime/bridge.js");
         const bridge = getSharedRuntimeBridge();
         let result: { success: boolean; id?: string; error?: string };
         if (bridge) {
-          const remote = (await bridge.write({
-            action: "add",
+          const remote = (await bridge.executeTool({
+            mode: "add",
             content: summaryWithTags,
             tags: summaryResult.tags?.join(","),
             type: summaryResult.type,

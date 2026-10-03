@@ -3,20 +3,17 @@ import { findHealthyRuntimeBaseUrl } from "../runtime/client.js";
 import { readRuntimeInfo } from "../services/runtime-info.js";
 import { AUTH_HEADER, getOrCreateAuthToken } from "../services/auth-token.js";
 import {
-  detectInstalledIdes,
-  isIdeConfigured,
-  SUPPORTED_IDES,
-  type InstallIde,
+  detectInstalledHosts,
+  isHostConfigured,
+  SUPPORTED_HOSTS,
+  type InstallHost,
 } from "./install.js";
 
-export interface IdeCoverage {
-  ide: InstallIde;
+export interface HostCoverage {
+  host: InstallHost;
   detected: boolean;
   configured: boolean;
 }
-
-/** Host coverage entry (CLI still uses `ide` field for InstallIde compat). */
-export type HostCoverage = IdeCoverage;
 
 export interface StatusReport {
   directory: string;
@@ -53,11 +50,11 @@ export async function collectStatus(directory = process.cwd()): Promise<StatusRe
     }
   }
 
-  const detected = new Set(detectInstalledIdes());
-  const hosts: HostCoverage[] = SUPPORTED_IDES.map((ide) => ({
-    ide,
-    detected: detected.has(ide),
-    configured: isIdeConfigured(ide),
+  const detected = new Set(detectInstalledHosts());
+  const hosts: HostCoverage[] = SUPPORTED_HOSTS.map((host) => ({
+    host,
+    detected: detected.has(host),
+    configured: isHostConfigured(host),
   }));
 
   const advice: string[] = [];
@@ -78,7 +75,7 @@ export async function collectStatus(directory = process.cwd()): Promise<StatusRe
   const missing = hosts.filter((h) => h.detected && !h.configured);
   if (missing.length > 0) {
     advice.push(
-      `Detected but not configured: ${missing.map((m) => m.ide).join(", ")} — run: opencode-mem install --host auto --cwd "$PWD"`
+      `Detected but not configured: ${missing.map((m) => m.host).join(", ")} — run: opencode-mem install --host auto --cwd "$PWD"`
     );
   } else if (hosts.some((h) => h.configured)) {
     advice.push("Configured host MCP/plugin entries look present.");
@@ -131,7 +128,7 @@ export async function printStatus(directory = process.cwd()): Promise<void> {
     ]
       .filter(Boolean)
       .join(", ");
-    console.log(`  - ${host.ide}: ${flags}`);
+    console.log(`  - ${host.host}: ${flags}`);
   }
   if (report.hosts.every((h) => !h.detected && !h.configured)) {
     console.log(`  (none detected or configured)`);

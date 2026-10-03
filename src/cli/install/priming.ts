@@ -38,7 +38,7 @@ function upsertMarkedBlock(existing: string, block: string): string {
 }
 
 function writeMarkedTextFile(
-  ide: HostId,
+  host: HostId,
   path: string,
   block: string,
   detail: string
@@ -50,7 +50,7 @@ function writeMarkedTextFile(
     writeFileSync(path, after.endsWith("\n") ? after : `${after}\n`, { mode: 0o600 });
   }
   return {
-    ide,
+    host,
     path,
     action: fileAction(before, after),
     detail,
@@ -76,9 +76,9 @@ function cursorRulesContent(): string {
  * memory_timeline / memory_search without native SessionStart hooks.
  * Only project-local files (needs --cwd) — never mutates user docs globally.
  */
-export function installIdePriming(ide: HostId, projectDir?: string): InstallResult[] {
+export function installHostPriming(host: HostId, projectDir?: string): InstallResult[] {
   if (!projectDir) return [];
-  const priming = getHostSpec(ide).priming;
+  const priming = getHostSpec(host).priming;
   if (!priming) return [];
 
   const path = join(projectDir, priming.relPath);
@@ -93,7 +93,7 @@ export function installIdePriming(ide: HostId, projectDir?: string): InstallResu
       }
       return [
         {
-          ide,
+          host,
           path,
           action: fileAction(before, after),
           detail: priming.detail,
@@ -104,10 +104,10 @@ export function installIdePriming(ide: HostId, projectDir?: string): InstallResu
       const body = priming.heading
         ? `${priming.heading}\n\n${MEMORY_PRIMING_BODY}`
         : MEMORY_PRIMING_BODY;
-      return [writeMarkedTextFile(ide, path, body, priming.detail)];
+      return [writeMarkedTextFile(host, path, body, priming.detail)];
     }
     case "rules-md":
-      return [writeMarkedTextFile(ide, path, MEMORY_PRIMING_BODY, priming.detail)];
+      return [writeMarkedTextFile(host, path, MEMORY_PRIMING_BODY, priming.detail)];
     default: {
       const _exhaustive: never = priming.kind;
       void _exhaustive;
@@ -115,3 +115,6 @@ export function installIdePriming(ide: HostId, projectDir?: string): InstallResu
     }
   }
 }
+
+/** @deprecated Use `installHostPriming`. */
+export const installIdePriming = installHostPriming;

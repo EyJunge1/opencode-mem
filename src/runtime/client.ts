@@ -10,16 +10,23 @@ const START_POLL_MS = 400;
 
 /**
  * HTTP client for the shared standalone runtime (`opencode-mem serve`).
- * Used by MCP stdio, OpenCode attach, and CLI status — not MCP-transport-specific.
+ *
+ * `runtime/` is the shared-process boundary: discovery/auto-start, this client,
+ * HTTP routes under `runtime/http/`, and the attach bridge in `runtime/bridge.ts`.
+ *
+ * - `/api/mcp/*` — progressive/compact shapes for MCP hosts
+ * - `/api/runtime/tool` — full plugin shapes for OpenCode attach
  */
 export interface SharedRuntimeClient {
   baseUrl: string;
   directory: string;
+  /** Compact MCP progressive search (`/api/mcp/search`). */
   search(args: {
     query: string;
     limit?: number;
     scope?: "project" | "all-projects";
   }): Promise<object>;
+  /** Compact MCP chronological index (`/api/mcp/timeline`). */
   timeline(args: { limit?: number; scope?: "project" | "all-projects" }): Promise<object>;
   get(ids: string[]): Promise<object>;
   write(args: {
@@ -28,6 +35,21 @@ export interface SharedRuntimeClient {
     tags?: string;
     type?: string;
     memoryId?: string;
+    platformSource?: string;
+  }): Promise<object>;
+  /**
+   * Full plugin memory-tool shapes via `/api/runtime/tool`.
+   * Used when OpenCode attaches so search/list match in-process responses.
+   */
+  executeTool(args: {
+    mode?: string;
+    content?: string;
+    query?: string;
+    tags?: string;
+    type?: string;
+    memoryId?: string;
+    limit?: number;
+    scope?: "project" | "all-projects";
     platformSource?: string;
   }): Promise<object>;
 }
@@ -162,6 +184,18 @@ export async function ensureSharedRuntimeClient(
           ...args,
           cwd: directory,
           platformSource: args.platformSource ?? process.env.OPENCODE_MEM_PLATFORM ?? "mcp",
+        }),
+      });
+      return (await res.json()) as object;
+    },
+    async executeTool(args) {
+      const res = await fetch(`${baseUrl}/api/runtime/tool`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          ...args,
+          cwd: directory,
+          platformSource: args.platformSource ?? process.env.OPENCODE_MEM_PLATFORM ?? "opencode",
         }),
       });
       return (await res.json()) as object;

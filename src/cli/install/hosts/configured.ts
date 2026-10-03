@@ -10,9 +10,9 @@ import { opencodeIsConfigured } from "./opencode.js";
  * Whether a host config file already contains an opencode-mem MCP / plugin entry.
  * Used by `status` to show install coverage without mutating files.
  */
-export function isIdeConfigured(ide: HostId): boolean {
+export function isHostConfigured(host: HostId): boolean {
   const home = resolveUserHome();
-  const spec = getHostSpec(ide);
+  const spec = getHostSpec(host);
   try {
     switch (spec.configKind) {
       case "json-mcpServers":
@@ -37,3 +37,6 @@ export function isIdeConfigured(ide: HostId): boolean {
     return false;
   }
 }
+
+/** @deprecated Use `isHostConfigured`. */
+export const isIdeConfigured = isHostConfigured;

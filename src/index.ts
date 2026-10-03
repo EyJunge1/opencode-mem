@@ -15,7 +15,7 @@ import { WebAuth } from "./services/web-auth.js";
 import { executeMemoryTool, type MemoryToolArgs } from "./services/memory-tool/index.js";
 import { writeRuntimeInfo, clearRuntimeInfo } from "./services/runtime-info.js";
 import { findHealthyRuntimeBaseUrl, ensureSharedRuntimeClient } from "./runtime/client.js";
-import { setSharedRuntimeBridge } from "./services/shared-runtime-bridge.js";
+import { setSharedRuntimeBridge } from "./runtime/bridge.js";
 import { readRuntimeInfo } from "./services/runtime-info.js";
 
 import { isConfigured, CONFIG, initConfig } from "./config.js";

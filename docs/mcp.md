@@ -59,6 +59,19 @@ OpenCode plugin + MCP
   → MCP tools: memory_timeline / memory_search / memory_get / memory_write
 ```
 
+### Shared-process boundary (`src/runtime/`)
+
+`runtime/` owns the shared-process boundary — not domain storage:
+
+| Piece                            | Role                                                     |
+| -------------------------------- | -------------------------------------------------------- |
+| `runtime/client.ts`              | Discovery, auto-start `serve`, HTTP client               |
+| `runtime/bridge.ts`              | OpenCode in-process attach pointer                       |
+| `runtime/http/mcp-routes.ts`     | `/api/mcp/*` — **compact** progressive MCP shapes        |
+| `runtime/http/runtime-routes.ts` | `/api/runtime/tool` — **full** plugin memory-tool shapes |
+
+MCP hosts use `/api/mcp/*`. OpenCode attach uses `/api/runtime/tool` so search/list match in-process responses (full `content` / `similarity`, not snippets).
+
 ### Progressive tools (token-aware)
 
 | Tool              | Role                                                       |
@@ -118,11 +131,23 @@ New coding-agent hosts go through the existing install catalog — **not** throu
 1. Add a `HostSpec` entry in [`src/shared/hosts.ts`](../src/shared/hosts.ts) (`HOST_IDS`, detect/config paths, optional priming, `configKind`).
 2. Wire install under [`src/cli/install/`](../src/cli/install/):
    - reuse a format in `formats/` when possible (`json`, `toml`, …), or add a small adapter under `hosts/` for one-off layouts;
-   - `installIde()` already dispatches on `spec.configKind`.
+   - `installHost()` already dispatches on `spec.configKind`.
 3. Optional project priming via `priming` on the host spec + `install/priming.ts`.
 4. Cover detection/config in `tests/install-ide.test.ts` (and status coverage if needed).
 
 Do **not** put host detection, MCP config writers, or `platformSource` labels under `services/` storage/AI modules.
+
+## Deferred structure (post-MVP)
+
+Keep this branch focused on multi-host wiring. After merge, cut the `services/` god-folder along the same pattern as `cli/install/`:
+
+1. HTTP/Web (`web-server.ts`, `api-handlers.ts`, auth/cors) → `runtime/http/` + optional `web/`
+2. Memory CRUD / capture / learning → `services/memory/` (or sibling packages)
+3. OpenCode plugin orchestration out of root `index.ts` → e.g. `hosts/opencode/`
+4. `platform-source.ts` next to `shared/hosts.ts`
+5. Split oversized files (`api-handlers.ts`, `user-profile-manager.ts`, `config.ts`) only after domain packages exist
+
+Do **not** big-bang rename `turso/`, `memory-tool/`, or `cli/install/` — those boundaries already work.
 
 ## Notes
 

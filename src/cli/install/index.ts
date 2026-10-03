@@ -4,8 +4,8 @@
  */
 import { join } from "node:path";
 import { getHostSpec, type HostId } from "../../shared/hosts.js";
-import { installIdePriming } from "./priming.js";
-import type { InstallIde } from "./catalog.js";
+import { installHostPriming } from "./priming.js";
+import type { InstallHost } from "./catalog.js";
 import { mergeJsonMcpServers } from "./formats/json.js";
 import { mergeOpenClawServers } from "./formats/openclaw.js";
 import { installTomlMcpAt } from "./formats/toml.js";
@@ -16,88 +16,101 @@ import { pinLaunchDirectory, resolveMcpLaunch, withoutLaunchDirectory } from "./
 import { multiPathResult, resolveProjectDir, resolveUserHome } from "./paths.js";
 import type { InstallResult, McpLaunchSpec } from "./types.js";
 
-export type { InstallIde } from "./catalog.js";
+export type { InstallHost, InstallIde } from "./catalog.js";
 export {
+  HOST_ALIASES,
+  HOST_NEXT_STEPS,
   IDE_ALIASES,
   IDE_NEXT_STEPS,
   INSTALL_HOST_PLATFORM_SOURCES,
+  SUPPORTED_HOSTS,
   SUPPORTED_IDES,
+  parseHostList,
   parseIdeList,
+  resolveHostAlias,
   resolveIdeAlias,
 } from "./catalog.js";
 export type { InstallResult, McpLaunchSpec } from "./types.js";
 export { pinLaunchDirectory, resolveMcpLaunch, withoutLaunchDirectory } from "./launch.js";
 export { resolveUserHome } from "./paths.js";
 export { mergeCodexToml, mergeTomlTableSection } from "./formats/toml.js";
-export { isIdeConfigured } from "./hosts/configured.js";
-export { detectInstalledIdes } from "./detect.js";
-export { installIdePriming } from "./priming.js";
+export { isHostConfigured, isIdeConfigured } from "./hosts/configured.js";
+export { detectInstalledHosts, detectInstalledIdes } from "./detect.js";
+export { installHostPriming, installIdePriming } from "./priming.js";
 
 /** Project-local session priming (rules / CLAUDE.md) for MCP-only hosts. */
-function withPriming(ide: InstallIde, primary: InstallResult, projectDir?: string): InstallResult {
-  const priming = installIdePriming(ide, projectDir);
+function withPriming(
+  host: InstallHost,
+  primary: InstallResult,
+  projectDir?: string
+): InstallResult {
+  const priming = installHostPriming(host, projectDir);
   if (!priming.length) return primary;
-  return multiPathResult(ide, primary, priming);
+  return multiPathResult(host, primary, priming);
 }
 
 function installJsonHost(
-  ide: HostId,
+  host: HostId,
   userLaunch: McpLaunchSpec,
   projectLaunch: McpLaunchSpec,
   projectDir?: string
 ): InstallResult {
-  const spec = getHostSpec(ide);
+  const spec = getHostSpec(host);
   const home = resolveUserHome();
   const userPath = spec.userConfigPaths(home)[0];
-  if (!userPath) throw new Error(`Host ${ide} has no user config path`);
+  if (!userPath) throw new Error(`Host ${host} has no user config path`);
 
-  const user = mergeJsonMcpServers(userPath, "mcpServers", userLaunch, ide);
+  const user = mergeJsonMcpServers(userPath, "mcpServers", userLaunch, host);
   if (!projectDir || !spec.projectConfigRelPath) {
-    return withPriming(ide, user, projectDir);
+    return withPriming(host, user, projectDir);
   }
   const project = mergeJsonMcpServers(
     join(projectDir, spec.projectConfigRelPath),
     "mcpServers",
     projectLaunch,
-    ide
+    host
   );
-  return withPriming(ide, multiPathResult(ide, user, [project]), projectDir);
+  return withPriming(host, multiPathResult(host, user, [project]), projectDir);
 }
 
 function installTomlHost(
-  ide: HostId,
+  host: HostId,
   userLaunch: McpLaunchSpec,
   projectLaunch: McpLaunchSpec,
   projectDir?: string
 ): InstallResult {
-  const spec = getHostSpec(ide);
+  const spec = getHostSpec(host);
   const home = resolveUserHome();
   const userPath = spec.userConfigPaths(home)[0];
-  if (!userPath) throw new Error(`Host ${ide} has no user config path`);
+  if (!userPath) throw new Error(`Host ${host} has no user config path`);
 
-  const user = installTomlMcpAt(userPath, userLaunch, ide);
+  const user = installTomlMcpAt(userPath, userLaunch, host);
   if (!projectDir || !spec.projectConfigRelPath) return user;
-  const project = installTomlMcpAt(join(projectDir, spec.projectConfigRelPath), projectLaunch, ide);
-  return multiPathResult(ide, user, [project]);
+  const project = installTomlMcpAt(
+    join(projectDir, spec.projectConfigRelPath),
+    projectLaunch,
+    host
+  );
+  return multiPathResult(host, user, [project]);
 }
 
-export function installIde(
-  ide: InstallIde,
+export function installHost(
+  host: InstallHost,
   options: { projectDir?: string; launch?: McpLaunchSpec } = {}
 ): InstallResult {
   const projectDir = resolveProjectDir(options.projectDir);
   const baseLaunch =
-    options.launch ?? resolveMcpLaunch(projectDir, ide === "opencode" ? "opencode" : ide);
+    options.launch ?? resolveMcpLaunch(projectDir, host === "opencode" ? "opencode" : host);
   // User-global configs must not pin a single project directory.
   const userLaunch = withoutLaunchDirectory(baseLaunch);
   const projectLaunch = pinLaunchDirectory(userLaunch, projectDir);
-  const spec = getHostSpec(ide);
+  const spec = getHostSpec(host);
 
   switch (spec.configKind) {
     case "json-mcpServers":
-      return installJsonHost(ide, userLaunch, projectLaunch, projectDir);
+      return installJsonHost(host, userLaunch, projectLaunch, projectDir);
     case "toml":
-      return installTomlHost(ide, userLaunch, projectLaunch, projectDir);
+      return installTomlHost(host, userLaunch, projectLaunch, projectDir);
     case "opencode":
       return installOpencode(projectDir, userLaunch);
     case "openclaw":
@@ -108,17 +121,23 @@ export function installIde(
       return installCopilot(userLaunch, projectLaunch, projectDir);
     default: {
       const _exhaustive: never = spec.configKind;
-      throw new Error(`Unsupported IDE config kind: ${_exhaustive}`);
+      throw new Error(`Unsupported host config kind: ${_exhaustive}`);
     }
   }
 }
 
-export function runInstall(options: { ides: InstallIde[]; projectDir?: string }): InstallResult[] {
+/** @deprecated Use `installHost`. */
+export const installIde = installHost;
+
+export function runInstall(options: {
+  hosts: InstallHost[];
+  projectDir?: string;
+}): InstallResult[] {
   const projectDir = resolveProjectDir(options.projectDir);
-  return options.ides.map((ide) =>
-    installIde(ide, {
+  return options.hosts.map((host) =>
+    installHost(host, {
       projectDir,
-      launch: resolveMcpLaunch(projectDir, ide === "opencode" ? "opencode" : ide),
+      launch: resolveMcpLaunch(projectDir, host === "opencode" ? "opencode" : host),
     })
   );
 }

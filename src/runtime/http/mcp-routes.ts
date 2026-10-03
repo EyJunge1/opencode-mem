@@ -18,6 +18,8 @@ function jsonResponse(data: unknown, status = 200): Response {
 
 /**
  * Handle `/api/mcp/*` progressive memory routes for the shared runtime.
+ * These return **compact** MCP shapes (snippet/score). Full plugin shapes live
+ * under `/api/runtime/tool` — see `runtime-routes.ts`.
  * Returns `null` when the path is not an MCP API route.
  */
 export async function handleMcpApiRoute(

@@ -1,4 +1,4 @@
-import type { InstallIde } from "./catalog.js";
+import type { InstallHost } from "./catalog.js";
 
 export interface McpLaunchSpec {
   command: string;
@@ -7,7 +7,7 @@ export interface McpLaunchSpec {
 }
 
 export interface InstallResult {
-  ide: InstallIde;
+  host: InstallHost;
   path: string;
   action: "created" | "updated" | "unchanged";
   detail: string;

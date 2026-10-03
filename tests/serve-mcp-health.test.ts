@@ -59,6 +59,23 @@ describe("standalone serve + MCP health", () => {
       const badBody = (await badWrite.json()) as { success: boolean; error?: string };
       expect(badBody.success).toBe(false);
       expect(badBody.error).toContain("action");
+
+      // Internal runtime tool endpoint (full plugin shapes) is mounted.
+      const runtimeHelp = await fetch(`http://127.0.0.1:${port}/api/runtime/tool`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [AUTH_HEADER]: token,
+        },
+        body: JSON.stringify({ mode: "help" }),
+      });
+      expect(runtimeHelp.ok).toBe(true);
+      const helpBody = (await runtimeHelp.json()) as {
+        success: boolean;
+        commands?: unknown[];
+      };
+      expect(helpBody.success).toBe(true);
+      expect(Array.isArray(helpBody.commands)).toBe(true);
     } finally {
       clearRuntimeInfo(process.pid);
       await server.stop();

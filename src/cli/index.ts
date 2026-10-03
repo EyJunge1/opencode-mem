@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { runServe } from "./serve.js";
 import { runMcpServer } from "../mcp/server.js";
-import { parseIdeList, runInstall, SUPPORTED_IDES, IDE_NEXT_STEPS } from "./install.js";
+import { parseHostList, runInstall, SUPPORTED_HOSTS, HOST_NEXT_STEPS } from "./install.js";
 import { printStatus } from "./status.js";
 
 function printHelp(): void {
@@ -21,7 +21,7 @@ Commands:
   status    Show whether a shared runtime is healthy
 
 Install hosts:
-  ${SUPPORTED_IDES.join(", ")}, all, auto
+  ${SUPPORTED_HOSTS.join(", ")}, all, auto
 
   Flags: --host (preferred) or --ide (alias)
 
@@ -82,10 +82,10 @@ async function main(): Promise<void> {
     }
     // --host is preferred; --ide remains as a compatibility alias.
     const hostRaw = readFlag(rest, "--host") ?? readFlag(rest, "--ide");
-    const ides = parseIdeList(hostRaw);
-    const results = runInstall({ ides, projectDir: cwd });
+    const hosts = parseHostList(hostRaw);
+    const results = runInstall({ hosts, projectDir: cwd });
     for (const result of results) {
-      console.log(`[${result.action}] ${result.ide}: ${result.path}\n  ${result.detail}`);
+      console.log(`[${result.action}] ${result.host}: ${result.path}\n  ${result.detail}`);
       if (result.also?.length) {
         for (const extra of result.also) {
           console.log(`  + ${extra}`);
@@ -95,10 +95,10 @@ async function main(): Promise<void> {
     console.log("\nNext steps:");
     const seen = new Set<string>();
     for (const result of results) {
-      const tip = IDE_NEXT_STEPS[result.ide];
-      if (tip && !seen.has(result.ide)) {
-        seen.add(result.ide);
-        console.log(`  - ${result.ide}: ${tip}`);
+      const tip = HOST_NEXT_STEPS[result.host];
+      if (tip && !seen.has(result.host)) {
+        seen.add(result.host);
+        console.log(`  - ${result.host}: ${tip}`);
       }
     }
     console.log("  - Prefer one shared runtime: opencode-mem serve");

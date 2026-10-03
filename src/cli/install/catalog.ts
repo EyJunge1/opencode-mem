@@ -1,34 +1,51 @@
 /**
- * CLI-facing install catalog — re-exports shared host IDs and adds parseIdeList.
+ * CLI-facing install catalog — re-exports shared host IDs and adds parseHostList.
  */
 
-import { detectInstalledIdes } from "./detect.js";
+import { detectInstalledHosts } from "./detect.js";
 import {
+  HOST_ALIASES,
   HOST_IDS,
+  HOST_NEXT_STEPS,
   IDE_ALIASES,
   IDE_NEXT_STEPS,
   INSTALL_HOST_PLATFORM_SOURCES,
+  SUPPORTED_HOSTS,
   SUPPORTED_IDES,
   type HostId,
+  type InstallHost,
+  type InstallIde,
 } from "../../shared/hosts.js";
 
-export type InstallIde = HostId;
-export { HOST_IDS, IDE_ALIASES, IDE_NEXT_STEPS, INSTALL_HOST_PLATFORM_SOURCES, SUPPORTED_IDES };
+export type { HostId, InstallHost, InstallIde };
+export {
+  HOST_ALIASES,
+  HOST_IDS,
+  HOST_NEXT_STEPS,
+  IDE_ALIASES,
+  IDE_NEXT_STEPS,
+  INSTALL_HOST_PLATFORM_SOURCES,
+  SUPPORTED_HOSTS,
+  SUPPORTED_IDES,
+};
 
-export function resolveIdeAlias(raw: string): string {
-  return IDE_ALIASES[raw] ?? raw;
+export function resolveHostAlias(raw: string): string {
+  return HOST_ALIASES[raw] ?? raw;
 }
 
-export function parseIdeList(raw: string | undefined): InstallIde[] {
+/** @deprecated Use `resolveHostAlias`. */
+export const resolveIdeAlias = resolveHostAlias;
+
+export function parseHostList(raw: string | undefined): InstallHost[] {
   if (!raw || !raw.trim()) {
     throw new Error(
-      `Missing --host / --ide. Use one of: ${SUPPORTED_IDES.join(", ")}, all, or auto`
+      `Missing --host / --ide. Use one of: ${SUPPORTED_HOSTS.join(", ")}, all, or auto`
     );
   }
   const normalized = raw.trim().toLowerCase();
-  if (normalized === "all") return [...SUPPORTED_IDES];
+  if (normalized === "all") return [...SUPPORTED_HOSTS];
   if (normalized === "auto") {
-    const detected = detectInstalledIdes();
+    const detected = detectInstalledHosts();
     if (detected.length === 0) {
       throw new Error(
         "No coding-agent hosts detected under your home directory. Pass --host / --ide explicitly."
@@ -41,16 +58,21 @@ export function parseIdeList(raw: string | undefined): InstallIde[] {
     .split(",")
     .map((p) => p.trim().toLowerCase())
     .filter(Boolean);
-  const out: InstallIde[] = [];
+  const out: InstallHost[] = [];
   for (const part of parts) {
     if (part === "auto" || part === "all") {
       throw new Error(`Use --host / --ide ${part} alone, not mixed with other values`);
     }
-    const aliased = resolveIdeAlias(part);
-    if (!SUPPORTED_IDES.includes(aliased as InstallIde)) {
-      throw new Error(`Unknown host "${part}". Supported: ${SUPPORTED_IDES.join(", ")}, all, auto`);
+    const aliased = resolveHostAlias(part);
+    if (!SUPPORTED_HOSTS.includes(aliased as InstallHost)) {
+      throw new Error(
+        `Unknown host "${part}". Supported: ${SUPPORTED_HOSTS.join(", ")}, all, auto`
+      );
     }
-    if (!out.includes(aliased as InstallIde)) out.push(aliased as InstallIde);
+    if (!out.includes(aliased as InstallHost)) out.push(aliased as InstallHost);
   }
   return out;
 }
+
+/** @deprecated Use `parseHostList`. */
+export const parseIdeList = parseHostList;

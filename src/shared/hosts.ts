@@ -32,7 +32,9 @@ export const HOST_IDS = [
 
 export type HostId = (typeof HOST_IDS)[number];
 
-/** CLI-facing alias for HostId. */
+/** CLI-facing alias for HostId (prefer `HostId`). */
+export type InstallHost = HostId;
+/** @deprecated Use `HostId` or `InstallHost`. */
 export type InstallIde = HostId;
 
 /** Host labels used as `platformSource` provenance for coding agents. */
@@ -240,12 +242,18 @@ export function getHostSpec(id: HostId): HostSpec {
   return spec;
 }
 
-export const SUPPORTED_IDES: HostId[] = [...HOST_IDS];
+export const SUPPORTED_HOSTS: HostId[] = [...HOST_IDS];
+/** @deprecated Use `SUPPORTED_HOSTS`. */
+export const SUPPORTED_IDES = SUPPORTED_HOSTS;
 
-export const IDE_ALIASES: Record<string, HostId> = Object.fromEntries(
+export const HOST_ALIASES: Record<string, HostId> = Object.fromEntries(
   HOST_SPECS.flatMap((s) => (s.aliases ?? []).map((alias) => [alias, s.id]))
 );
+/** @deprecated Use `HOST_ALIASES`. */
+export const IDE_ALIASES = HOST_ALIASES;
 
-export const IDE_NEXT_STEPS: Record<HostId, string> = Object.fromEntries(
+export const HOST_NEXT_STEPS: Record<HostId, string> = Object.fromEntries(
   HOST_SPECS.map((s) => [s.id, s.nextSteps])
 ) as Record<HostId, string>;
+/** @deprecated Use `HOST_NEXT_STEPS`. */
+export const IDE_NEXT_STEPS = HOST_NEXT_STEPS;

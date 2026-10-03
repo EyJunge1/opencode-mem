@@ -75,7 +75,7 @@ export function installOpencode(projectDir?: string, launch?: McpLaunchSpec): In
       writeJsonFile(projectPath, projectData);
       const projectAfter = readFileSync(projectPath, "utf-8");
       extras.push({
-        ide: "opencode",
+        host: "opencode",
         path: projectPath,
         action: fileAction(projectBefore, projectAfter),
         detail: `mcp.opencode-mem (project)`,
@@ -84,7 +84,7 @@ export function installOpencode(projectDir?: string, launch?: McpLaunchSpec): In
   }
 
   const primary: InstallResult = {
-    ide: "opencode",
+    host: "opencode",
     path,
     action: fileAction(before, after),
     detail: hasMem

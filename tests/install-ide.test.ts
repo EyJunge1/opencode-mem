@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   mergeCodexToml,
-  parseIdeList,
+  parseHostList,
   resolveMcpLaunch,
   pinLaunchDirectory,
-  installIde,
-  isIdeConfigured,
+  installHost,
+  isHostConfigured,
   type McpLaunchSpec,
 } from "../src/cli/install.js";
 
@@ -42,18 +42,18 @@ const launch: McpLaunchSpec = {
 };
 
 describe("install helpers", () => {
-  it("parses ide lists", () => {
-    expect(parseIdeList("cursor")).toEqual(["cursor"]);
-    expect(parseIdeList("cursor,claude")).toEqual(["cursor", "claude"]);
-    expect(parseIdeList("all")).toContain("opencode");
-    expect(() => parseIdeList("nope")).toThrow(/Unknown host/);
-    expect(() => parseIdeList(undefined)).toThrow(/Missing --host \/ --ide/);
+  it("parses host lists", () => {
+    expect(parseHostList("cursor")).toEqual(["cursor"]);
+    expect(parseHostList("cursor,claude")).toEqual(["cursor", "claude"]);
+    expect(parseHostList("all")).toContain("opencode");
+    expect(() => parseHostList("nope")).toThrow(/Unknown host/);
+    expect(() => parseHostList(undefined)).toThrow(/Missing --host \/ --ide/);
   });
 
   it("auto detects from a fake home", () => {
     const home = withTempHome();
     mkdirSync(join(home, ".cursor"), { recursive: true });
-    expect(parseIdeList("auto")).toEqual(["cursor"]);
+    expect(parseHostList("auto")).toEqual(["cursor"]);
   });
 
   it("resolves a portable npx launch without pinning directory", () => {
@@ -99,10 +99,10 @@ args = ["/cli.js", "mcp"]
   });
 });
 
-describe("installIde writers", () => {
+describe("installHost writers", () => {
   it("creates and merges Cursor mcp.json", () => {
     const home = withTempHome();
-    const first = installIde("cursor", { launch });
+    const first = installHost("cursor", { launch });
     expect(first.action).toBe("created");
     const path = join(home, ".cursor", "mcp.json");
     const json = JSON.parse(readFileSync(path, "utf-8"));
@@ -123,7 +123,7 @@ describe("installIde writers", () => {
         2
       )
     );
-    const second = installIde("cursor", {
+    const second = installHost("cursor", {
       launch: {
         command: "node",
         args: ["/x/cli.js", "mcp"],
@@ -138,18 +138,18 @@ describe("installIde writers", () => {
 
   it("writes Claude, Gemini, Codex, OpenCode, and other supported hosts", () => {
     const home = withTempHome();
-    expect(installIde("claude", { launch }).action).toBe("created");
-    expect(installIde("gemini", { launch }).action).toBe("created");
-    expect(installIde("codex", { launch }).action).toBe("created");
-    expect(installIde("opencode", { projectDir: "/proj", launch }).action).toBe("created");
-    expect(installIde("windsurf", { launch }).action).toBe("created");
-    expect(installIde("kimi", { launch }).action).toBe("created");
-    expect(installIde("openclaw", { launch }).action).toBe("created");
-    expect(installIde("goose", { launch }).action).toBe("created");
-    expect(installIde("warp", { launch }).action).toBe("created");
-    expect(installIde("grok", { launch }).action).toBe("created");
-    expect(installIde("antigravity", { launch }).action).toBe("created");
-    expect(installIde("copilot", { launch }).action).toBe("created");
+    expect(installHost("claude", { launch }).action).toBe("created");
+    expect(installHost("gemini", { launch }).action).toBe("created");
+    expect(installHost("codex", { launch }).action).toBe("created");
+    expect(installHost("opencode", { projectDir: "/proj", launch }).action).toBe("created");
+    expect(installHost("windsurf", { launch }).action).toBe("created");
+    expect(installHost("kimi", { launch }).action).toBe("created");
+    expect(installHost("openclaw", { launch }).action).toBe("created");
+    expect(installHost("goose", { launch }).action).toBe("created");
+    expect(installHost("warp", { launch }).action).toBe("created");
+    expect(installHost("grok", { launch }).action).toBe("created");
+    expect(installHost("antigravity", { launch }).action).toBe("created");
+    expect(installHost("copilot", { launch }).action).toBe("created");
 
     const claude = JSON.parse(readFileSync(join(home, ".claude.json"), "utf-8"));
     expect(claude.mcpServers["opencode-mem"].args).toContain("mcp");
@@ -208,19 +208,19 @@ describe("installIde writers", () => {
     expect(opencode.mcp["opencode-mem"].environment.OPENCODE_MEM_PLATFORM).toBe("opencode");
     expect(opencode.mcp["opencode-mem"].cwd).toBeUndefined();
 
-    const again = installIde("opencode", { projectDir: "/proj", launch });
+    const again = installHost("opencode", { projectDir: "/proj", launch });
     expect(again.action).toBe("unchanged");
 
-    expect(isIdeConfigured("cursor")).toBe(false);
-    installIde("cursor", { launch });
-    expect(isIdeConfigured("cursor")).toBe(true);
-    expect(isIdeConfigured("opencode")).toBe(true);
-    expect(isIdeConfigured("gemini")).toBe(true);
-    expect(isIdeConfigured("openclaw")).toBe(true);
-    expect(isIdeConfigured("warp")).toBe(true);
-    expect(isIdeConfigured("grok")).toBe(true);
-    expect(isIdeConfigured("antigravity")).toBe(true);
-    expect(isIdeConfigured("copilot")).toBe(true);
+    expect(isHostConfigured("cursor")).toBe(false);
+    installHost("cursor", { launch });
+    expect(isHostConfigured("cursor")).toBe(true);
+    expect(isHostConfigured("opencode")).toBe(true);
+    expect(isHostConfigured("gemini")).toBe(true);
+    expect(isHostConfigured("openclaw")).toBe(true);
+    expect(isHostConfigured("warp")).toBe(true);
+    expect(isHostConfigured("grok")).toBe(true);
+    expect(isHostConfigured("antigravity")).toBe(true);
+    expect(isHostConfigured("copilot")).toBe(true);
   });
 
   it("writes project-local MCP configs when projectDir is set", () => {
@@ -228,7 +228,7 @@ describe("installIde writers", () => {
     const project = join(home, "repo");
     mkdirSync(join(project, ".git"), { recursive: true });
 
-    const cursor = installIde("cursor", { projectDir: project, launch });
+    const cursor = installHost("cursor", { projectDir: project, launch });
     expect(cursor.also).toContain(join(project, ".cursor", "mcp.json"));
     expect(cursor.also).toContain(join(project, ".cursor", "rules", "opencode-mem.mdc"));
     const cursorProject = JSON.parse(readFileSync(join(project, ".cursor", "mcp.json"), "utf-8"));
@@ -239,40 +239,40 @@ describe("installIde writers", () => {
     expect(cursorRule).toContain("alwaysApply: true");
     expect(cursorRule).toContain("memory_timeline");
 
-    const claude = installIde("claude", { projectDir: project, launch });
+    const claude = installHost("claude", { projectDir: project, launch });
     expect(claude.also).toContain(join(project, ".mcp.json"));
     expect(claude.also).toContain(join(project, "CLAUDE.md"));
     const claudeMd = readFileSync(join(project, "CLAUDE.md"), "utf-8");
     expect(claudeMd).toContain("opencode-mem:begin");
     expect(claudeMd).toContain("memory_timeline");
 
-    const windsurf = installIde("windsurf", { projectDir: project, launch });
+    const windsurf = installHost("windsurf", { projectDir: project, launch });
     expect(windsurf.also).toContain(join(project, ".windsurf", "rules", "opencode-mem.md"));
 
-    const copilot = installIde("copilot", { projectDir: project, launch });
+    const copilot = installHost("copilot", { projectDir: project, launch });
     expect(copilot.also).toContain(join(project, ".vscode", "mcp.json"));
     const vscodeMcp = JSON.parse(readFileSync(join(project, ".vscode", "mcp.json"), "utf-8"));
     expect(vscodeMcp.servers["opencode-mem"].type).toBe("stdio");
     expect(vscodeMcp.servers["opencode-mem"].command).toBe("npx");
 
-    const oc = installIde("opencode", { projectDir: project, launch });
+    const oc = installHost("opencode", { projectDir: project, launch });
     expect(oc.also).toContain(join(project, "opencode.json"));
     const projectOc = JSON.parse(readFileSync(join(project, "opencode.json"), "utf-8"));
     expect(projectOc.mcp["opencode-mem"].type).toBe("local");
     expect(projectOc.mcp["opencode-mem"].cwd).toBe(project);
 
-    const antigravity = installIde("antigravity", { projectDir: project, launch });
+    const antigravity = installHost("antigravity", { projectDir: project, launch });
     expect(antigravity.also).toContain(join(project, ".agents", "mcp_config.json"));
 
-    const warp = installIde("warp", { projectDir: project, launch });
+    const warp = installHost("warp", { projectDir: project, launch });
     expect(warp.also).toContain(join(project, ".warp", ".mcp.json"));
 
-    const grok = installIde("grok", { projectDir: project, launch });
+    const grok = installHost("grok", { projectDir: project, launch });
     expect(grok.also).toContain(join(project, ".grok", "config.toml"));
   });
 
   it("accepts common host aliases", () => {
-    expect(parseIdeList("claude-code,codex-cli,antigravity-cli,github-copilot")).toEqual([
+    expect(parseHostList("claude-code,codex-cli,antigravity-cli,github-copilot")).toEqual([
       "claude",
       "codex",
       "antigravity",
@@ -288,7 +288,7 @@ describe("installIde writers", () => {
       join(dir, "opencode.json"),
       JSON.stringify({ plugins: ["something-else@1"] }, null, 2)
     );
-    const result = installIde("opencode", { launch });
+    const result = installHost("opencode", { launch });
     expect(result.action).toBe("updated");
     const after = JSON.parse(readFileSync(join(dir, "opencode.json"), "utf-8"));
     expect(after.plugins).toEqual(["something-else@1", "opencode-mem@latest"]);
