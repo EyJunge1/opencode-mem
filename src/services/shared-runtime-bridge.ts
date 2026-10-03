@@ -1,4 +1,4 @@
-import type { McpRuntimeClient } from "../mcp/runtime-client.js";
+import type { McpRuntimeClient } from "../runtime/client.js";
 
 /**
  * When OpenCode attaches to a healthy shared `serve` process, tools and

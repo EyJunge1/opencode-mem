@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMcpServer } from "../src/mcp/server.js";
-import type { McpRuntimeClient } from "../src/mcp/runtime-client.js";
+import type { McpRuntimeClient } from "../src/runtime/client.js";
 
 describe("MCP server progressive tools", () => {
   it("exposes timeline → search → get progressive disclosure tools", async () => {

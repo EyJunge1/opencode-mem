@@ -109,6 +109,19 @@ opencode-mem status [--cwd DIR]
 3. Open OpenCode → attaches to serve; other hosts via MCP → same serve
 4. `opencode-mem status` → one healthy URL + host coverage
 
+## Adding a host
+
+New coding-agent hosts go through the existing install catalog — **not** through Turso, AI, or web-server special cases.
+
+1. Add a `HostSpec` entry in [`src/shared/hosts.ts`](../src/shared/hosts.ts) (`HOST_IDS`, detect/config paths, optional priming, `configKind`).
+2. Wire install under [`src/cli/install/`](../src/cli/install/):
+   - reuse a format in `formats/` when possible (`json`, `toml`, …), or add a small adapter under `hosts/` for one-off layouts;
+   - `installIde()` already dispatches on `spec.configKind`.
+3. Optional project priming via `priming` on the host spec + `install/priming.ts`.
+4. Cover detection/config in `tests/install-ide.test.ts` (and status coverage if needed).
+
+Do **not** put host detection, MCP config writers, or `platformSource` labels under `services/` storage/AI modules.
+
 ## Notes
 
 - This is **MCP-first** multi-host wiring (faster + cheaper to maintain than native hooks per host).

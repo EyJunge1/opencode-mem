@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { ensureMcpRuntimeClient, type McpRuntimeClient } from "./runtime-client.js";
+import { ensureMcpRuntimeClient, type McpRuntimeClient } from "../runtime/client.js";
 import {
   MCP_SEARCH_DEFAULT_LIMIT,
   MCP_TIMELINE_DEFAULT_LIMIT,

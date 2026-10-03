@@ -1,5 +1,5 @@
 import { CONFIG, initConfig } from "../config.js";
-import { findHealthyRuntimeBaseUrl } from "../mcp/runtime-client.js";
+import { findHealthyRuntimeBaseUrl } from "../runtime/client.js";
 import { readRuntimeInfo } from "../services/runtime-info.js";
 import { AUTH_HEADER, getOrCreateAuthToken } from "../services/auth-token.js";
 import {

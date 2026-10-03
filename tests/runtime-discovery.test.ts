@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { findHealthyRuntimeBaseUrl } from "../src/mcp/runtime-client.js";
+import { findHealthyRuntimeBaseUrl } from "../src/runtime/client.js";
 import { WebServer } from "../src/services/web-server.js";
 import { clearRuntimeInfo, writeRuntimeInfo } from "../src/services/runtime-info.js";
 

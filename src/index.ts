@@ -14,7 +14,7 @@ import { tursoConnectionManager } from "./services/turso/connection-manager.js";
 import { WebAuth } from "./services/web-auth.js";
 import { executeMemoryTool, type MemoryToolArgs } from "./services/memory-tool-service.js";
 import { writeRuntimeInfo, clearRuntimeInfo } from "./services/runtime-info.js";
-import { findHealthyRuntimeBaseUrl, ensureMcpRuntimeClient } from "./mcp/runtime-client.js";
+import { findHealthyRuntimeBaseUrl, ensureMcpRuntimeClient } from "./runtime/client.js";
 import { setSharedRuntimeBridge } from "./services/shared-runtime-bridge.js";
 import { readRuntimeInfo } from "./services/runtime-info.js";
 

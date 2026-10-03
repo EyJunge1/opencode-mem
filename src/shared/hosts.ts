@@ -4,6 +4,12 @@
  *
  * Shared by CLI install/status and domain provenance (`platformSource`).
  * Keep this free of CLI I/O so services can import it safely.
+ *
+ * Adding a host:
+ * 1. Extend `HOST_IDS` + `HOST_SPECS` here.
+ * 2. Wire install via `src/cli/install/` (`formats/` or `hosts/` adapter + `configKind`).
+ * 3. Optional priming via `HostPrimingSpec`.
+ * Do not add host-specific logic under Turso / AI / web-server.
  */
 
 import { join } from "node:path";

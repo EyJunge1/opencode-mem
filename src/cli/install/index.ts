@@ -1,3 +1,7 @@
+/**
+ * Host install entrypoints. New hosts: catalog in `shared/hosts.ts`, then
+ * format/adapter here — see docs/mcp.md "Adding a host".
+ */
 import { join } from "node:path";
 import { getHostSpec, type HostId } from "../../shared/hosts.js";
 import { installIdePriming } from "./priming.js";
