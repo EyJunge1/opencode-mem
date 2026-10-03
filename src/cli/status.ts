@@ -15,6 +15,9 @@ export interface IdeCoverage {
   configured: boolean;
 }
 
+/** Host coverage entry (CLI still uses `ide` field for InstallIde compat). */
+export type HostCoverage = IdeCoverage;
+
 export interface StatusReport {
   directory: string;
   configuredPort: number;
@@ -27,7 +30,7 @@ export interface StatusReport {
     service?: string;
     pid?: number;
   };
-  agents: IdeCoverage[];
+  hosts: HostCoverage[];
   advice: string[];
 }
 
@@ -51,7 +54,7 @@ export async function collectStatus(directory = process.cwd()): Promise<StatusRe
   }
 
   const detected = new Set(detectInstalledIdes());
-  const agents: IdeCoverage[] = SUPPORTED_IDES.map((ide) => ({
+  const hosts: HostCoverage[] = SUPPORTED_IDES.map((ide) => ({
     ide,
     detected: detected.has(ide),
     configured: isIdeConfigured(ide),
@@ -72,15 +75,15 @@ export async function collectStatus(directory = process.cwd()): Promise<StatusRe
     );
   }
 
-  const missing = agents.filter((a) => a.detected && !a.configured);
+  const missing = hosts.filter((h) => h.detected && !h.configured);
   if (missing.length > 0) {
     advice.push(
-      `Detected but not configured: ${missing.map((m) => m.ide).join(", ")} — run: opencode-mem install --ide auto --cwd "$PWD"`
+      `Detected but not configured: ${missing.map((m) => m.ide).join(", ")} — run: opencode-mem install --host auto --cwd "$PWD"`
     );
-  } else if (agents.some((a) => a.configured)) {
+  } else if (hosts.some((h) => h.configured)) {
     advice.push("Configured host MCP/plugin entries look present.");
   } else {
-    advice.push('No host configs found yet. Run: opencode-mem install --ide auto --cwd "$PWD"');
+    advice.push('No host configs found yet. Run: opencode-mem install --host auto --cwd "$PWD"');
   }
 
   // Touch token creation so first MCP call does not race token file creation.
@@ -97,7 +100,7 @@ export async function collectStatus(directory = process.cwd()): Promise<StatusRe
     runtimeFile,
     healthyUrl,
     health,
-    agents,
+    hosts,
     advice,
   };
 }
@@ -120,17 +123,17 @@ export async function printStatus(directory = process.cwd()): Promise<void> {
   }
   console.log(`  auth header:    ${AUTH_HEADER}`);
   console.log(`hosts:`);
-  for (const agent of report.agents) {
-    if (!agent.detected && !agent.configured) continue;
+  for (const host of report.hosts) {
+    if (!host.detected && !host.configured) continue;
     const flags = [
-      agent.detected ? "detected" : null,
-      agent.configured ? "configured" : "missing-config",
+      host.detected ? "detected" : null,
+      host.configured ? "configured" : "missing-config",
     ]
       .filter(Boolean)
       .join(", ");
-    console.log(`  - ${agent.ide}: ${flags}`);
+    console.log(`  - ${host.ide}: ${flags}`);
   }
-  if (report.agents.every((a) => !a.detected && !a.configured)) {
+  if (report.hosts.every((h) => !h.detected && !h.configured)) {
     console.log(`  (none detected or configured)`);
   }
   console.log(`advice:`);

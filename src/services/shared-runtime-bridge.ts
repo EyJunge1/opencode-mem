@@ -1,22 +1,22 @@
-import type { McpRuntimeClient } from "../runtime/client.js";
+import type { SharedRuntimeClient } from "../runtime/client.js";
 
 /**
  * When OpenCode attaches to a healthy shared `serve` process, tools and
  * auto-capture writes go through this bridge instead of opening a second
  * Turso/embedding owner in-process.
  */
-let sharedBridge: McpRuntimeClient | null = null;
+let sharedBridge: SharedRuntimeClient | null = null;
 let sharedBaseUrl: string | null = null;
 
 export function setSharedRuntimeBridge(
-  client: McpRuntimeClient | null,
+  client: SharedRuntimeClient | null,
   baseUrl: string | null = null
 ): void {
   sharedBridge = client;
   sharedBaseUrl = client ? (baseUrl ?? client.baseUrl) : null;
 }
 
-export function getSharedRuntimeBridge(): McpRuntimeClient | null {
+export function getSharedRuntimeBridge(): SharedRuntimeClient | null {
   return sharedBridge;
 }
 

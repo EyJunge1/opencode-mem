@@ -14,7 +14,7 @@ import {
   getSharedRuntimeBridge,
   isUsingSharedRuntime,
 } from "../src/services/shared-runtime-bridge.js";
-import { executeMemoryTool } from "../src/services/memory-tool-service.js";
+import { executeMemoryTool } from "../src/services/memory-tool/index.js";
 
 describe("platformSource", () => {
   it("normalizes and resolves env / explicit values", () => {

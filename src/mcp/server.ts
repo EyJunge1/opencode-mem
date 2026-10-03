@@ -1,11 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { ensureMcpRuntimeClient, type McpRuntimeClient } from "../runtime/client.js";
+import { ensureSharedRuntimeClient, type SharedRuntimeClient } from "../runtime/client.js";
 import {
   MCP_SEARCH_DEFAULT_LIMIT,
   MCP_TIMELINE_DEFAULT_LIMIT,
-} from "../services/memory-tool-service.js";
+} from "../services/memory-tool/index.js";
 
 function textResult(payload: unknown) {
   return {
@@ -20,12 +20,12 @@ function textResult(payload: unknown) {
 
 export async function createMcpServer(
   directory = process.cwd(),
-  runtimeClient?: McpRuntimeClient
+  runtimeClient?: SharedRuntimeClient
 ): Promise<{
   server: McpServer;
-  client: McpRuntimeClient;
+  client: SharedRuntimeClient;
 }> {
-  const client = runtimeClient ?? (await ensureMcpRuntimeClient(directory));
+  const client = runtimeClient ?? (await ensureSharedRuntimeClient(directory));
   const server = new McpServer({
     name: "opencode-mem",
     version: "2.28.3",

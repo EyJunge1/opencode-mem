@@ -10,7 +10,7 @@ function printHelp(): void {
 Usage:
   opencode-mem serve [--host HOST] [--port PORT] [--cwd DIR]
   opencode-mem mcp [--cwd DIR]
-  opencode-mem install --ide <ide[,ide]|all|auto> [--cwd DIR]
+  opencode-mem install --host <host[,host]|all|auto> [--cwd DIR]
   opencode-mem status [--cwd DIR]
   opencode-mem help
 
@@ -20,14 +20,16 @@ Commands:
   install   Write MCP (or OpenCode plugin) config for coding-agent hosts
   status    Show whether a shared runtime is healthy
 
-Install IDEs:
+Install hosts:
   ${SUPPORTED_IDES.join(", ")}, all, auto
 
+  Flags: --host (preferred) or --ide (alias)
+
 Examples:
-  opencode-mem install --ide auto --cwd "$PWD"
-  opencode-mem install --ide cursor --cwd /path/to/project
+  opencode-mem install --host auto --cwd "$PWD"
+  opencode-mem install --host cursor --cwd /path/to/project
   opencode-mem install --ide cursor,claude,codex
-  opencode-mem install --ide all
+  opencode-mem install --host all
   opencode-mem serve --cwd "$PWD"
   npx -y opencode-mem mcp
 `);
@@ -78,8 +80,9 @@ async function main(): Promise<void> {
       printHelp();
       return;
     }
-    const ideRaw = readFlag(rest, "--ide");
-    const ides = parseIdeList(ideRaw);
+    // --host is preferred; --ide remains as a compatibility alias.
+    const hostRaw = readFlag(rest, "--host") ?? readFlag(rest, "--ide");
+    const ides = parseIdeList(hostRaw);
     const results = runInstall({ ides, projectDir: cwd });
     for (const result of results) {
       console.log(`[${result.action}] ${result.ide}: ${result.path}\n  ${result.detail}`);

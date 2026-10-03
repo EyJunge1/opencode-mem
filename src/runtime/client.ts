@@ -12,7 +12,7 @@ const START_POLL_MS = 400;
  * HTTP client for the shared standalone runtime (`opencode-mem serve`).
  * Used by MCP stdio, OpenCode attach, and CLI status — not MCP-transport-specific.
  */
-export interface McpRuntimeClient {
+export interface SharedRuntimeClient {
   baseUrl: string;
   directory: string;
   search(args: {
@@ -31,6 +31,9 @@ export interface McpRuntimeClient {
     platformSource?: string;
   }): Promise<object>;
 }
+
+/** @deprecated Use `SharedRuntimeClient`. */
+export type McpRuntimeClient = SharedRuntimeClient;
 
 function authHeaders(): Record<string, string> {
   return {
@@ -113,7 +116,9 @@ async function waitForHealthyRuntime(directory: string): Promise<string> {
   );
 }
 
-export async function ensureMcpRuntimeClient(directory = process.cwd()): Promise<McpRuntimeClient> {
+export async function ensureSharedRuntimeClient(
+  directory = process.cwd()
+): Promise<SharedRuntimeClient> {
   initConfig(directory);
 
   let baseUrl = await findHealthyRuntimeBaseUrl();
@@ -122,7 +127,7 @@ export async function ensureMcpRuntimeClient(directory = process.cwd()): Promise
     baseUrl = await waitForHealthyRuntime(directory);
   }
 
-  const client: McpRuntimeClient = {
+  const client: SharedRuntimeClient = {
     baseUrl,
     directory,
     async search(args) {
@@ -165,3 +170,6 @@ export async function ensureMcpRuntimeClient(directory = process.cwd()): Promise
 
   return client;
 }
+
+/** @deprecated Use `ensureSharedRuntimeClient`. */
+export const ensureMcpRuntimeClient = ensureSharedRuntimeClient;

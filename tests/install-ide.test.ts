@@ -46,8 +46,8 @@ describe("install helpers", () => {
     expect(parseIdeList("cursor")).toEqual(["cursor"]);
     expect(parseIdeList("cursor,claude")).toEqual(["cursor", "claude"]);
     expect(parseIdeList("all")).toContain("opencode");
-    expect(() => parseIdeList("nope")).toThrow(/Unknown IDE/);
-    expect(() => parseIdeList(undefined)).toThrow(/Missing --ide/);
+    expect(() => parseIdeList("nope")).toThrow(/Unknown host/);
+    expect(() => parseIdeList(undefined)).toThrow(/Missing --host \/ --ide/);
   });
 
   it("auto detects from a fake home", () => {

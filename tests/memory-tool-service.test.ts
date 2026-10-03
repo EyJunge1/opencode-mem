@@ -33,7 +33,7 @@ describe("memory-tool-service", () => {
     const configUrl = new URL("../src/config.js", import.meta.url).href;
     const tagsUrl = new URL("../src/services/tags.js", import.meta.url).href;
     const languageUrl = new URL("../src/services/language-detector.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool-service.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";
@@ -80,7 +80,7 @@ test("help", async () => {
     const tagsUrl = new URL("../src/services/tags.js", import.meta.url).href;
     const languageUrl = new URL("../src/services/language-detector.js", import.meta.url).href;
     const privacyUrl = new URL("../src/services/privacy.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool-service.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";
@@ -135,7 +135,7 @@ test("mcp search", async () => {
     const tagsUrl = new URL("../src/services/tags.js", import.meta.url).href;
     const languageUrl = new URL("../src/services/language-detector.js", import.meta.url).href;
     const privacyUrl = new URL("../src/services/privacy.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool-service.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";
@@ -191,7 +191,7 @@ test("mcp timeline", async () => {
   it("returns memories for MCP get", () => {
     const clientUrl = new URL("../src/services/client.js", import.meta.url).href;
     const configUrl = new URL("../src/config.js", import.meta.url).href;
-    const serviceUrl = new URL("../src/services/memory-tool-service.js", import.meta.url).href;
+    const serviceUrl = new URL("../src/services/memory-tool/index.js", import.meta.url).href;
 
     const { exitCode, stdout } = runIsolated(`
 import { mock, expect, test } from "bun:test";

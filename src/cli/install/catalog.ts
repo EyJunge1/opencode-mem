@@ -21,7 +21,9 @@ export function resolveIdeAlias(raw: string): string {
 
 export function parseIdeList(raw: string | undefined): InstallIde[] {
   if (!raw || !raw.trim()) {
-    throw new Error(`Missing --ide. Use one of: ${SUPPORTED_IDES.join(", ")}, all, or auto`);
+    throw new Error(
+      `Missing --host / --ide. Use one of: ${SUPPORTED_IDES.join(", ")}, all, or auto`
+    );
   }
   const normalized = raw.trim().toLowerCase();
   if (normalized === "all") return [...SUPPORTED_IDES];
@@ -29,7 +31,7 @@ export function parseIdeList(raw: string | undefined): InstallIde[] {
     const detected = detectInstalledIdes();
     if (detected.length === 0) {
       throw new Error(
-        "No coding-agent hosts detected under your home directory. Pass --ide explicitly."
+        "No coding-agent hosts detected under your home directory. Pass --host / --ide explicitly."
       );
     }
     return detected;
@@ -42,11 +44,11 @@ export function parseIdeList(raw: string | undefined): InstallIde[] {
   const out: InstallIde[] = [];
   for (const part of parts) {
     if (part === "auto" || part === "all") {
-      throw new Error(`Use --ide ${part} alone, not mixed with other values`);
+      throw new Error(`Use --host / --ide ${part} alone, not mixed with other values`);
     }
     const aliased = resolveIdeAlias(part);
     if (!SUPPORTED_IDES.includes(aliased as InstallIde)) {
-      throw new Error(`Unknown IDE "${part}". Supported: ${SUPPORTED_IDES.join(", ")}, all, auto`);
+      throw new Error(`Unknown host "${part}". Supported: ${SUPPORTED_IDES.join(", ")}, all, auto`);
     }
     if (!out.includes(aliased as InstallIde)) out.push(aliased as InstallIde);
   }

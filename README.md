@@ -12,7 +12,7 @@ A persistent memory system for AI coding agents that enables long-term context r
 **Multi-host (MCP):** one shared runtime for common coding-agent hosts:
 
 ```bash
-npx -y opencode-mem install --ide auto --cwd "$PWD"   # or: --ide all
+npx -y opencode-mem install --host auto --cwd "$PWD"   # or: --host all  (--ide still works)
 npx -y opencode-mem serve --cwd "$PWD"
 npx -y opencode-mem status
 ```

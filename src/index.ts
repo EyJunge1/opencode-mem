@@ -12,9 +12,9 @@ import { startWebServer, WebServer } from "./services/web-server.js";
 import { ensureTursoReady } from "./services/turso/ready.js";
 import { tursoConnectionManager } from "./services/turso/connection-manager.js";
 import { WebAuth } from "./services/web-auth.js";
-import { executeMemoryTool, type MemoryToolArgs } from "./services/memory-tool-service.js";
+import { executeMemoryTool, type MemoryToolArgs } from "./services/memory-tool/index.js";
 import { writeRuntimeInfo, clearRuntimeInfo } from "./services/runtime-info.js";
-import { findHealthyRuntimeBaseUrl, ensureMcpRuntimeClient } from "./runtime/client.js";
+import { findHealthyRuntimeBaseUrl, ensureSharedRuntimeClient } from "./runtime/client.js";
 import { setSharedRuntimeBridge } from "./services/shared-runtime-bridge.js";
 import { readRuntimeInfo } from "./services/runtime-info.js";
 
@@ -323,8 +323,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       const runtimeInfo = readRuntimeInfo();
       const foreignOwner = healthy && (!runtimeInfo?.pid || runtimeInfo.pid !== process.pid);
       if (healthy && foreignOwner) {
-        const client = await ensureMcpRuntimeClient(directory);
-        // ensureMcpRuntimeClient may auto-start serve; re-check we are attaching
+        const client = await ensureSharedRuntimeClient(directory);
+        // ensureSharedRuntimeClient may auto-start serve; re-check we are attaching
         // to a different process when possible.
         setSharedRuntimeBridge(client, client.baseUrl);
         attachedSharedRuntime = true;

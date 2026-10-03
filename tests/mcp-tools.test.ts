@@ -2,12 +2,12 @@ import { describe, expect, it } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMcpServer } from "../src/mcp/server.js";
-import type { McpRuntimeClient } from "../src/runtime/client.js";
+import type { SharedRuntimeClient } from "../src/runtime/client.js";
 
 describe("MCP server progressive tools", () => {
   it("exposes timeline → search → get progressive disclosure tools", async () => {
     const calls: string[] = [];
-    const fakeClient: McpRuntimeClient = {
+    const fakeClient: SharedRuntimeClient = {
       baseUrl: "http://127.0.0.1:9",
       directory: "/tmp",
       timeline: async (args) => {
