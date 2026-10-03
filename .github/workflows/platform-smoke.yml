@@ -27,8 +27,9 @@ jobs:
         # Apple Silicon only for macOS: @tursodatabase/database and
         # onnxruntime-node@1.30.0 ship no darwin/x64 binding. Intel Mac support is dropped.
         # Apple Silicon: macos-15 / macos-26 (darwin/arm64).
+        # Pin Ubuntu explicitly: ubuntu-latest migrates to 26.04 starting 2026-10-19.
         os:
-          - ubuntu-latest
+          - ubuntu-24.04
           - windows-latest
           - macos-15
           - macos-26
