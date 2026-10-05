@@ -143,6 +143,9 @@
   //
   // "opencodeProvider": "anthropic",
   // "opencodeModel": "claude-haiku-4-5-20251001",
+  // Optional model reasoning variant for internal LLM calls (e.g. "xhigh");
+  // also applies when opencodeModel is "inherit":
+  // "opencodeVariant": "xhigh",
 
   // ============================================
   // Auto-Capture Settings

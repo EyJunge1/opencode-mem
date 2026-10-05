@@ -601,6 +601,7 @@ CAPTURE if: code changed, bug fixed, feature added, decision made`;
         client: v2Client,
         providerID,
         modelID,
+        ...(CONFIG.opencodeVariant ? { variant: CONFIG.opencodeVariant } : {}),
         systemPrompt,
         userPrompt: aiPrompt,
         schema,
