@@ -14,8 +14,8 @@ export type ConnectFactory = (path: string, opts?: DatabaseOpts) => Promise<Data
 export const TURSO_BASE_EXPERIMENTAL_FEATURES = ["encryption"] as const;
 
 /**
- * Multiprocess WAL is Unix-only. On Windows the default IO backend rejects the
- * flag (`experimental multiprocess WAL is not supported by the active IO backend`).
+ * Multiprocess WAL is Unix-only. On Windows/WASM/32-bit the flag is accepted but
+ * ignored (single-process mode) — see Turso multi-process docs.
  */
 export function supportsTursoMultiprocessWal(
   platform: NodeJS.Platform = process.platform
