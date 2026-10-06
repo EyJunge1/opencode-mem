@@ -466,11 +466,7 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
                   JSON.stringify({ success: false, error: errorMessage })
                 );
 
-                return {
-                  success: false,
-                  error: errorMessage,
-                  iterations,
-                };
+                break;
               }
             }
 
