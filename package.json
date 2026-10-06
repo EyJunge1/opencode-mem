@@ -61,7 +61,7 @@
     "@opencode-ai/plugin": "^1.18.34",
     "@opencode-ai/sdk": "^1.18.34",
     "@opencode/plugin": "^2.0.21",
-    "@tursodatabase/database": "^0.8.1",
+    "@tursodatabase/database": "^0.8.2",
     "franc-min": "^6.2.0",
     "iso-639-3": "^3.0.1",
     "onnxruntime-node": "1.30.0",
