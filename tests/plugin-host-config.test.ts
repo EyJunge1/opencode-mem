@@ -16,6 +16,7 @@ import {
   generateStructuredOutput,
   resetHostFetch,
   setHostFetch,
+  setStructuredOutputTimeoutMsForTests,
   STRUCTURED_OUTPUT_AGENT,
   STRUCTURED_OUTPUT_MAX_STEPS,
   STRUCTURED_OUTPUT_TOOLS,
@@ -230,5 +231,56 @@ describe("structured-output chat.params thinking disable (issue #253)", () => {
     expect(() =>
       applyStructuredOutputChatParams({ agent: STRUCTURED_OUTPUT_AGENT }, undefined)
     ).not.toThrow();
+  });
+});
+
+describe("configured structured-output timeout wiring", () => {
+  it("configureOpencodeHostTransport injects CONFIG.opencodeTimeoutMs into the provider", async () => {
+    const { setStructuredOutputTimeoutConfig } =
+      await import("../src/services/ai/opencode-provider.js");
+    const { CONFIG } = await import("../src/config.js");
+    const globalFetch = globalThis.fetch;
+    const previousTimeout = CONFIG.opencodeTimeoutMs;
+
+    try {
+      // Use a short configured timeout so the hang fails fast; the plugin
+      // init path (configureOpencodeHostTransport) must inject this value.
+      CONFIG.opencodeTimeoutMs = 50;
+      await configureOpencodeHostTransport({
+        client: { provider: { list: async () => ({ data: { connected: [] } }) } },
+      });
+
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const req = input instanceof Request ? input : new Request(input, init);
+        const url = req.url;
+        const method = req.method.toUpperCase();
+        if (method === "POST" && url.endsWith("/session")) {
+          return new Response(JSON.stringify({ id: "ses_timeout_config" }));
+        }
+        if (method === "POST" && url.includes("/session/ses_timeout_config/message")) {
+          return await new Promise<Response>(() => {});
+        }
+        return new Response(JSON.stringify(true));
+      }) as typeof fetch;
+
+      // No setStructuredOutputTimeoutMsForTests: that override would bypass
+      // the injection path under test.
+      await expect(
+        generateStructuredOutput({
+          client: createV2Client("http://localhost:4096"),
+          providerID: "openai",
+          modelID: "gpt-5.5",
+          systemPrompt: "s",
+          userPrompt: "u",
+          schema: z.object({ topic: z.string(), count: z.number() }),
+        })
+      ).rejects.toThrow(/structured-output timed out after 50ms/);
+    } finally {
+      CONFIG.opencodeTimeoutMs = previousTimeout;
+      globalThis.fetch = globalFetch;
+      resetHostFetch();
+      setStructuredOutputTimeoutMsForTests(undefined);
+      setStructuredOutputTimeoutConfig(previousTimeout ?? 90_000);
+    }
   });
 });

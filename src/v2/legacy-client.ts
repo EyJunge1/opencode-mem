@@ -11,20 +11,74 @@ function textFromParts(parts: LegacyPart[] = []): string {
     .join("\n");
 }
 
+/**
+ * Best-effort structured-output recovery for the v2 Generate API, which has
+ * no json_schema enforcement: try the raw text as JSON, then a fenced
+ * ```json block, then balanced top-level {...} objects (ignoring braces
+ * inside strings). When several objects parse, prefer the last one (models
+ * often emit a stub/example before the final answer). Returns undefined when
+ * nothing parses — callers treat that as "no structured output".
+ */
 function parseJson(text: string): unknown {
   const trimmed = text.trim();
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1];
-  const candidate = fenced ?? trimmed;
+
+  // Direct JSON.
   try {
-    return JSON.parse(candidate);
+    return JSON.parse(trimmed);
   } catch {
-    const start = candidate.indexOf("{");
-    const end = candidate.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      return JSON.parse(candidate.slice(start, end + 1));
-    }
-    throw new Error("Model did not return a JSON object");
+    // fall through to recovery
   }
+
+  // Fenced ```json block.
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
+  if (fenced) {
+    try {
+      return JSON.parse(fenced);
+    } catch {
+      // fall through to the balanced-object scan
+    }
+  }
+
+  // Scan every balanced top-level object; keep the last one that parses.
+  const candidate = fenced ?? trimmed;
+  let lastParsed: unknown;
+  let searchFrom = 0;
+  while (searchFrom < candidate.length) {
+    const start = candidate.indexOf("{", searchFrom);
+    if (start < 0) break;
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let found = false;
+    for (let i = start; i < candidate.length; i++) {
+      const ch = candidate[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (ch === "\\") escaped = true;
+        else if (ch === '"') inString = false;
+        continue;
+      }
+      if (ch === '"') inString = true;
+      else if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          found = true;
+          try {
+            lastParsed = JSON.parse(candidate.slice(start, i + 1));
+          } catch {
+            // Unparseable balanced span: keep scanning for a later object.
+          }
+          searchFrom = i + 1;
+          break;
+        }
+      }
+    }
+    if (!found) break;
+  }
+
+  return lastParsed;
 }
 
 function legacyMessage(message: any, sessionID: string): any {
@@ -93,6 +147,10 @@ function schemaPrompt(body: any): string {
       [
         "Return only one JSON object matching this JSON Schema.",
         "Do not wrap the JSON in Markdown.",
+        // The v2 Generate API exposes no tools; models that follow a tool
+        // instruction from the system prompt would stall on a preamble and
+        // never answer. State the constraint explicitly.
+        "No tools are available in this request. Do not attempt to call any tool; your entire reply must be only the JSON object.",
         JSON.stringify(body.format.schema),
       ].join("\n")
     );
