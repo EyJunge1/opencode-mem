@@ -384,16 +384,15 @@ describe("OpenCode v2 legacy client bridge", () => {
     });
   });
 
-  it("maps V2 execution.succeeded to session.idle for auto-capture", () => {
-    expect(
-      toLegacyEvent({
-        type: "session.execution.succeeded",
-        data: { sessionID: "ses-1" },
-      })
-    ).toEqual({
-      type: "session.idle",
-      properties: { sessionID: "ses-1" },
-    });
+  it("aliases v2 execution events to session.idle", () => {
+    const t = (raw: string) => toLegacyEvent({ type: raw, data: { sessionID: "s1" } }).type;
+
+    expect(t("session.execution.succeeded")).toBe("session.idle");
+    expect(t("session.execution.failed")).toBe("session.idle");
+    expect(t("session.execution.interrupted")).toBe("session.idle");
+    expect(t("session.compaction.ended")).toBe("session.compacted");
+    expect(t("message.updated")).toBe("message.updated");
+    expect(t("session.execution.succeeded.1")).toBe("session.idle");
   });
 
   it("filters the global event stream by direct or session location", async () => {
