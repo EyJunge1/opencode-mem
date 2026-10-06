@@ -412,6 +412,91 @@ describe("OpenAIChatCompletionProvider", () => {
     expect(result.iterations).toBe(1);
   });
 
+  it("retries after tool-argument validation failure and succeeds on next attempt", async () => {
+    const invalidArguments = JSON.stringify({
+      preferences: [],
+      patterns: [],
+      workflows: "none",
+    });
+    const validArguments = JSON.stringify({
+      preferences: [],
+      patterns: [],
+      workflows: [],
+      codingStyle: {},
+      domainKnowledge: [],
+    });
+
+    const responses = [
+      {
+        choices: [
+          {
+            message: {
+              content: null,
+              tool_calls: [
+                {
+                  id: "call-1",
+                  type: "function",
+                  function: { name: "save_memories", arguments: invalidArguments },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        choices: [
+          {
+            message: {
+              content: null,
+              tool_calls: [
+                {
+                  id: "call-2",
+                  type: "function",
+                  function: { name: "save_memories", arguments: validArguments },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ];
+
+    let callCount = 0;
+    const requestBodies: Array<{ messages?: Array<{ role?: string; content?: string }> }> = [];
+
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      requestBodies.push(body);
+      const responseBody = responses[callCount] ?? responses[responses.length - 1];
+      callCount++;
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => JSON.stringify(responseBody),
+        json: async () => responseBody,
+      } as Response;
+    }) as typeof fetch;
+
+    const result = await makeProvider({
+      maxIterations: 3,
+      apiUrl: "https://api.openai.com/v1",
+    }).executeToolCall("system", "user", toolSchema, "session-id");
+
+    expect(result.success).toBe(true);
+    expect(result.iterations).toBe(2);
+    expect(callCount).toBe(2);
+
+    const secondMessages = requestBodies[1]?.messages ?? [];
+    const retryFeedback = secondMessages.some(
+      (msg) =>
+        typeof msg.content === "string" &&
+        (msg.content.includes("Validation failed") ||
+          msg.content.includes("workflows must be an array"))
+    );
+    expect(retryFeedback).toBe(true);
+  });
+
   it("returns success: false after max iterations with no tool call", async () => {
     globalThis.fetch = makeFetch({
       ok: true,
