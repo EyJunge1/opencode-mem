@@ -317,16 +317,22 @@ export function legacyToolResult(value: unknown): { content: string; metadata?: 
   return { content: JSON.stringify(value ?? null) };
 }
 
+// opencode v2 no longer publishes `session.idle`, which is what
+// opencode-mem builds auto-capture and profile learning on. The
+// `/api/event` stream emits `session.execution.{succeeded,failed,interrupted}`
+// with `data.sessionID`; forwarding them under the legacy name is enough.
+const LEGACY_EVENT_ALIASES: Record<string, string> = {
+  "session.compaction.ended": "session.compacted",
+  "session.execution.succeeded": "session.idle",
+  "session.execution.failed": "session.idle",
+  "session.execution.interrupted": "session.idle",
+};
+
 export function toLegacyEvent(raw: any): { type: string; properties: any } {
   const envelope = raw?.payload ?? raw;
   const source = envelope?.type === "sync" && envelope.syncEvent ? envelope.syncEvent : envelope;
   const rawType = typeof source?.type === "string" ? source.type.replace(/\.1$/, "") : source?.type;
-  const type =
-    rawType === "session.compaction.ended"
-      ? "session.compacted"
-      : rawType === "session.execution.succeeded"
-        ? "session.idle"
-        : rawType;
+  const type = typeof rawType === "string" ? (LEGACY_EVENT_ALIASES[rawType] ?? rawType) : rawType;
   const data = source?.data ?? {};
   if (source && typeof source === "object" && "properties" in source) {
     return { type, properties: source.properties };
