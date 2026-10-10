@@ -444,4 +444,69 @@ describe("OpenCode v2 legacy client bridge", () => {
       metadata: { count: 1 },
     });
   });
+
+  it("emits toast intents over the RPC bridge when registered", async () => {
+    const emitted: Array<{ name: string; data: unknown }> = [];
+    const toastRpc = {
+      events: {
+        emit: async (name: "toast", data: unknown) => {
+          emitted.push({ name, data });
+        },
+      },
+    };
+    const client = createLegacyClient(createContext(), toastRpc);
+
+    const result = await client.tui.showToast({
+      body: {
+        title: "Memory Captured",
+        message: "Project memory saved from conversation",
+        variant: "success",
+        duration: 3000,
+      },
+    });
+
+    expect(result).toEqual({ data: true });
+    expect(emitted).toEqual([
+      {
+        name: "toast",
+        data: {
+          title: "Memory Captured",
+          message: "Project memory saved from conversation",
+          variant: "success",
+          duration: 3000,
+        },
+      },
+    ]);
+  });
+
+  it("falls back to console when no toast RPC registration is provided", async () => {
+    const client = createLegacyClient(createContext());
+    const result = await client.tui.showToast({
+      body: {
+        title: "Memory Captured",
+        message: "Project memory saved from conversation",
+        variant: "success",
+      },
+    });
+    expect(result).toEqual({ data: false });
+  });
+
+  it("falls back to console when toast RPC emit fails", async () => {
+    const toastRpc = {
+      events: {
+        emit: async () => {
+          throw new Error("rpc unavailable");
+        },
+      },
+    };
+    const client = createLegacyClient(createContext(), toastRpc);
+    const result = await client.tui.showToast({
+      body: {
+        title: "Auto Capture Failed",
+        message: "timeout",
+        variant: "error",
+      },
+    });
+    expect(result).toEqual({ data: false });
+  });
 });
