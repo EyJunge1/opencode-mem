@@ -4,6 +4,7 @@
   import PinOff from "@lucide/svelte/icons/pin-off";
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import Button from "$lib/components/ui/button.svelte";
+  import { useI18n } from "$lib/i18n/context.svelte";
   import { ICON_SM } from "$lib/ui/styles";
 
   type Props = {
@@ -29,6 +30,8 @@
     onEdit,
     onDelete,
   }: Props = $props();
+
+  const i18n = useI18n();
 </script>
 
 <div class="flex shrink-0 items-center gap-1">
@@ -38,8 +41,8 @@
         variant="ghost"
         size="icon-xs"
         class="text-primary hover:text-primary"
-        title="Unpin"
-        aria-label="Unpin"
+        title={i18n.t("btn-unpin")}
+        aria-label={i18n.t("btn-unpin")}
         onclick={() => onUnpin?.(id)}
       >
         <PinOff class={ICON_SM} aria-hidden="true" />
@@ -48,8 +51,8 @@
       <Button
         variant="ghost"
         size="icon-xs"
-        title="Pin"
-        aria-label="Pin"
+        title={i18n.t("btn-pin")}
+        aria-label={i18n.t("btn-pin")}
         onclick={() => onPin?.(id)}
       >
         <Pin class={ICON_SM} aria-hidden="true" />
@@ -58,8 +61,8 @@
     <Button
       variant="ghost"
       size="icon-xs"
-      title="Edit"
-      aria-label="Edit"
+      title={i18n.t("btn-edit")}
+      aria-label={i18n.t("btn-edit")}
       onclick={() => onEdit?.(id)}
     >
       <PenLine class={ICON_SM} aria-hidden="true" />

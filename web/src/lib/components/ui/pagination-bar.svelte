@@ -2,6 +2,7 @@
   import ChevronLeft from "@lucide/svelte/icons/chevron-left";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Button from "$lib/components/ui/button.svelte";
+  import { useI18n } from "$lib/i18n/context.svelte";
   import type { PageSlice } from "$lib/pagination";
   import { GAP, GAP_TIGHT, ICON_SM } from "$lib/ui/styles";
 
@@ -27,6 +28,7 @@
     onDelta,
   }: Props = $props();
 
+  const i18n = useI18n();
   const hasPrev = $derived(currentPage > 1);
   const hasNext = $derived(currentPage < totalPages);
 </script>
@@ -37,7 +39,7 @@
       variant="outline"
       size="icon-xs"
       disabled={!hasPrev}
-      aria-label="Previous page"
+      aria-label={i18n.t("nav-prev-page")}
       onclick={() => onDelta?.(-1)}
     >
       <ChevronLeft class={ICON_SM} />
@@ -47,7 +49,7 @@
       variant="outline"
       size="icon-xs"
       disabled={!hasNext}
-      aria-label="Next page"
+      aria-label={i18n.t("nav-next-page")}
       onclick={() => onDelta?.(1)}
     >
       <ChevronRight class={ICON_SM} />

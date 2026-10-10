@@ -2,6 +2,7 @@
   import Search from "@lucide/svelte/icons/search";
   import X from "@lucide/svelte/icons/x";
   import type { HTMLInputAttributes } from "svelte/elements";
+  import { useI18n } from "$lib/i18n/context.svelte";
   import { FIELD_INPUT, HOVER_SURFACE, ICON, ICON_BTN_DENSE } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
@@ -26,6 +27,8 @@
     onSearch,
     onkeydown,
   }: Props = $props();
+
+  const i18n = useI18n();
 
   function handleSearch(event: MouseEvent & { currentTarget: HTMLButtonElement }) {
     onSearch?.();
@@ -55,7 +58,7 @@
         ICON_BTN_DENSE,
         HOVER_SURFACE
       )}
-      aria-label="Clear"
+      aria-label={i18n.t("btn-clear")}
       onclick={() => onClear?.()}
     >
       <X class={ICON} aria-hidden="true" />
@@ -68,8 +71,8 @@
       ICON_BTN_DENSE,
       HOVER_SURFACE
     )}
-    aria-label="Search"
-    title="Search"
+    aria-label={i18n.t("label-search")}
+    title={i18n.t("label-search")}
     onclick={handleSearch}
   >
     <Search class={ICON} aria-hidden="true" />
