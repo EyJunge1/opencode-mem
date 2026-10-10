@@ -231,22 +231,29 @@ Embeddings power similarity search for memories and the user profile. Configure 
 
 **Remote (OpenAI-compatible):** set both `embeddingApiUrl` and `embeddingApiKey`. The plugin then calls `{embeddingApiUrl}/embeddings` with a Bearer token. `embeddingApiKey` accepts the same secret formats as `memoryApiKey` (`literal`, `env://…`, `file://…`).
 
-| Key                   | Role                                                                                      |
-| --------------------- | ----------------------------------------------------------------------------------------- |
-| `embeddingModel`      | Hugging Face id (local) or API model name (remote). Default: `Xenova/nomic-embed-text-v1` |
-| `embeddingDimensions` | Optional override; usually omit — dimensions are looked up from a built-in map            |
-| `embeddingApiUrl`     | Base URL for an OpenAI-compatible embeddings API (no trailing path beyond `/v1`)          |
-| `embeddingApiKey`     | API key for that endpoint (required together with `embeddingApiUrl`)                      |
+| Key                        | Role                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `embeddingModel`           | Hugging Face id (local) or API model name (remote). Default: `Xenova/nomic-embed-text-v1`                                       |
+| `embeddingDimensions`      | Optional override; usually omit — dimensions are looked up from a built-in map                                                  |
+| `embeddingPooling`         | Local pooling: `"mean"` (default), `"cls"`, or `"last_token"`. Unset → small known-model preset or `"mean"`                     |
+| `embeddingQueryPrefix`     | Prefix for query-task embeddings. Unset → model preset or Nomic when `embeddingUseTaskPrefixes` is true. Explicit `""` disables |
+| `embeddingDocumentPrefix`  | Prefix for document-task embeddings (same resolution rules as `embeddingQueryPrefix`)                                           |
+| `embeddingUseTaskPrefixes` | Opt-in Nomic `search_query:` / `search_document:` prefixes when custom/preset prefixes are unset. Default `false`               |
+| `embeddingDtype`           | Optional local ONNX dtype override (e.g. `"q8"`, `"fp32"`). When set, passed to transformers.js `pipeline({ dtype })`           |
+| `embeddingApiUrl`          | Base URL for an OpenAI-compatible embeddings API (no trailing path beyond `/v1`)                                                |
+| `embeddingApiKey`          | API key for that endpoint (required together with `embeddingApiUrl`)                                                            |
 
 Recommended local models:
 
-| Model                                | Dims | Notes                               |
-| ------------------------------------ | ---- | ----------------------------------- |
-| `Xenova/nomic-embed-text-v1`         | 768  | Default; multilingual, 8192 context |
-| `Xenova/jina-embeddings-v2-base-en`  | 768  | English-only, 8192 context          |
-| `Xenova/jina-embeddings-v2-small-en` | 512  | Faster, 8192 context                |
-| `Xenova/all-MiniLM-L6-v2`            | 384  | Very fast, 512 context              |
-| `Xenova/all-mpnet-base-v2`           | 768  | Good quality, 512 context           |
+| Model                                | Dims | Notes                                             |
+| ------------------------------------ | ---- | ------------------------------------------------- |
+| `Xenova/nomic-embed-text-v1`         | 768  | Default; multilingual, 8192 context; mean pooling |
+| `Xenova/jina-embeddings-v2-base-en`  | 768  | English-only, 8192 context                        |
+| `Xenova/jina-embeddings-v2-small-en` | 512  | Faster, 8192 context                              |
+| `Xenova/all-MiniLM-L6-v2`            | 384  | Very fast, 512 context                            |
+| `Xenova/all-mpnet-base-v2`           | 768  | Good quality, 512 context                         |
+| `Xenova/bge-m3`                      | 1024 | Multilingual; auto CLS pooling                    |
+| `intfloat/multilingual-e5-large`     | 1024 | Auto `query:` / `passage:` prefixes               |
 
 Example — remote OpenAI embeddings:
 
@@ -258,7 +265,17 @@ Example — remote OpenAI embeddings:
 }
 ```
 
-Changing `embeddingModel` (or dimensions) can trigger re-embedding of stored memories on next startup. Prefer picking a model once and sticking with it for a given data directory.
+Example — local bge-m3 (pooling defaults to CLS via preset; override if needed):
+
+```jsonc
+{
+  "embeddingModel": "Xenova/bge-m3",
+  // "embeddingPooling": "cls",
+  // "embeddingDtype": "q8",
+}
+```
+
+Changing `embeddingModel`, dimensions, pooling, or task prefixes can require re-embedding stored memories so store and query vectors stay aligned. Prefer picking a model (and pooling/prefix settings) once and sticking with them for a given data directory.
 
 **Unsupported — Intel Mac (`darwin/x64`):** Local persistence requires `@tursodatabase/database`, which does not publish an Intel Mac native binding. Fixed `onnxruntime-node` releases (`1.24.1+`, including the pinned `1.30.0`) also lack darwin/x64. Use an Apple Silicon Mac, Linux, or Windows, or a remote endpoint via `embeddingApiUrl` + `embeddingApiKey` (example above). On supported platforms, `opencode-mem` pins `onnxruntime-node@1.30.0` (Ort::Env teardown fix from `1.24.1` / #225) and loads transformers through a CJS resolve shim so OpenCode nested installs keep that binding. Transformers is resolved to an absolute path before that shim is installed so OpenCode's Bun `--compile` host does not fail with `Cannot find module '@huggingface/transformers' from ''`. After upgrading, clear OpenCode's nested plugin cache (`~/.cache/opencode/packages/opencode-mem@*`) and reinstall.
 

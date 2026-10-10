@@ -39,6 +39,14 @@ describe("config", () => {
       expect(CONFIG.embeddingUseTaskPrefixes).toBe(false);
     });
 
+    it("should default embeddingPooling to mean", () => {
+      expect(CONFIG.embeddingPooling).toBe("mean");
+    });
+
+    it("should leave embeddingDtype unset by default", () => {
+      expect(CONFIG.embeddingDtype).toBeUndefined();
+    });
+
     it("should have numeric embeddingDimensions", () => {
       expect(typeof CONFIG.embeddingDimensions).toBe("number");
       expect(CONFIG.embeddingDimensions).toBeGreaterThan(0);

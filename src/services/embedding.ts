@@ -102,24 +102,77 @@ export type EmbedOptions = {
   task?: EmbeddingTask;
 };
 
-const TASK_PREFIXES: Record<EmbeddingTask, string> = {
+const NOMIC_TASK_PREFIXES: Record<EmbeddingTask, string> = {
   document: "search_document: ",
   query: "search_query: ",
 };
 
+export type EmbeddingTaskPrefixOptions = {
+  useTaskPrefixes?: boolean;
+  queryPrefix?: string;
+  documentPrefix?: string;
+};
+
 /**
- * Apply Nomic-style task prefixes when enabled.
+ * Resolve the prefix for a task: explicit/custom → Nomic (when enabled) → none.
+ * Empty string means "no prefix" (disables Nomic fallback for that task).
+ */
+export function resolveEmbeddingTaskPrefix(
+  task: EmbeddingTask,
+  options: EmbeddingTaskPrefixOptions = {}
+): string {
+  const custom = task === "query" ? options.queryPrefix : options.documentPrefix;
+  if (custom !== undefined) return custom;
+  if (options.useTaskPrefixes) return NOMIC_TASK_PREFIXES[task];
+  return "";
+}
+
+/**
+ * Apply task prefixes when configured.
  * Cache keys and API/local inputs should use the returned string.
+ *
+ * Third argument accepts the legacy boolean (`useTaskPrefixes`) or an options
+ * object. Defaults read from CONFIG (custom/preset prefixes + Nomic flag).
  */
 export function applyEmbeddingTaskPrefix(
   text: string,
   options?: EmbedOptions,
-  useTaskPrefixes: boolean = CONFIG.embeddingUseTaskPrefixes
+  useTaskPrefixesOrOpts: boolean | EmbeddingTaskPrefixOptions = {
+    useTaskPrefixes: CONFIG.embeddingUseTaskPrefixes,
+    queryPrefix: CONFIG.embeddingQueryPrefix,
+    documentPrefix: CONFIG.embeddingDocumentPrefix,
+  }
 ): string {
-  if (!useTaskPrefixes || !options?.task) return text;
-  const prefix = TASK_PREFIXES[options.task];
+  if (!options?.task) return text;
+
+  const prefixOpts: EmbeddingTaskPrefixOptions =
+    typeof useTaskPrefixesOrOpts === "boolean"
+      ? {
+          useTaskPrefixes: useTaskPrefixesOrOpts,
+          queryPrefix: CONFIG.embeddingQueryPrefix,
+          documentPrefix: CONFIG.embeddingDocumentPrefix,
+        }
+      : {
+          useTaskPrefixes: useTaskPrefixesOrOpts.useTaskPrefixes ?? CONFIG.embeddingUseTaskPrefixes,
+          queryPrefix: useTaskPrefixesOrOpts.queryPrefix ?? CONFIG.embeddingQueryPrefix,
+          documentPrefix: useTaskPrefixesOrOpts.documentPrefix ?? CONFIG.embeddingDocumentPrefix,
+        };
+
+  const prefix = resolveEmbeddingTaskPrefix(options.task, prefixOpts);
+  if (!prefix) return text;
   if (text.startsWith(prefix)) return text;
   return `${prefix}${text}`;
+}
+
+function embeddingCacheFingerprint(): string {
+  return [
+    CONFIG.embeddingModel,
+    CONFIG.embeddingPooling,
+    CONFIG.embeddingQueryPrefix ?? "",
+    CONFIG.embeddingDocumentPrefix ?? "",
+    CONFIG.embeddingUseTaskPrefixes ? "1" : "0",
+    CONFIG.embeddingDtype ?? "",
+  ].join("\0");
 }
 
 type HfTransformers = typeof import("@huggingface/transformers");
@@ -197,7 +250,7 @@ export class EmbeddingService {
   /** Set when warmup fails permanently; prevents "initializing forever" (#184). */
   public initError: string | null = null;
   private cache: Map<string, Float32Array> = new Map();
-  private cachedModelName: string | null = null;
+  private cachedFingerprint: string | null = null;
 
   static getInstance(): EmbeddingService {
     if (!(globalThis as any)[GLOBAL_EMBEDDING_KEY]) {
@@ -247,11 +300,13 @@ export class EmbeddingService {
 
       // Local model path
       const { pipeline } = await ensureTransformersLoaded();
-      const dtype = resolveLocalOnnxDtype(CONFIG.embeddingModel);
+      // Explicit config wins; otherwise auto-resolve from model declaration / cache (#393).
+      const dtype = CONFIG.embeddingDtype ?? resolveLocalOnnxDtype(CONFIG.embeddingModel);
       if (dtype) {
         log("Resolved local ONNX dtype for embedding warmup", {
           model: CONFIG.embeddingModel,
           dtype,
+          source: CONFIG.embeddingDtype ? "config" : "auto",
         });
       }
       this.pipe = await pipeline("feature-extraction", CONFIG.embeddingModel, {
@@ -260,7 +315,11 @@ export class EmbeddingService {
       });
       this.isWarmedUp = true;
       this.initError = null;
-      log("Embedding model warmed up", { model: CONFIG.embeddingModel, dtype: dtype ?? null });
+      log("Embedding model warmed up", {
+        model: CONFIG.embeddingModel,
+        pooling: CONFIG.embeddingPooling,
+        dtype: dtype ?? null,
+      });
     } catch (error) {
       const rewritten = formatOnnxruntimeInitError(error);
       this.initPromise = null;
@@ -271,9 +330,10 @@ export class EmbeddingService {
   }
 
   async embed(text: string, options?: EmbedOptions): Promise<Float32Array> {
-    if (this.cachedModelName !== CONFIG.embeddingModel) {
+    const fingerprint = embeddingCacheFingerprint();
+    if (this.cachedFingerprint !== fingerprint) {
       this.clearCache();
-      this.cachedModelName = CONFIG.embeddingModel;
+      this.cachedFingerprint = fingerprint;
     }
 
     const input = applyEmbeddingTaskPrefix(text, options);
@@ -310,7 +370,10 @@ export class EmbeddingService {
       const data: any = await response.json();
       result = new Float32Array(data.data[0].embedding);
     } else {
-      const output = await this.pipe(input, { pooling: "mean", normalize: true });
+      const output = await this.pipe(input, {
+        pooling: CONFIG.embeddingPooling,
+        normalize: true,
+      });
       result = new Float32Array(output.data);
     }
 

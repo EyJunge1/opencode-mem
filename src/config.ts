@@ -34,6 +34,26 @@ interface OpenCodeMemConfig {
   embeddingApiKey?: string;
   /** Opt-in Nomic task prefixes (`search_document:` / `search_query:`). Default false. */
   embeddingUseTaskPrefixes?: boolean;
+  /**
+   * Local transformers.js pooling strategy. Default `"mean"`.
+   * Model presets (bge-m3 → cls, Qwen3-Embedding → last_token) apply when unset.
+   */
+  embeddingPooling?: "mean" | "cls" | "last_token";
+  /**
+   * Prefix applied to query-task embeddings. When unset, model presets or
+   * `embeddingUseTaskPrefixes` (Nomic) may supply one. Explicit `""` disables.
+   */
+  embeddingQueryPrefix?: string;
+  /**
+   * Prefix applied to document-task embeddings. Same resolution rules as
+   * `embeddingQueryPrefix`.
+   */
+  embeddingDocumentPrefix?: string;
+  /**
+   * Optional dtype for the local ONNX pipeline (e.g. `"q8"`, `"fp32"`).
+   * When set, passed to `pipeline({ dtype })` and outranks auto-detection.
+   */
+  embeddingDtype?: string;
   similarityThreshold?: number;
   maxMemories?: number;
   maxProfileItems?: number;
@@ -158,6 +178,9 @@ const DEFAULTS: Required<
     OpenCodeMemConfig,
     | "embeddingApiUrl"
     | "embeddingApiKey"
+    | "embeddingQueryPrefix"
+    | "embeddingDocumentPrefix"
+    | "embeddingDtype"
     | "memoryModel"
     | "memoryApiUrl"
     | "memoryApiKey"
@@ -180,6 +203,9 @@ const DEFAULTS: Required<
 > & {
   embeddingApiUrl?: string;
   embeddingApiKey?: string;
+  embeddingQueryPrefix?: string;
+  embeddingDocumentPrefix?: string;
+  embeddingDtype?: string;
   memoryModel?: string;
   memoryApiUrl?: string;
   memoryApiKey?: string;
@@ -207,6 +233,7 @@ const DEFAULTS: Required<
   embeddingModel: "Xenova/nomic-embed-text-v1",
   embeddingDimensions: 768,
   embeddingUseTaskPrefixes: false,
+  embeddingPooling: "mean",
   similarityThreshold: 0.6,
   maxMemories: 10,
   maxProfileItems: 5,
@@ -341,6 +368,18 @@ const CONFIG_TEMPLATE = `{
   // Opt-in Nomic task prefixes (search_document: / search_query:). After enabling,
   // re-index existing memories so store and query vectors stay aligned.
   // "embeddingUseTaskPrefixes": true,
+
+  // Local pooling: "mean" (default) | "cls" | "last_token".
+  // Unset → model preset (bge-m3=cls, Qwen3-Embedding=last_token) or "mean".
+  // "embeddingPooling": "mean",
+
+  // Custom task prefixes (override presets / Nomic). Explicit "" disables a side.
+  // Changing pooling or prefixes requires re-embedding stored memories.
+  // "embeddingQueryPrefix": "query: ",
+  // "embeddingDocumentPrefix": "passage: ",
+
+  // Optional local ONNX dtype override (e.g. "q8", "fp32"). When unset, transformers.js defaults apply.
+  // "embeddingDtype": "q8",
   
   // Auto-detected dimensions (no need to set manually)
   // "embeddingDimensions": 768,
@@ -350,6 +389,8 @@ const CONFIG_TEMPLATE = `{
   // "embeddingModel": "Xenova/jina-embeddings-v2-small-en", // 512 dims, faster, 8192 context
   // "embeddingModel": "Xenova/all-MiniLM-L6-v2",            // 384 dims, very fast, 512 context
   // "embeddingModel": "Xenova/all-mpnet-base-v2",           // 768 dims, good quality, 512 context
+  // "embeddingModel": "Xenova/bge-m3",                      // 1024 dims, CLS pooling (auto)
+  // "embeddingModel": "intfloat/multilingual-e5-large",     // 1024 dims, query:/passage: prefixes (auto)
   
   // Optional: OpenAI-compatible API for embeddings (both URL and key required)
   // "embeddingApiUrl": "https://api.openai.com/v1",
@@ -696,6 +737,91 @@ function ensureConfigExists(): void {
 
 ensureConfigExists();
 
+export type EmbeddingPooling = "mean" | "cls" | "last_token";
+
+export type EmbeddingModelPreset = {
+  pooling: EmbeddingPooling;
+  /**
+   * When present (including `""`), used as the default query/document prefix
+   * when the corresponding config key is unset. Omitting both keeps Nomic
+   * opt-in via `embeddingUseTaskPrefixes` (nomic models).
+   */
+  queryPrefix?: string;
+  documentPrefix?: string;
+};
+
+const QWEN3_EMBEDDING_QUERY_PREFIX =
+  "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ";
+
+/**
+ * Known local embedding model presets (substring match on `embeddingModel`).
+ * Explicit config keys always win over these defaults.
+ */
+export function getEmbeddingModelPreset(model: string): EmbeddingModelPreset | undefined {
+  const id = model.toLowerCase();
+  if (id.includes("bge-m3")) {
+    return { pooling: "cls", queryPrefix: "", documentPrefix: "" };
+  }
+  if (id.includes("multilingual-e5") || id.includes("e5-")) {
+    return { pooling: "mean", queryPrefix: "query: ", documentPrefix: "passage: " };
+  }
+  if (id.includes("qwen3-embedding")) {
+    return {
+      pooling: "last_token",
+      queryPrefix: QWEN3_EMBEDDING_QUERY_PREFIX,
+      documentPrefix: "",
+    };
+  }
+  if (id.includes("jina-embeddings")) {
+    return { pooling: "mean", queryPrefix: "", documentPrefix: "" };
+  }
+  if (id.includes("nomic-embed")) {
+    return { pooling: "mean" };
+  }
+  return undefined;
+}
+
+export function normalizeEmbeddingPooling(value: unknown): EmbeddingPooling {
+  if (value === "mean" || value === "cls" || value === "last_token") return value;
+  throw new Error(
+    `Invalid embeddingPooling config: ${String(value)} (expected "mean" | "cls" | "last_token")`
+  );
+}
+
+/** Dtypes accepted by transformers.js `pipeline({ dtype })`. */
+export const LOCAL_ONNX_DTYPES = [
+  "auto",
+  "fp32",
+  "fp16",
+  "q8",
+  "int8",
+  "uint8",
+  "q4",
+  "bnb4",
+  "q4f16",
+  "q2",
+  "q2f16",
+  "q1",
+  "q1f16",
+] as const;
+
+export type LocalOnnxDtype = (typeof LOCAL_ONNX_DTYPES)[number];
+
+export function normalizeEmbeddingDtype(value: unknown): LocalOnnxDtype | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    throw new Error(`Invalid embeddingDtype config: ${String(value)}`);
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if ((LOCAL_ONNX_DTYPES as readonly string[]).includes(trimmed)) {
+    return trimmed as LocalOnnxDtype;
+  }
+  throw new Error(
+    `Invalid embeddingDtype config: ${trimmed} (expected one of ${LOCAL_ONNX_DTYPES.join(", ")})`
+  );
+}
+
 function getEmbeddingDimensions(model: string): number {
   const dimensionMap: Record<string, number> = {
     // Local Xenova models
@@ -711,9 +837,16 @@ function getEmbeddingDimensions(model: string): number {
     "Xenova/all-mpnet-base-v2": 768,
     "Xenova/bge-base-en-v1.5": 768,
     "Xenova/bge-small-en-v1.5": 384,
+    "Xenova/bge-m3": 1024,
     "Xenova/gte-small": 384,
     "Xenova/GIST-small-Embedding-v0": 384,
     "Xenova/text-embedding-ada-002": 1536,
+
+    // Other local / ONNX community models
+    "intfloat/multilingual-e5-large": 1024,
+    "intfloat/multilingual-e5-base": 768,
+    "intfloat/e5-large-v2": 1024,
+    "onnx-community/Qwen3-Embedding-0.6B-ONNX": 1024,
 
     // OpenAI API models
     "text-embedding-3-small": 1536,
@@ -831,9 +964,22 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
   const memoryApiKey =
     resolveSecretValue(fileConfig.memoryApiKey) ??
     (memoryProvider === "atlas-cloud" ? process.env.ATLASCLOUD_API_KEY : undefined);
+  const embeddingModel = fileConfig.embeddingModel ?? DEFAULTS.embeddingModel;
+  const embeddingPreset = getEmbeddingModelPreset(embeddingModel);
   const embeddingDimensions =
-    fileConfig.embeddingDimensions ??
-    getEmbeddingDimensions(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel);
+    fileConfig.embeddingDimensions ?? getEmbeddingDimensions(embeddingModel);
+  const embeddingPooling = normalizeEmbeddingPooling(
+    fileConfig.embeddingPooling ?? embeddingPreset?.pooling ?? DEFAULTS.embeddingPooling
+  );
+  const embeddingQueryPrefix =
+    fileConfig.embeddingQueryPrefix !== undefined
+      ? fileConfig.embeddingQueryPrefix
+      : embeddingPreset?.queryPrefix;
+  const embeddingDocumentPrefix =
+    fileConfig.embeddingDocumentPrefix !== undefined
+      ? fileConfig.embeddingDocumentPrefix
+      : embeddingPreset?.documentPrefix;
+  const embeddingDtype = normalizeEmbeddingDtype(fileConfig.embeddingDtype);
   const autoCaptureMaxContextBytes = normalizeAutoCaptureMaxContextBytes(
     fileConfig.autoCaptureMaxContextBytes ?? DEFAULTS.autoCaptureMaxContextBytes
   );
@@ -857,10 +1003,14 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     storagePath: expandPath(fileConfig.storagePath ?? DEFAULTS.storagePath),
     userEmailOverride: fileConfig.userEmailOverride,
     userNameOverride: fileConfig.userNameOverride,
-    embeddingModel: fileConfig.embeddingModel ?? DEFAULTS.embeddingModel,
+    embeddingModel,
     embeddingDimensions,
     embeddingUseTaskPrefixes:
       fileConfig.embeddingUseTaskPrefixes ?? DEFAULTS.embeddingUseTaskPrefixes,
+    embeddingPooling,
+    embeddingQueryPrefix,
+    embeddingDocumentPrefix,
+    embeddingDtype,
     embeddingApiUrl: fileConfig.embeddingApiUrl,
     embeddingApiKey: fileConfig.embeddingApiUrl
       ? resolveSecretValue(fileConfig.embeddingApiKey ?? process.env.OPENAI_API_KEY)
