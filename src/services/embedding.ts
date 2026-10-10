@@ -1,5 +1,6 @@
 import { CONFIG } from "../config.js";
 import { log } from "./logger.js";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   formatOnnxruntimeInitError,
@@ -12,6 +13,88 @@ const requireFromHere = createRuntimeRequire(import.meta);
 const TIMEOUT_MS = 30000;
 const GLOBAL_EMBEDDING_KEY = Symbol.for("opencode-mem.embedding.instance");
 const MAX_CACHE_SIZE = 100;
+
+// ONNX weight variants in descending precision, mirroring transformers.js
+// DEFAULT_DTYPE_SUFFIX_MAPPING (utils/dtypes.js). fp32 has no filename suffix.
+const ONNX_DTYPE_VARIANTS = [
+  ["fp32", ""],
+  ["fp16", "_fp16"],
+  ["q8", "_quantized"],
+  ["int8", "_int8"],
+  ["uint8", "_uint8"],
+  ["q4", "_q4"],
+  ["q4f16", "_q4f16"],
+  ["bnb4", "_bnb4"],
+  ["q2", "_q2"],
+  ["q2f16", "_q2f16"],
+  ["q1", "_q1"],
+  ["q1f16", "_q1f16"],
+] as const;
+
+/** Concrete dtype strings accepted by transformers.js `pipeline({ dtype })`. */
+export type LocalOnnxDtype = (typeof ONNX_DTYPE_VARIANTS)[number][0] | "auto";
+
+type DeclaredDtype =
+  { kind: "string"; value: LocalOnnxDtype } | { kind: "object" } | { kind: "absent" };
+
+function modelCacheRoot(model: string, cacheRoot?: string): string {
+  return join(cacheRoot ?? join(CONFIG.storagePath, ".cache"), model);
+}
+
+/**
+ * Read `transformers.js_config.dtype` from the cached config.json.
+ * String declarations outrank the cache probe. Object (per-file) maps must not
+ * be overridden — transformers.js resolves them after loading config. Absent or
+ * malformed configs fall through to the cache probe.
+ */
+function readDeclaredDtype(model: string, cacheRoot?: string): DeclaredDtype {
+  try {
+    const parsed = JSON.parse(
+      readFileSync(join(modelCacheRoot(model, cacheRoot), "config.json"), "utf-8")
+    );
+    const declared = parsed?.["transformers.js_config"]?.dtype;
+    if (typeof declared === "string" && declared.trim()) {
+      return { kind: "string", value: declared.trim() as LocalOnnxDtype };
+    }
+    if (declared && typeof declared === "object" && !Array.isArray(declared)) {
+      return { kind: "object" };
+    }
+    return { kind: "absent" };
+  } catch {
+    return { kind: "absent" };
+  }
+}
+
+/**
+ * Resolve the dtype whose ONNX weights are already cached, so a quantized-only
+ * repo is not asked for `model.onnx` (fp32). Returns undefined when nothing is
+ * cached yet — transformers.js then falls back to its own defaults.
+ */
+function detectCachedDtype(model: string, cacheRoot?: string): LocalOnnxDtype | undefined {
+  const onnxDir = join(modelCacheRoot(model, cacheRoot), "onnx");
+  const hit = ONNX_DTYPE_VARIANTS.find(([, suffix]) =>
+    existsSync(join(onnxDir, `model${suffix}.onnx`))
+  );
+  return hit?.[0];
+}
+
+/**
+ * Resolve a concrete dtype to pass into transformers.js `pipeline()`, or
+ * undefined to leave dtype selection to transformers.js defaults / config.
+ *
+ * @param model Hugging Face model id (cache subdirectory under `.cache`)
+ * @param cacheRoot Optional override for `{storagePath}/.cache` (tests)
+ */
+export function resolveLocalOnnxDtype(
+  model: string,
+  cacheRoot?: string
+): LocalOnnxDtype | undefined {
+  const declared = readDeclaredDtype(model, cacheRoot);
+  if (declared.kind === "string") return declared.value;
+  // Per-file object maps: do not pass options.dtype — it would override config.
+  if (declared.kind === "object") return undefined;
+  return detectCachedDtype(model, cacheRoot);
+}
 
 export type EmbeddingTask = "document" | "query";
 
@@ -217,7 +300,15 @@ export class EmbeddingService {
 
       // Local model path
       const { pipeline } = await ensureTransformersLoaded();
-      const dtype = CONFIG.embeddingDtype;
+      // Explicit config wins; otherwise auto-resolve from model declaration / cache (#393).
+      const dtype = CONFIG.embeddingDtype ?? resolveLocalOnnxDtype(CONFIG.embeddingModel);
+      if (dtype) {
+        log("Resolved local ONNX dtype for embedding warmup", {
+          model: CONFIG.embeddingModel,
+          dtype,
+          source: CONFIG.embeddingDtype ? "config" : "auto",
+        });
+      }
       this.pipe = await pipeline("feature-extraction", CONFIG.embeddingModel, {
         ...(dtype ? { dtype } : {}),
         progress_callback: progressCallback,
