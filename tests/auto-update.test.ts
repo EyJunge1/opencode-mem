@@ -50,6 +50,22 @@ describe("auto-update helpers", () => {
     expect(await updateRemoveDir(packageDir, "opencode-mem")).toBe(wrapperDir);
   });
 
+  it("updateRemoveDir finds wrapper under OpenCode timestamp cache nests", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "mem-update-ts-"));
+    const wrapperDir = join(rootDir, "opencode-mem@latest");
+    const stampDir = join(wrapperDir, "1791629200642");
+    const packageDir = join(stampDir, "node_modules", "opencode-mem");
+    await writePackageJson(stampDir, {
+      dependencies: { "opencode-mem": "2.29.2" },
+    });
+    await writePackageJson(packageDir, {
+      name: "opencode-mem",
+      version: "2.29.2",
+    });
+
+    expect(await updateRemoveDir(packageDir, "opencode-mem")).toBe(wrapperDir);
+  });
+
   it("updateRemoveDir accepts caret wrapper installs", async () => {
     const rootDir = await mkdtemp(join(tmpdir(), "mem-update-caret-"));
     const wrapperDir = join(rootDir, "opencode-mem@^2");
