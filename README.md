@@ -77,6 +77,13 @@ For OpenCode v2, add the package to the native `plugins` list:
 }
 ```
 
+OpenCode also loads the package's `./tui` companion automatically so
+auto-capture / profile / error toasts render in the TUI (server plugins
+cannot call `ui.toast` directly). You do not need a second entry in
+`plugins`. If you run a CLI-only TUI against a remote OpenCode server,
+register `opencode-mem/tui` in that CLI's plugin list (for example
+`cli.json`) so the companion can subscribe to toast RPC events.
+
 For OpenCode v1, add the default entrypoint to your configuration at
 `~/.config/opencode/opencode.json`:
 
@@ -113,7 +120,7 @@ To run the plugin from a local source checkout instead of the npm release, `bun 
 }
 ```
 
-Point at the package root, not at `dist/` or a single file. OpenCode resolves a directory plugin by falling back to `<directory>/index` (OpenCode does not read `package.json` `exports`/`main` for a path spec on current releases), so this repository ships a thin root `index.js` that re-exports the built v2 entrypoint from `dist/plugin.js`. A path to a file is rejected (`configured plugin path must be a directory`), and a directory without a root `index.js` is skipped silently.
+Point at the package root, not at `dist/` or a single file. OpenCode resolves a directory plugin by falling back to `<directory>/index` (OpenCode does not read `package.json` `exports`/`main` for a path spec on current releases), so this repository ships a thin root `index.js` that re-exports the built v2 entrypoint from `dist/plugin.js`, and a root `tui.js` that re-exports `dist/tui.js` for the TUI companion. A path to a file is rejected (`configured plugin path must be a directory`), and a directory without a root `index.js` is skipped silently.
 
 ### Optional database encryption at rest
 

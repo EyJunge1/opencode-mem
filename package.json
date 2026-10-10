@@ -18,6 +18,10 @@
       "import": "./dist/v2/plugin.js",
       "types": "./dist/v2/plugin.d.ts"
     },
+    "./tui": {
+      "import": "./dist/tui.js",
+      "types": "./dist/tui.d.ts"
+    },
     "./tags": {
       "import": "./dist/services/tags.js",
       "types": "./dist/services/tags.d.ts"

@@ -1,6 +1,7 @@
 import type { Context } from "@opencode/plugin/promise/plugin";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+import type { MemToastPayload } from "./toast-rpc.js";
 
 type LegacyPart = { type?: string; text?: string; metadata?: unknown };
 
@@ -158,6 +159,42 @@ function schemaPrompt(body: any): string {
   return sections.filter(Boolean).join("\n\n");
 }
 
+export type ToastEmitter = {
+  events: {
+    emit: (name: "toast", data: MemToastPayload) => Promise<void>;
+  };
+};
+
+function toastPayloadFrom(input: any): MemToastPayload | null {
+  const body = bodyFrom(input);
+  const message = typeof body.message === "string" ? body.message : "";
+  if (!message) return null;
+
+  const payload: {
+    message: string;
+    title?: string;
+    variant?: MemToastPayload["variant"];
+    duration?: number;
+    sessionID?: string;
+  } = { message };
+  if (typeof body.title === "string" && body.title) payload.title = body.title;
+  if (
+    body.variant === "info" ||
+    body.variant === "success" ||
+    body.variant === "warning" ||
+    body.variant === "error"
+  ) {
+    payload.variant = body.variant;
+  }
+  if (typeof body.duration === "number" && Number.isFinite(body.duration)) {
+    payload.duration = body.duration;
+  }
+  if (typeof body.sessionID === "string" && body.sessionID) {
+    payload.sessionID = body.sessionID;
+  }
+  return payload;
+}
+
 function toastFallback(input: any): { data: false } {
   const body = bodyFrom(input);
   const message = [body.title, body.message].filter(Boolean).join(": ");
@@ -169,11 +206,28 @@ function toastFallback(input: any): { data: false } {
   return { data: false };
 }
 
+async function showToastViaRpc(
+  toastRpc: ToastEmitter | undefined,
+  input: any
+): Promise<{ data: boolean }> {
+  if (!toastRpc) return toastFallback(input);
+
+  const payload = toastPayloadFrom(input);
+  if (!payload) return toastFallback(input);
+
+  try {
+    await toastRpc.events.emit("toast", payload);
+    return { data: true };
+  } catch {
+    return toastFallback(input);
+  }
+}
+
 /**
  * Adapts the released OpenCode v2 plugin context to the V1 client shape used
  * by the shared opencode-mem implementation.
  */
-export function createLegacyClient(ctx: Context) {
+export function createLegacyClient(ctx: Context, toastRpc?: ToastEmitter) {
   const generatedSessions = new Set<string>();
 
   const client = {
@@ -203,7 +257,7 @@ export function createLegacyClient(ctx: Context) {
       },
     },
     tui: {
-      showToast: async (input: any) => toastFallback(input),
+      showToast: async (input: any) => showToastViaRpc(toastRpc, input),
       appendPrompt: async () => ({ data: false }),
       submitPrompt: async () => ({ data: false }),
     },
