@@ -26,6 +26,18 @@
   // re-index existing memories so store and query vectors stay aligned.
   "embeddingUseTaskPrefixes": false,
 
+  // Local pooling: "mean" (default) | "cls" | "last_token".
+  // Unset → model preset (bge-m3=cls, Qwen3-Embedding=last_token) or "mean".
+  // "embeddingPooling": "mean",
+
+  // Custom task prefixes (override presets / Nomic). Explicit "" disables a side.
+  // Changing pooling or prefixes requires re-embedding stored memories.
+  // "embeddingQueryPrefix": "query: ",
+  // "embeddingDocumentPrefix": "passage: ",
+
+  // Optional local ONNX dtype override (e.g. "q8", "fp32"). When unset, transformers.js defaults apply.
+  // "embeddingDtype": "q8",
+
   // Auto-detected dimensions (no need to set manually)
   // "embeddingDimensions": 768,
 
@@ -34,6 +46,8 @@
   // "embeddingModel": "Xenova/jina-embeddings-v2-small-en", // 512 dims, faster, 8192 context
   // "embeddingModel": "Xenova/all-MiniLM-L6-v2",            // 384 dims, very fast, 512 context
   // "embeddingModel": "Xenova/all-mpnet-base-v2",           // 768 dims, good quality, 512 context
+  // "embeddingModel": "Xenova/bge-m3",                      // 1024 dims, CLS pooling (auto)
+  // "embeddingModel": "intfloat/multilingual-e5-large",     // 1024 dims, query:/passage: prefixes (auto)
 
   // Optional: OpenAI-compatible API for embeddings (both URL and key required)
   // "embeddingApiUrl": "https://api.openai.com/v1",
