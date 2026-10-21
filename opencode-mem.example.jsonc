@@ -182,6 +182,13 @@
 
   "autoCaptureEnabled": true,
 
+  // When both opencodeProvider and manual memoryModel/memoryApiUrl are set, which
+  // channel to try first for auto-capture summaries. Default "opencode-first".
+  // Prefer "external-first" if the host session API is slow/busy and you want the
+  // faster external API path. Failed primary falls back to the other channel.
+  // Faster opencode failover: also lower "opencodeTimeoutMs" (default 90000).
+  // "autoCaptureProviderOrder": "external-first",
+
   // Provider type: "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
   // Note: "openai-chat" is a generic OpenAI API-compatible mode.
   // Any service that follows the OpenAI Chat Completions API can use it via custom "memoryApiUrl".

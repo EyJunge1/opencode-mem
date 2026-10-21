@@ -896,7 +896,12 @@ export async function handleUnpinMemory(id: string): Promise<ApiResponse<void>> 
 }
 
 export async function handleRunCleanup(): Promise<
-  ApiResponse<{ deletedCount: number; userCount: number; projectCount: number }>
+  ApiResponse<{
+    deletedCount: number;
+    userCount: number;
+    projectCount: number;
+    aiSessionsDeleted?: number;
+  }>
 > {
   try {
     const { cleanupService } = await import("./cleanup-service.js");

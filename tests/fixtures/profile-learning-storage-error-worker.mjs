@@ -127,6 +127,7 @@ mock.module(tagsUrl, () => ({
 
 mock.module(loggerUrl, () => ({
   log: (label, data) => event("log", { label, data }),
+  serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 
 mock.module(promptManagerUrl, () => ({

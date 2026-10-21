@@ -113,7 +113,7 @@ mock.module(${JSON.stringify(profileManagerUrl)}, () => ({
   },
 }));
 
-mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {} }));
+mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {}, serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }) }));
 
 let structuredSystemPrompt = null;
 let externalSystemPrompt = null;

@@ -88,7 +88,7 @@ mock.module(${JSON.stringify(privacyUrl)}, () => ({
   isFullyPrivate: () => false,
 }));
 mock.module(${JSON.stringify(promptManagerUrl)}, () => ({ userPromptManager: { savePrompt() {} } }));
-mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {} }));
+mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {}, serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }) }));
 mock.module(${JSON.stringify(languageUrl)}, () => ({ getLanguageName: () => "English" }));
 // The web server only starts once the Turso readiness gate passes, and that
 // gate is what decides whether an owner exists at all.

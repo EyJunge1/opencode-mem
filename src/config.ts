@@ -65,6 +65,13 @@ interface OpenCodeMemConfig {
   autoCaptureMaxRetries?: number;
   autoCaptureMaxContextBytes?: number;
   autoCaptureLanguage?: string;
+  /**
+   * Which auto-capture summary channel to try first when both opencode and
+   * manual (memoryModel/memoryApiUrl) providers are configured.
+   * Default "opencode-first". Use "external-first" for lower latency when the
+   * host session API is busy; failed primary channel falls back to the other.
+   */
+  autoCaptureProviderOrder?: "opencode-first" | "external-first";
   memoryProvider?:
     "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter";
   memoryModel?: string;
@@ -244,6 +251,7 @@ const DEFAULTS: Required<
   autoCaptureIterationTimeout: 30000,
   autoCaptureMaxRetries: 3,
   autoCaptureMaxContextBytes: 131072,
+  autoCaptureProviderOrder: "opencode-first",
   aiSessionRetentionDays: 7,
   webServerEnabled: true,
   webServerPort: 4747,
@@ -579,6 +587,13 @@ const CONFIG_TEMPLATE = `{
   // Prevents HTTP 400 context overflows on models with ~131K token windows (e.g. Groq Llama).
   // Rough guide: tokens ≈ bytes / 4 for mixed code/prose.
   "autoCaptureMaxContextBytes": 131072,
+
+  // When both opencodeProvider and manual memoryModel/memoryApiUrl are set, which
+  // channel to try first for auto-capture summaries. Default "opencode-first".
+  // Prefer "external-first" if the host session API is slow/busy (~15–50s) and
+  // you want the faster external API path (~3s). Failed primary falls back.
+  // Faster opencode failover also: lower "opencodeTimeoutMs" (default 90000).
+  // "autoCaptureProviderOrder": "external-first",
    
   // Days to keep AI session history before cleanup
   "aiSessionRetentionDays": 7,
@@ -878,6 +893,13 @@ export function normalizeAutoCaptureMaxContextBytes(value: number): number {
   return value;
 }
 
+export type AutoCaptureProviderOrder = "opencode-first" | "external-first";
+
+/** Invalid / unset values fall back to the historical default (opencode-first). */
+export function normalizeAutoCaptureProviderOrder(value: unknown): AutoCaptureProviderOrder {
+  return value === "external-first" ? "external-first" : "opencode-first";
+}
+
 export function normalizeAutoCleanupRetentionDays(value: number): number {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`Invalid autoCleanupRetentionDays config: ${value}`);
@@ -1028,6 +1050,9 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     autoCaptureMaxRetries: fileConfig.autoCaptureMaxRetries ?? DEFAULTS.autoCaptureMaxRetries,
     autoCaptureMaxContextBytes,
     autoCaptureLanguage: fileConfig.autoCaptureLanguage,
+    autoCaptureProviderOrder: normalizeAutoCaptureProviderOrder(
+      fileConfig.autoCaptureProviderOrder
+    ),
     memoryProvider,
     memoryModel: fileConfig.memoryModel,
     memoryApiUrl: fileConfig.memoryApiUrl,

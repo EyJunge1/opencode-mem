@@ -73,6 +73,7 @@ mock.module(${JSON.stringify(configUrl)}, () => ({
 
 mock.module(${JSON.stringify(loggerUrl)}, () => ({
   log: () => {},
+  serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 
 const { memoryClient } = await import(${JSON.stringify(clientUrl)});

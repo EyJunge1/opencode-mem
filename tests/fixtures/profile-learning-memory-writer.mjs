@@ -72,7 +72,10 @@ mock.module(configUrl, () => ({
 }));
 
 const loggerUrl = new URL("../../src/services/logger.js", import.meta.url).href;
-mock.module(loggerUrl, () => ({ log: () => {} }));
+mock.module(loggerUrl, () => ({
+  log: () => {},
+  serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
+}));
 
 const counts = { add: 0, readback: 0, search: 0, list: 0 };
 let addedId = null;

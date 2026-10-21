@@ -142,6 +142,7 @@ mock.module(moduleUrl("services/user-prompt/user-prompt-manager"), () => ({
 mock.module(moduleUrl("services/logger"), () => ({
   log: (...args) =>
     logs.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ")),
+  serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 
 mock.module(moduleUrl("services/web-server"), () => ({

@@ -117,6 +117,30 @@ function ensureLoggerInitialized() {
   (globalThis as any)[GLOBAL_LOGGER_KEY] = logDir;
 }
 
+/** Structured fields for log payloads so callers keep `error` + stack/cause. */
+export function serializeError(error: unknown): {
+  error: string;
+  name?: string;
+  stack?: string;
+  cause?: string;
+} {
+  if (error instanceof Error) {
+    const cause =
+      error.cause instanceof Error
+        ? error.cause.message
+        : error.cause !== undefined
+          ? String(error.cause)
+          : undefined;
+    return {
+      error: error.message,
+      name: error.name,
+      ...(error.stack ? { stack: error.stack } : {}),
+      ...(cause !== undefined ? { cause } : {}),
+    };
+  }
+  return { error: String(error) };
+}
+
 export function log(message: string, data?: unknown) {
   ensureLoggerInitialized();
 

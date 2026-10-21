@@ -58,6 +58,7 @@ const profileWithEmbeddings = ${JSON.stringify(profileWithEmbeddings)};
 
 mock.module(${JSON.stringify(loggerUrl)}, () => ({
   log: () => {},
+  serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 
 mock.module(${JSON.stringify(userPromptManagerUrl)}, () => ({

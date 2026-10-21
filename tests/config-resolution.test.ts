@@ -284,6 +284,30 @@ describe("project-scoped config resolution", () => {
     expect(CONFIG.opencodeTimeoutMs).toBe(90000);
   });
 
+  it("parses autoCaptureProviderOrder with default fallback", () => {
+    existsSpy = spyOn(fs, "existsSync").mockImplementation((p) =>
+      normalizePath(p).includes(".config/opencode/opencode-mem")
+    );
+    readSpy = spyOn(fs, "readFileSync");
+
+    readSpy.mockReturnValue(JSON.stringify({ autoCaptureProviderOrder: "external-first" }) as any);
+    initConfig("/some/project");
+    expect(CONFIG.autoCaptureProviderOrder).toBe("external-first");
+
+    readSpy.mockReturnValue(JSON.stringify({ autoCaptureProviderOrder: "opencode-first" }) as any);
+    initConfig("/some/project");
+    expect(CONFIG.autoCaptureProviderOrder).toBe("opencode-first");
+
+    // Invalid / unset fall back to the historical default.
+    readSpy.mockReturnValue(JSON.stringify({ autoCaptureProviderOrder: "bogus" }) as any);
+    initConfig("/some/project");
+    expect(CONFIG.autoCaptureProviderOrder).toBe("opencode-first");
+
+    readSpy.mockReturnValue(JSON.stringify({}) as any);
+    initConfig("/some/project");
+    expect(CONFIG.autoCaptureProviderOrder).toBe("opencode-first");
+  });
+
   it("parses chatMessage.captureChildSessions from the global config", () => {
     existsSpy = spyOn(fs, "existsSync").mockImplementation((p) =>
       normalizePath(p).includes(".config/opencode/opencode-mem")

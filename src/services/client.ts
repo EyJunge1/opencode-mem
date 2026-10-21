@@ -10,7 +10,7 @@ import {
   type MemoryScopeRef,
 } from "./memory-scope.js";
 import { CONFIG } from "../config.js";
-import { log } from "./logger.js";
+import { log, serializeError } from "./logger.js";
 import type { MemoryType } from "../types/index.js";
 import type { MemoryRecord } from "./turso/types.js";
 
@@ -169,14 +169,17 @@ export class LocalMemoryClient {
       [key: string]: unknown;
     }
   ) {
+    let phase: "embed" | "embed_tags" | "write" = "embed";
     try {
       await this.initialize();
 
       const tags = metadata?.tags || [];
+      phase = "embed";
       const vector = await embeddingService.embedWithTimeout(content, { task: "document" });
       let tagsVector: Float32Array | undefined = undefined;
 
       if (tags.length > 0) {
+        phase = "embed_tags";
         tagsVector = await embeddingService.embedWithTimeout(formatTagsForEmbedding(tags), {
           task: "document",
         });
@@ -184,7 +187,8 @@ export class LocalMemoryClient {
 
       const { scope, hash } = extractScopeFromContainerTag(containerTag);
 
-      return tursoShardManager.withScopeWriteLock(scope, hash, async () => {
+      phase = "write";
+      return await tursoShardManager.withScopeWriteLock(scope, hash, async () => {
         const shard = await tursoShardManager.getWriteShard(scope, hash);
 
         const id = `mem_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -236,9 +240,9 @@ export class LocalMemoryClient {
         };
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      log("addMemory: error", { error: errorMessage });
-      return { success: false as const, error: errorMessage };
+      const serialized = serializeError(error);
+      log("addMemory: error", { phase, ...serialized });
+      return { success: false as const, error: serialized.error };
     }
   }
 

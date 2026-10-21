@@ -456,7 +456,7 @@ Slow reasoning models (or very large profile prompts) can exceed the default 90 
 
 Supported providers: any provider listed by `opencode providers list` (e.g. `anthropic`, `openai`, `github-copilot`, ...).
 
-If `opencodeProvider` and `opencodeModel` are set, they take precedence over the manual `memoryProvider` settings below.
+If `opencodeProvider` and `opencodeModel` are set, they take precedence over the manual `memoryProvider` settings below by default (`"autoCaptureProviderOrder": "opencode-first"`). Set `"autoCaptureProviderOrder": "external-first"` to prefer the manual API when both are configured (useful when the host session API is busy/slow); the other channel is used as fallback. Lower `"opencodeTimeoutMs"` to fail over from the opencode channel sooner.
 
 **Follow the session model:** set `"opencodeModel": "inherit"` to use a concrete OpenCode model at call time instead of a pinned id. For **auto-capture**, each prompt is recorded via the `chat.params` hook and the capture request reuses that prompt's provider/model. For **profile learning** and other structured-output paths (which are not tied to a single user message), `inherit` falls back to the most recent model in OpenCode's `model.json` recent list (preferring the configured `opencodeProvider`). Sending the literal model id `inherit` is never valid and previously caused `ProviderModelNotFoundError: Model not found: <provider>/inherit` on those paths. `opencodeProvider` is still required as the normal config gate.
 

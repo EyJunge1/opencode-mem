@@ -55,7 +55,10 @@ mock.module(moduleUrl("services/user-prompt/user-prompt-manager"), () => ({
     setPromptModel: async () => {},
   },
 }));
-mock.module(moduleUrl("services/logger"), () => ({ log() {} }));
+mock.module(moduleUrl("services/logger"), () => ({
+  log() {},
+  serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
+}));
 mock.module(moduleUrl("services/web-server"), () => ({
   startWebServer: async () => null,
   WebServer: class {},

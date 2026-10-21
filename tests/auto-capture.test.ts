@@ -150,7 +150,7 @@ mock.module(${JSON.stringify(promptManagerUrl)}, () => ({
   },
 }));
 
-mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {} }));
+mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {}, serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }) }));
 mock.module(${JSON.stringify(languageUrl)}, () => ({
   detectLanguage: () => "en",
   getLanguageName: () => "English",
@@ -279,7 +279,7 @@ mock.module(${JSON.stringify(promptManagerUrl)}, () => ({
   },
 }));
 
-mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {} }));
+mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {}, serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }) }));
 mock.module(${JSON.stringify(languageUrl)}, () => ({
   detectLanguage: () => "en",
   getLanguageName: () => "English",
@@ -430,7 +430,7 @@ mock.module(${JSON.stringify(promptManagerUrl)}, () => ({
   },
 }));
 
-mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {} }));
+mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {}, serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }) }));
 mock.module(${JSON.stringify(languageUrl)}, () => ({
   detectLanguage: () => "en",
   getLanguageName: () => "English",
