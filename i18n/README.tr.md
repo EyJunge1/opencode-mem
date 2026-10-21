@@ -471,7 +471,7 @@ Manuel `memoryProvider` modları:
 - `openai-chat`: Araç/fonksiyon çağrısıyla OpenAI Chat Completions uyumlu API. Seçilen üst akış modeli ve proxy araç çağrılarını koruduğunda LiteLLM gibi uyumlu proxy’lerle çalışabilir.
 - `openai-responses`: Fonksiyon çağrısı çıktısıyla OpenAI Responses API.
 - `anthropic`: Araç kullanımıyla Anthropic Messages API.
-- `minimax`: MiniMax Anthropic Messages uyumlu uç noktası. `memoryApiUrl`’yi küresel uç noktaya (`https://api.minimax.io`) veya Çin uç noktasına (`https://api.minimaxi.com`) ayarlayın; `/anthropic/v1/messages` yolu ve `x-api-key` başlığı otomatik uygulanır. Güncel modeller arasında `MiniMax-M3` (1.000.000 jeton bağlam; uyarlanabilir veya devre dışı düşünme) ve `MiniMax-M2.7` (204.800 jeton bağlam; her zaman açık düşünme) vardır. `MiniMax-M3`, `memoryExtraParams` üzerinden uyarlanabilir düşünmeyi destekler.
+- `minimax`: MiniMax Anthropic Messages uyumlu uç noktası. `memoryApiUrl`’yi küresel uç noktaya (`https://api.minimax.io`) veya [Çin uç noktasına](https://platform.minimaxi.com/docs/api-reference/text-anthropic-api.md) (`https://api.minimax.cn`) ayarlayın; `/anthropic/v1/messages` yolu ve `x-api-key` başlığı otomatik uygulanır. `MiniMax-M3.1-Flash` (önerilen) veya `MiniMax-M3` kullanın; her ikisi de 1.000.000 jeton bağlamına sahiptir. Flash her zaman düşünür; isteğe bağlı olarak `memoryExtraParams`’ı `{ "output_config": { "effort": "max" } }` olarak `low`, `medium`, `high`, `xhigh` veya `max` (varsayılan) ile ayarlayın. Flash, devre dışı düşünmeyi ve effort `none` değerini reddeder ve `service_tier` desteklemez. Bu uç noktada M3 düşünmesi varsayılan olarak kapalıdır; `{ "thinking": { "type": "adaptive" } }` ile etkinleştirin. Model kimlikleri açıkça yapılandırılmaya devam eder; mevcut özel veya eski kimlikler değiştirilmeden iletilir. Bkz. [MiniMax uyumluluk referansı](https://platform.minimax.io/docs/api-reference/text-anthropic-api.md).
 - `orcarouter`: Ad alanlı model kimlikleriyle OpenAI uyumlu model ağ geçidi. `memoryApiUrl` ve `memoryModel` isteğe bağlıdır — varsayılanları `https://api.orcarouter.ai/v1` ve `orcarouter/auto`’dur (istek başına yetenekli bir model seçen bir yönlendirme takma adı). `memoryModel` ayarlarsanız `openai/gpt-5.5` veya `deepseek/deepseek-v4-flash` gibi ad alanlı bir kimlik kullanın; OrcaRouter çıplak model adlarını reddeder. Örnek:
   ```jsonc
   "memoryProvider": "orcarouter",
@@ -484,6 +484,12 @@ Manuel `memoryProvider` modları:
   "memoryApiKey": "env://ATLASCLOUD_API_KEY",
   ```
   Bu sağlayıcı seçildiğinde otomatik yakalama / profil prompt’ları, model yanıtları ve ilgili konuşma bağlamı `https://api.atlascloud.ai` adresine iletilir.
+- `cheaper-inference`: [Cheaper Inference](https://cheaperinference.com) için OpenAI uyumlu Chat Completions ön ayarı. `memoryApiUrl` ve `memoryModel` isteğe bağlıdır — varsayılanları `https://api.cheaperinference.com/v1` ve `gpt-5.4-mini`’dir. `memoryApiKey` atlanırsa ortamdan `CHEAPER_INFERENCE_API_KEY` kullanılır. Örnek:
+  ```jsonc
+  "memoryProvider": "cheaper-inference",
+  "memoryApiKey": "env://CHEAPER_INFERENCE_API_KEY",
+  ```
+  Bu sağlayıcı seçildiğinde otomatik yakalama / profil prompt’ları, model yanıtları ve ilgili konuşma bağlamı `https://api.cheaperinference.com` adresine iletilir.
 
 Sorun giderme:
 
@@ -491,7 +497,7 @@ Sorun giderme:
 - Otomatik yakalama bir sağlayıcının bağlı olmadığını bildirirse, sağlayıcı adını `opencode providers list` ile doğrulayın ve önce o sağlayıcıyı opencode’da yapılandırın.
 - Bir proxy veya özel sağlayıcı yapılandırılmış/araç çıktısı yerine düz metin döndürürse, başka bir model/sağlayıcı seçin veya yukarıdaki manuel sağlayıcı modlarından birini kullanın.
 - `temperature` reddeden modeller için manuel API yapılandırması kullanırken `"memoryTemperature": false` ekleyin.
-- Zorlanmış araç çağrılarını (`tool_choice: "required"`, örn. bazı düşünme modları) reddeden modeller için `openai-chat` / `orcarouter` / `atlas-cloud` kullanırken `"forceToolChoice": false` ekleyin.
+- Zorlanmış araç çağrılarını (`tool_choice: "required"`, örn. bazı düşünme modları) reddeden modeller için `openai-chat` / `orcarouter` / `atlas-cloud` / `cheaper-inference` kullanırken `"forceToolChoice": false` ekleyin.
 - `opencodeProvider` / `opencodeModel` için (örn. DeepSeek V4 thinking), OpenCode yapılandırılmış çıktı için hâlâ zorlanmış `tool_choice` gönderir. opencode-mem dahili `opencode-mem-structured` ajanında düşünmeyi devre dışı bırakır (ve varyant birleştirmesinden sonra bunu `chat.params` içinde yeniden uygular); böylece otomatik yakalama ve profil öğrenme tamamlanabilir. Etkileşimli sohbet ajanınız değişmez. Yakalama hâlâ bir thinking/`tool_choice` hatasıyla başarısız olursa, `opencodeModel` için düşünmeyen bir model seçin veya eksiksiz bir manuel yedek yapılandırın (`memoryModel` + `memoryApiUrl`).
 - **`opencode-claude-auth` / Claude Code:** otomatik yakalama, kimlik doğrulanmış `anthropic` sağlayıcınızla OpenCode kullanır. Zorlanmış `format: json_schema` Claude-auth ile sık sık döngüye girer; bu nedenle opencode-mem `opencodeProvider: "anthropic"` için kimlik doğrulamayı koruyan bir **metin-JSON** yolu kullanır (zorlanmış `StructuredOutput` araçları yok; yanıt Zod ile ayrıştırılır). Bir adım watchdog’u hâlâ 2 adımdan sonra kaçak dahili oturumları iptal eder. Yakalama hâlâ başarısız olursa, eksiksiz bir manuel Anthropic API anahtarı yedeği yapılandırın (`memoryProvider: "anthropic"` + `memoryModel` + `memoryApiUrl` + `memoryApiKey`) — Claude Pro/Max OAuth OpenCode dışında yeniden kullanılamaz.
 - **Desteklenmeyen platformlar:** Intel Mac (`darwin/x64`) desteklenmez — `@tursodatabase/database` ve sabit `onnxruntime-node` sürümleri (sabitlenmiş `1.30.0`) x64 yerel bağlayıcı yayınlamaz. Apple Silicon, Linux veya Windows kullanın; ya da `embeddingApiUrl` + `embeddingApiKey` ile uzak bir embedding uç noktası. MLX desteklenmez.

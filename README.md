@@ -482,7 +482,7 @@ Manual `memoryProvider` modes:
 - `openai-chat`: OpenAI Chat Completions compatible API with tool/function calling. This can work with compatible proxies such as LiteLLM only when the selected upstream model and proxy preserve tool calls.
 - `openai-responses`: OpenAI Responses API with function-call output.
 - `anthropic`: Anthropic Messages API with tool use.
-- `minimax`: MiniMax Anthropic Messages-compatible endpoint. Set `memoryApiUrl` to the global endpoint (`https://api.minimax.io`) or the China endpoint (`https://api.minimaxi.com`); the `/anthropic/v1/messages` path and `x-api-key` header are applied automatically. Current models include `MiniMax-M3` (1,000,000-token context; adaptive or disabled thinking) and `MiniMax-M2.7` (204,800-token context; always-on thinking). `MiniMax-M3` supports adaptive thinking through `memoryExtraParams`.
+- `minimax`: MiniMax Anthropic Messages-compatible endpoint. Set `memoryApiUrl` to the global endpoint (`https://api.minimax.io`) or the [China endpoint](https://platform.minimaxi.com/docs/api-reference/text-anthropic-api.md) (`https://api.minimax.cn`); the `/anthropic/v1/messages` path and `x-api-key` header are applied automatically. Use `MiniMax-M3.1-Flash` (recommended) or `MiniMax-M3`, both with a 1,000,000-token context. Flash always thinks; optionally set `memoryExtraParams` to `{ "output_config": { "effort": "max" } }` with `low`, `medium`, `high`, `xhigh`, or `max` (default). Flash rejects disabled thinking and effort `none`, and does not support `service_tier`. M3 thinking is off by default on this endpoint; enable it with `{ "thinking": { "type": "adaptive" } }`. Model IDs remain explicitly configured; existing custom or legacy IDs are passed through unchanged. See the [MiniMax compatibility reference](https://platform.minimax.io/docs/api-reference/text-anthropic-api.md).
 - `orcarouter`: OpenAI-compatible model gateway with namespaced model IDs. `memoryApiUrl` and `memoryModel` are optional — they default to `https://api.orcarouter.ai/v1` and `orcarouter/auto` (a routing alias that selects a capable model per request). If you set `memoryModel`, use a namespaced ID such as `openai/gpt-5.5` or `deepseek/deepseek-v4-flash`; OrcaRouter rejects bare model names. Example:
   ```jsonc
   "memoryProvider": "orcarouter",
@@ -495,6 +495,12 @@ Manual `memoryProvider` modes:
   "memoryApiKey": "env://ATLASCLOUD_API_KEY",
   ```
   When this provider is selected, auto-capture / profile prompts, model responses, and relevant conversation context are transmitted to `https://api.atlascloud.ai`.
+- `cheaper-inference`: OpenAI-compatible Chat Completions preset for [Cheaper Inference](https://cheaperinference.com). `memoryApiUrl` and `memoryModel` are optional — they default to `https://api.cheaperinference.com/v1` and `gpt-5.4-mini`. If `memoryApiKey` is omitted, `CHEAPER_INFERENCE_API_KEY` from the environment is used. Example:
+  ```jsonc
+  "memoryProvider": "cheaper-inference",
+  "memoryApiKey": "env://CHEAPER_INFERENCE_API_KEY",
+  ```
+  When this provider is selected, auto-capture / profile prompts, model responses, and relevant conversation context are transmitted to `https://api.cheaperinference.com`.
 
 Troubleshooting:
 
@@ -502,7 +508,7 @@ Troubleshooting:
 - If auto-capture reports that a provider is not connected, confirm the provider name with `opencode providers list` and configure that provider in opencode first.
 - If a proxy or custom provider returns plain text instead of structured/tool output, choose another model/provider or use one of the manual provider modes above.
 - For models that reject `temperature`, add `"memoryTemperature": false` when using manual API configuration.
-- For models that reject forced tool calls (`tool_choice: "required"`, e.g. some thinking modes), add `"forceToolChoice": false` when using `openai-chat` / `orcarouter` / `atlas-cloud`.
+- For models that reject forced tool calls (`tool_choice: "required"`, e.g. some thinking modes), add `"forceToolChoice": false` when using `openai-chat` / `orcarouter` / `atlas-cloud` / `cheaper-inference`.
 - For `opencodeProvider` / `opencodeModel` (e.g. DeepSeek V4 thinking), OpenCode still sends forced `tool_choice` for structured output. opencode-mem disables thinking on the internal `opencode-mem-structured` agent (and re-applies that in `chat.params` after variant merge) so auto-capture and profile learning can complete. Your interactive chat agent is unchanged. If capture still fails with a thinking/`tool_choice` error, pick a non-thinking model for `opencodeModel` or configure a complete manual fallback (`memoryModel` + `memoryApiUrl`).
 - **`opencode-claude-auth` / Claude Code:** auto-capture uses OpenCode with your authenticated `anthropic` provider. Forced `format: json_schema` often loops with Claude-auth, so opencode-mem uses an auth-preserving **text-JSON** path for `opencodeProvider: "anthropic"` (no forced `StructuredOutput` tools; reply is parsed with Zod). A step watchdog still aborts runaway internal sessions after 2 steps. If capture still fails, configure a complete manual Anthropic API-key fallback (`memoryProvider: "anthropic"` + `memoryModel` + `memoryApiUrl` + `memoryApiKey`) — Claude Pro/Max OAuth cannot be reused outside OpenCode.
 - **Unsupported platforms:** Intel Mac (`darwin/x64`) is not supported — `@tursodatabase/database` and fixed `onnxruntime-node` releases (pinned `1.30.0`) ship no x64 native binding. Use Apple Silicon, Linux, or Windows, or a remote embedding endpoint via `embeddingApiUrl` + `embeddingApiKey`. MLX is not supported.

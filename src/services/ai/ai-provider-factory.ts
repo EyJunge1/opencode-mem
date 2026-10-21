@@ -5,6 +5,7 @@ import { AnthropicMessagesProvider } from "./providers/anthropic-messages.js";
 import { MiniMaxProvider } from "./providers/minimax.js";
 import { GoogleGeminiProvider } from "./providers/google-gemini.js";
 import { AtlasCloudProvider } from "./providers/atlas-cloud.js";
+import { CheaperInferenceProvider } from "./providers/cheaper-inference.js";
 import { OrcaRouterProvider } from "./providers/orcarouter.js";
 import { aiSessionManager } from "./session/ai-session-manager.js";
 import type { AIProviderType } from "./session/session-types.js";
@@ -14,6 +15,9 @@ export class AIProviderFactory {
     switch (providerType) {
       case "atlas-cloud":
         return new AtlasCloudProvider(config, aiSessionManager);
+
+      case "cheaper-inference":
+        return new CheaperInferenceProvider(config, aiSessionManager);
 
       case "openai-chat":
         return new OpenAIChatCompletionProvider(config, aiSessionManager);
@@ -41,6 +45,7 @@ export class AIProviderFactory {
   static getSupportedProviders(): AIProviderType[] {
     return [
       "atlas-cloud",
+      "cheaper-inference",
       "openai-chat",
       "openai-responses",
       "anthropic",

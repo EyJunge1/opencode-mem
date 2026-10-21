@@ -189,7 +189,7 @@
   // Faster opencode failover: also lower "opencodeTimeoutMs" (default 90000).
   // "autoCaptureProviderOrder": "external-first",
 
-  // Provider type: "atlas-cloud" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
+  // Provider type: "atlas-cloud" | "cheaper-inference" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
   // Note: "openai-chat" is a generic OpenAI API-compatible mode.
   // Any service that follows the OpenAI Chat Completions API can use it via custom "memoryApiUrl".
   "memoryProvider": "openai-chat",
@@ -235,14 +235,14 @@
 
   // MiniMax (Anthropic Messages-compatible endpoint, with session support):
   //   "memoryProvider": "minimax"
-  //   "memoryModel": "MiniMax-M3"                  // 1,000,000-token context
-  //   // Alternative: "MiniMax-M2.7"                // 204,800-token context; thinking always on
+  //   "memoryModel": "MiniMax-M3.1-Flash"          // 1,000,000-token context; thinking always on
+  //   // Alternative: "MiniMax-M3"                  // 1,000,000-token context; thinking off by default
   //   "memoryApiUrl": "https://api.minimax.io"        // global endpoint
   //   "memoryApiKey": "<MiniMax API key>"
-  //   // China endpoint: "memoryApiUrl": "https://api.minimaxi.com"
-  //   // MiniMax-M3 supports adaptive or disabled thinking; MiniMax-M2.7 thinking is always on.
-  //   // Optional adaptive thinking for MiniMax-M3:
-  //   "memoryExtraParams": { "thinking": { "type": "adaptive" } }
+  //   // China endpoint: "memoryApiUrl": "https://api.minimax.cn"
+  //   // Flash effort: low | medium | high | xhigh | max (default). Do not disable thinking.
+  //   "memoryExtraParams": { "output_config": { "effort": "max" } }
+  //   // For MiniMax-M3, optionally use { "thinking": { "type": "adaptive" } } instead.
 
   // OrcaRouter (OpenAI-compatible gateway, namespaced model IDs, with session support):
   //   "memoryProvider": "orcarouter"
@@ -261,6 +261,15 @@
   //   // When selected, auto-capture/profile prompts, responses, and relevant
   //   // conversation context are sent to api.atlascloud.ai.
   //   // "memoryModel": "deepseek-ai/deepseek-v4-pro"
+
+  // Cheaper Inference (OpenAI-compatible Chat Completions preset, with session support):
+  //   "memoryProvider": "cheaper-inference"
+  //   "memoryApiKey": "env://CHEAPER_INFERENCE_API_KEY"
+  //   // memoryApiUrl and memoryModel are optional — they default to
+  //   // https://api.cheaperinference.com/v1 and "gpt-5.4-mini".
+  //   // When selected, auto-capture/profile prompts, responses, and relevant
+  //   // conversation context are sent to api.cheaperinference.com.
+  //   // "memoryModel": "gpt-5.4-mini"
 
   // Groq (OpenAI-compatible, use openai-chat provider):
   //   "memoryProvider": "openai-chat"
@@ -290,7 +299,7 @@
   // Set to false and add "memoryTemperature": false in config when using such models
   "memoryTemperature": 0.3,
 
-  // Force tool calls on openai-chat / orcarouter / atlas-cloud (tool_choice: "required"). Default true.
+  // Force tool calls on openai-chat / orcarouter / atlas-cloud / cheaper-inference (tool_choice: "required"). Default true.
   // Some thinking/reasoning models reject forced tool choice — set false to fall back to "auto":
   // "forceToolChoice": false,
 

@@ -188,6 +188,30 @@ describe("AI provider config", () => {
     ).toThrow("missing memoryApiKey");
   });
 
+  it("builds cheaper-inference config from only an API key, defaulting model and endpoint", () => {
+    const providerConfig = buildMemoryProviderConfig({
+      memoryProvider: "cheaper-inference",
+      memoryApiKey: "ci-test-key",
+    });
+
+    expect(providerConfig).toEqual({
+      model: "",
+      apiUrl: "",
+      apiKey: "ci-test-key",
+      forceToolChoice: undefined,
+      maxIterations: undefined,
+      iterationTimeout: undefined,
+    });
+  });
+
+  it("still requires an API key for the cheaper-inference provider", () => {
+    expect(() =>
+      buildMemoryProviderConfig({
+        memoryProvider: "cheaper-inference",
+      })
+    ).toThrow("missing memoryApiKey");
+  });
+
   it("omits temperature for openai-chat when memoryTemperature is false", async () => {
     let capturedBody: Record<string, unknown> | undefined;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {

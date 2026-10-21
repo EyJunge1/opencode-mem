@@ -30,7 +30,9 @@ export function buildMemoryProviderConfig(
   // Preset providers fill endpoint/model themselves, so memoryModel /
   // memoryApiUrl are optional there. An API key is always required.
   const isPresetProvider =
-    config.memoryProvider === "orcarouter" || config.memoryProvider === "atlas-cloud";
+    config.memoryProvider === "orcarouter" ||
+    config.memoryProvider === "atlas-cloud" ||
+    config.memoryProvider === "cheaper-inference";
 
   if (!memoryModel && !isPresetProvider) issues.push("missing memoryModel");
   if (!memoryApiUrl && !isPresetProvider) issues.push("missing memoryApiUrl");

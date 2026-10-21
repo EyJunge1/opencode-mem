@@ -1,5 +1,6 @@
 export type AIProviderType =
   | "atlas-cloud"
+  | "cheaper-inference"
   | "openai-chat"
   | "openai-responses"
   | "anthropic"
