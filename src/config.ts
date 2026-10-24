@@ -487,6 +487,12 @@ const CONFIG_TEMPLATE = `{
    //   Anthropic (OAuth/API key): "opencodeProvider": "anthropic",      "opencodeModel": "claude-haiku-4-5-20251001"
    //   OpenAI (API key):          "opencodeProvider": "openai",          "opencodeModel": "gpt-4o-mini"
    //   GitHub Copilot:            "opencodeProvider": "github-copilot",  "opencodeModel": "gpt-4o-mini"
+   //   OpenRouter:                "opencodeProvider": "openrouter",      "opencodeModel": "…"
+   //
+   // Avoid pinning the built-in Free provider "opencode" (e.g. big-pickle) for
+   // auto-capture: those models are often restricted to interactive OpenCode
+   // chat and fail on the plugin's internal structured-output sessions. Prefer
+   // an authenticated provider above, or "opencodeModel": "inherit".
    //
    // "opencodeProvider": "anthropic",
    // "opencodeModel": "claude-haiku-4-5-20251001",
@@ -504,6 +510,8 @@ const CONFIG_TEMPLATE = `{
   
   // IMPORTANT: Auto-capture only runs after either opencodeProvider/opencodeModel
   // above is configured, or the manual fallback below is uncommented with real values.
+  // If autoCaptureEnabled is true but neither path is ready, the plugin shows a
+  // startup warning toast (when showErrorToasts is true).
   // It runs in background without blocking your main session
   // Note: Ollama may not support tool calling. Use OpenAI, Anthropic, or Groq for best results.
   
