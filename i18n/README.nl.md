@@ -489,6 +489,12 @@ Handmatige `memoryProvider`-modi:
   "memoryApiKey": "env://CHEAPER_INFERENCE_API_KEY",
   ```
   Wanneer deze provider is geselecteerd, worden auto-capture- / profielprompts, modelantwoorden en relevante conversatiecontext verzonden naar `https://api.cheaperinference.com`.
+- `api-route`: OpenAI-compatibel Chat Completions-preset voor [API Route](https://www.api-route.com/en/docs/quickstart). `memoryApiUrl` en `memoryModel` zijn optioneel — ze defaulten naar `https://global.api-route.com/v1` en `gpt-6.1-sol`. Als `memoryApiKey` wordt weggelaten, wordt `API_ROUTE_API_KEY` uit de omgeving gebruikt. Voorbeeld:
+  ```jsonc
+  "memoryProvider": "api-route",
+  "memoryApiKey": "env://API_ROUTE_API_KEY",
+  ```
+  Wanneer deze provider is geselecteerd, worden auto-capture- / profielprompts, modelantwoorden en relevante conversatiecontext verzonden naar `https://global.api-route.com`.
 
 Probleemoplossing:
 
@@ -496,7 +502,7 @@ Probleemoplossing:
 - Als auto-capture meldt dat een provider niet verbonden is, bevestig de providernaam met `opencode providers list` en configureer die provider eerst in opencode.
 - Als een proxy of custom provider platte tekst teruggeeft in plaats van structured/tool-output, kies een ander model/provider of gebruik een van de handmatige providermodi hierboven.
 - Voor modellen die `temperature` weigeren, voeg `"memoryTemperature": false` toe bij handmatige API-configuratie.
-- Voor modellen die geforceerde tool calls weigeren (`tool_choice: "required"`, bijv. sommige thinking-modi), voeg `"forceToolChoice": false` toe bij `openai-chat` / `orcarouter` / `atlas-cloud` / `cheaper-inference`.
+- Voor modellen die geforceerde tool calls weigeren (`tool_choice: "required"`, bijv. sommige thinking-modi), voeg `"forceToolChoice": false` toe bij `openai-chat` / `orcarouter` / `atlas-cloud` / `cheaper-inference` / `api-route`.
 - Voor `opencodeProvider` / `opencodeModel` (bijv. DeepSeek V4 thinking) stuurt OpenCode nog steeds geforceerde `tool_choice` voor structured output. opencode-mem schakelt thinking uit op de interne `opencode-mem-structured`-agent (en past dat opnieuw toe in `chat.params` na variant-merge) zodat auto-capture en profiel-leren kunnen voltooien. Je interactieve chatagent blijft ongewijzigd. Als capture nog steeds faalt met een thinking/`tool_choice`-fout, kies een non-thinking model voor `opencodeModel` of configureer een complete handmatige fallback (`memoryModel` + `memoryApiUrl`).
 - **`opencode-claude-auth` / Claude Code:** auto-capture gebruikt OpenCode met je geauthenticeerde `anthropic`-provider. Geforceerde `format: json_schema` loopt vaak vast met Claude-auth, dus opencode-mem gebruikt een auth-behoudend **text-JSON**-pad voor `opencodeProvider: "anthropic"` (geen geforceerde `StructuredOutput`-tools; antwoord wordt met Zod geparsed). Een step-watchdog breekt runaway interne sessies nog steeds af na 2 stappen. Als capture nog steeds faalt, configureer een complete handmatige Anthropic API-key-fallback (`memoryProvider: "anthropic"` + `memoryModel` + `memoryApiUrl` + `memoryApiKey`) — Claude Pro/Max OAuth kan niet buiten OpenCode worden hergebruikt.
 - **Niet-ondersteunde platforms:** Intel Mac (`darwin/x64`) wordt niet ondersteund — `@tursodatabase/database` en vaste `onnxruntime-node`-releases (vastgezet `1.30.0`) leveren geen x64 native binding. Gebruik Apple Silicon, Linux of Windows, of een remote embedding-endpoint via `embeddingApiUrl` + `embeddingApiKey`. MLX wordt niet ondersteund.

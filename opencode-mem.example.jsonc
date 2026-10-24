@@ -189,7 +189,7 @@
   // Faster opencode failover: also lower "opencodeTimeoutMs" (default 90000).
   // "autoCaptureProviderOrder": "external-first",
 
-  // Provider type: "atlas-cloud" | "cheaper-inference" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
+  // Provider type: "api-route" | "atlas-cloud" | "cheaper-inference" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
   // Note: "openai-chat" is a generic OpenAI API-compatible mode.
   // Any service that follows the OpenAI Chat Completions API can use it via custom "memoryApiUrl".
   "memoryProvider": "openai-chat",
@@ -271,6 +271,15 @@
   //   // conversation context are sent to api.cheaperinference.com.
   //   // "memoryModel": "gpt-5.4-mini"
 
+  // API Route (OpenAI-compatible Chat Completions preset, with session support):
+  //   "memoryProvider": "api-route"
+  //   "memoryApiKey": "env://API_ROUTE_API_KEY"
+  //   // memoryApiUrl and memoryModel are optional — they default to
+  //   // https://global.api-route.com/v1 and "gpt-6.1-sol".
+  //   // When selected, auto-capture/profile prompts, responses, and relevant
+  //   // conversation context are sent to global.api-route.com.
+  //   // "memoryModel": "gpt-6.1-sol"
+
   // Groq (OpenAI-compatible, use openai-chat provider):
   //   "memoryProvider": "openai-chat"
   //   "memoryModel": "llama-3.3-70b-versatile"
@@ -299,7 +308,7 @@
   // Set to false and add "memoryTemperature": false in config when using such models
   "memoryTemperature": 0.3,
 
-  // Force tool calls on openai-chat / orcarouter / atlas-cloud / cheaper-inference (tool_choice: "required"). Default true.
+  // Force tool calls on openai-chat / orcarouter / atlas-cloud / cheaper-inference / api-route (tool_choice: "required"). Default true.
   // Some thinking/reasoning models reject forced tool choice — set false to fall back to "auto":
   // "forceToolChoice": false,
 

@@ -441,6 +441,60 @@ describe("project-scoped config resolution", () => {
       /Project config cannot set remote provider fields: memoryProvider/
     );
   });
+
+  it("resolves API Route API key from API_ROUTE_API_KEY and marks manual ready", () => {
+    const originalApiKey = process.env.API_ROUTE_API_KEY;
+    process.env.API_ROUTE_API_KEY = "route-test-key";
+
+    try {
+      existsSpy = spyOn(fs, "existsSync").mockReturnValue(true);
+      readSpy = spyOn(fs, "readFileSync").mockImplementation((p) => {
+        const path = normalizePath(p);
+        if (path.includes(".opencode/opencode-mem")) {
+          return JSON.stringify({ autoCaptureEnabled: true }) as any;
+        }
+        return JSON.stringify({ memoryProvider: "api-route" }) as any;
+      });
+
+      initConfig("/my/project");
+
+      expect(CONFIG.memoryProvider).toBe("api-route");
+      expect(CONFIG.memoryModel).toBeUndefined();
+      expect(CONFIG.memoryApiUrl).toBeUndefined();
+      expect(CONFIG.memoryApiKey).toBe("route-test-key");
+      expect(CONFIG.autoCaptureProviderStatus).toEqual({
+        ready: true,
+        mode: "manual",
+        issues: [],
+      });
+    } finally {
+      if (originalApiKey === undefined) {
+        delete process.env.API_ROUTE_API_KEY;
+      } else {
+        process.env.API_ROUTE_API_KEY = originalApiKey;
+      }
+    }
+  });
+
+  it("refuses a project config that switches memoryProvider to API Route", () => {
+    existsSpy = spyOn(fs, "existsSync").mockReturnValue(true);
+    readSpy = spyOn(fs, "readFileSync").mockImplementation((p) => {
+      const path = normalizePath(p);
+      if (path.includes(".opencode/opencode-mem")) {
+        return JSON.stringify({ memoryProvider: "api-route" }) as any;
+      }
+      return JSON.stringify({
+        memoryProvider: "openai-chat",
+        memoryModel: "gpt-global",
+        memoryApiUrl: "https://api.openai.com/v1",
+        memoryApiKey: "global-openai-secret",
+      }) as any;
+    });
+
+    expect(() => initConfig("/my/project")).toThrow(
+      /Project config cannot set remote provider fields: memoryProvider/
+    );
+  });
 });
 
 describe("structured-output timeout derivation", () => {

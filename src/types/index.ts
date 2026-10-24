@@ -19,6 +19,7 @@ export interface MemoryMetadata {
 
 export type AIProviderType =
   | "atlas-cloud"
+  | "api-route"
   | "cheaper-inference"
   | "openai-chat"
   | "openai-responses"

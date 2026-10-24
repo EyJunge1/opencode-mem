@@ -32,7 +32,8 @@ export function buildMemoryProviderConfig(
   const isPresetProvider =
     config.memoryProvider === "orcarouter" ||
     config.memoryProvider === "atlas-cloud" ||
-    config.memoryProvider === "cheaper-inference";
+    config.memoryProvider === "cheaper-inference" ||
+    config.memoryProvider === "api-route";
 
   if (!memoryModel && !isPresetProvider) issues.push("missing memoryModel");
   if (!memoryApiUrl && !isPresetProvider) issues.push("missing memoryApiUrl");
