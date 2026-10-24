@@ -454,7 +454,11 @@ Optionally pin a model reasoning variant with `"opencodeVariant": "xhigh"` (e.g.
 
 Slow reasoning models (or very large profile prompts) can exceed the default 90 s structured-output budget. Set `"opencodeTimeoutMs"` (milliseconds) to extend it for internal structured-output calls (auto-capture summaries, profile learning) — e.g. `"opencodeTimeoutMs": 180000` for 3 minutes. Values are clamped to 10000..600000; the default stays 90000. Numeric strings are coerced. Profile cleanup uses a separate, longer timeout.
 
-Supported providers: any provider listed by `opencode providers list` (e.g. `anthropic`, `openai`, `github-copilot`, ...).
+Supported providers: any provider listed by `opencode providers list` (e.g. `anthropic`, `openai`, `github-copilot`, `openrouter`, ...).
+
+**Built-in Free / Zen models** under provider id `opencode` (e.g. `big-pickle`) often cannot run the plugin’s internal structured-output sessions — OpenCode may reject them outside interactive chat. Prefer an authenticated provider from `opencode providers list`, or use `"opencodeModel": "inherit"` so capture follows the model you already use in the session.
+
+If `autoCaptureEnabled` is `true` (default) but neither `opencodeProvider`/`opencodeModel` nor a complete manual fallback is configured, the plugin logs a warning and shows a startup toast (when `showErrorToasts` is enabled) so missing config is visible without digging through logs.
 
 If `opencodeProvider` and `opencodeModel` are set, they take precedence over the manual `memoryProvider` settings below by default (`"autoCaptureProviderOrder": "opencode-first"`). Set `"autoCaptureProviderOrder": "external-first"` to prefer the manual API when both are configured (useful when the host session API is busy/slow); the other channel is used as fallback. Lower `"opencodeTimeoutMs"` to fail over from the opencode channel sooner.
 

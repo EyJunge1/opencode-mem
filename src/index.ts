@@ -35,8 +35,13 @@ import {
   isInternalCaptureSessionTitle,
   isTrackedInternalCaptureSession,
 } from "./services/ai/internal-capture-sessions.js";
+import { notifyAutoCaptureProviderStatus } from "./services/auto-capture-config-status.js";
 
 export { INTERNAL_CAPTURE_SESSION_TITLE, isInternalCaptureSessionTitle };
+export {
+  buildAutoCaptureConfigReminderMessage,
+  notifyAutoCaptureProviderStatus,
+} from "./services/auto-capture-config-status.js";
 
 export function isStructuredSummaryPromptMessage(userMessage: string): boolean {
   // This is the plugin's own structured-summary or profile-analysis request.
@@ -351,18 +356,10 @@ export async function configureOpencodeHostTransport(ctx: {
   }
 }
 
-function logAutoCaptureProviderStatus(): void {
-  if (!CONFIG.autoCaptureEnabled || CONFIG.autoCaptureProviderStatus.ready) return;
-
-  log(
-    `Auto-capture disabled by configuration. Issues: ${CONFIG.autoCaptureProviderStatus.issues.join("; ")}.`
-  );
-}
-
 export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const { directory } = ctx;
   initConfig(directory);
-  logAutoCaptureProviderStatus();
+  notifyAutoCaptureProviderStatus(ctx.client);
   const { startAutoUpdate } = await import("./services/auto-update.js");
   startAutoUpdate(ctx, CONFIG.autoUpdate);
   const tags = getTags(directory);
