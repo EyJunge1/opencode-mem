@@ -27,12 +27,14 @@
 </script>
 
 <Dialog bind:open {onOpenChange} class={className} {showCloseButton}>
-  <DialogHeader>
+  <DialogHeader class="shrink-0 pe-10">
     <DialogTitle>{title}</DialogTitle>
   </DialogHeader>
-  {@render children?.()}
+  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    {@render children?.()}
+  </div>
   {#if footer}
-    <DialogFooter>
+    <DialogFooter class="shrink-0">
       {@render footer()}
     </DialogFooter>
   {/if}

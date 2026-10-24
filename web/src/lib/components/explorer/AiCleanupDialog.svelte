@@ -225,7 +225,7 @@
 <AppDialog
   bind:open
   title={i18n.t("label-ai-cleanup-title")}
-  class="grid! sm:max-w-2xl max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden {GAP_WIDE}"
+  class="sm:max-w-2xl {GAP_WIDE}"
   onOpenChange={handleOpenChange}
 >
   {#if phase === "loading"}
@@ -234,7 +234,7 @@
       <span class="text-sm">{i18n.t("label-ai-cleanup-loading")}</span>
     </div>
   {:else if phase === "select"}
-    <div class="flex min-h-0 flex-col {GAP_LOOSE} overflow-hidden">
+    <div class="flex min-h-0 flex-1 flex-col {GAP_LOOSE} overflow-hidden">
       <div class="flex flex-wrap items-center justify-between {GAP}">
         <h3 class="text-sm font-medium">{i18n.t("label-ai-cleanup-select")}</h3>
         <div class="flex flex-wrap {GAP_TIGHT}">
@@ -290,7 +290,7 @@
       </div>
     </div>
   {:else if phase === "diff" && pendingCleanup}
-    <div class="flex min-h-0 flex-col {GAP_LOOSE} overflow-hidden">
+    <div class="flex min-h-0 flex-1 flex-col {GAP_LOOSE} overflow-hidden">
       <div class="flex flex-wrap items-center justify-between {GAP}">
         <span class="text-xs text-muted-foreground">
           {i18n.t("label-ai-cleanup-changes-selected", {
