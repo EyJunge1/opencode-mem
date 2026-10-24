@@ -5,9 +5,9 @@
 [![license](https://img.shields.io/npm/l/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
 [![GitHub stars](https://img.shields.io/github/stars/tickernelz/opencode-mem.svg)](https://github.com/tickernelz/opencode-mem)
 
-![OpenCode Memory Banner](../.github/pics/banner.png)
+![OpenCode Memory Banner](../pics/banner.png)
 
-Diller: [🇬🇧](../README.md) | [🇩🇪](./README.de.md) | [🇨🇳](./README.zh.md) | [🇸🇦](./README.ar.md) | **🇹🇷** | [🇳🇱](./README.nl.md)
+Diller: [🇬🇧](../../README.md) | [🇩🇪](./README.de.md) | [🇨🇳](./README.zh.md) | [🇸🇦](./README.ar.md) | **🇹🇷** | [🇳🇱](./README.nl.md)
 
 Yerel vektör veritabanı teknolojisi kullanarak oturumlar arasında uzun vadeli bağlam saklamayı sağlayan, yapay zeka kodlama ajanları için kalıcı bir bellek sistemi.
 
@@ -219,7 +219,7 @@ Boyut migrasyonları önce her yeni embedding’i üretir, bunları geçici inde
 
 **Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (yukarıdakiyle aynı `.config\opencode` dizini — AppData değil). Varsayılan depolama `%USERPROFILE%\.opencode-mem\data` olarak çözülür (`~` biçimi Windows’ta da kullanıcı ev dizinine genişler).
 
-Eklenti ilk başlangıçta bu yolda tam yorumlu bir şablon oluşturur. Her ayar ve yorum için bkz. [`opencode-mem.example.jsonc`](../opencode-mem.example.jsonc).
+Eklenti ilk başlangıçta bu yolda tam yorumlu bir şablon oluşturur. Her ayar ve yorum için bkz. [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc).
 
 ### Sohbet mesajı yakalama ve enjekte etme (`chatMessage`)
 
@@ -555,7 +555,7 @@ bun run format
 
 Bu proje, AI kodlama ajanları için nihai bellek eklentisi olmak üzere aktif olarak katkı arıyor. Hataları düzeltmek, özellik eklemek, belgeleri iyileştirmek veya embedding model desteğini genişletmek olsun, katkılarınız kritiktir. Kod tabanı iyi yapılandırılmış ve iyileştirmeye hazırdır. Lütfen Issue veya Feature request şablonlarıyla issue açın ve bir PR gönderdiğinizde pull request şablonunu doldurun — katkıları hızlıca inceler ve birleştiririz.
 
-**README çevirileri:** `README.md` (İngilizce) esas kaynaktır. İçeriğini değiştirdiğinizde `i18n/` altındaki dosyaları (`README.de.md`, `README.zh.md`, `README.ar.md`, `README.tr.md` ve `README.nl.md`) buna uyacak şekilde güncelleyin.
+**README çevirileri:** `README.md` (İngilizce) esas kaynaktır. İçeriğini değiştirdiğinizde `.github/i18n/` altındaki dosyaları (`README.de.md`, `README.zh.md`, `README.ar.md`, `README.tr.md` ve `README.nl.md`) buna uyacak şekilde güncelleyin.
 
 ## Lisans ve Bağlantılar
 

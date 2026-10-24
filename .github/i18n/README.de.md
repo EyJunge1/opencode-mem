@@ -5,9 +5,9 @@
 [![license](https://img.shields.io/npm/l/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
 [![GitHub stars](https://img.shields.io/github/stars/tickernelz/opencode-mem.svg)](https://github.com/tickernelz/opencode-mem)
 
-![OpenCode Memory Banner](../.github/pics/banner.png)
+![OpenCode Memory Banner](../pics/banner.png)
 
-Sprachen: [🇬🇧](../README.md) | **🇩🇪** | [🇨🇳](./README.zh.md) | [🇸🇦](./README.ar.md) | [🇹🇷](./README.tr.md) | [🇳🇱](./README.nl.md)
+Sprachen: [🇬🇧](../../README.md) | **🇩🇪** | [🇨🇳](./README.zh.md) | [🇸🇦](./README.ar.md) | [🇹🇷](./README.tr.md) | [🇳🇱](./README.nl.md)
 
 Ein persistentes Speichersystem für KI-Coding-Agenten, das langfristige Kontextbeibehaltung über Sitzungen hinweg mittels lokaler Vektordatenbank-Technologie ermöglicht.
 
@@ -217,7 +217,7 @@ Konfiguration unter `~/.config/opencode/opencode-mem.jsonc`:
 
 **Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (dasselbe Verzeichnis `.config\opencode` wie oben — nicht AppData). Der Standard-Storage löst sich zu `%USERPROFILE%\.opencode-mem\data` auf (die `~`-Form expandiert unter Windows ebenfalls zu deinem User-Home).
 
-Das Plugin legt beim ersten Start eine voll kommentierte Vorlage unter diesem Pfad an. Für jede Einstellung und jeden Kommentar siehe [`opencode-mem.example.jsonc`](../opencode-mem.example.jsonc).
+Das Plugin legt beim ersten Start eine voll kommentierte Vorlage unter diesem Pfad an. Für jede Einstellung und jeden Kommentar siehe [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc).
 
 ### Erfassung und Injection von Chat-Nachrichten (`chatMessage`)
 
@@ -552,7 +552,7 @@ bun run format
 
 Dieses Projekt sucht aktiv Beiträge, um das maßgebliche Memory-Plugin für KI-Coding-Agenten zu werden. Ob du Bugs behebst, Features hinzufügst, Dokumentation verbesserst oder die Embedding-Modell-Unterstützung erweiterst — deine Beiträge sind entscheidend. Die Codebasis ist gut strukturiert und bereit für Erweiterungen. Bitte Issues mit den Vorlagen Issue oder Feature request öffnen und beim Einreichen eines PRs die Pull-Request-Vorlage ausfüllen — wir reviewen und mergen Beiträge zügig.
 
-**README-Übersetzungen:** `README.md` (Englisch) ist die Quelle der Wahrheit. Wenn du dessen Inhalt änderst, aktualisiere die Dateien unter `i18n/` (`README.de.md`, `README.zh.md`, `README.ar.md`, `README.tr.md` und `README.nl.md`) entsprechend.
+**README-Übersetzungen:** `README.md` (Englisch) ist die Quelle der Wahrheit. Wenn du dessen Inhalt änderst, aktualisiere die Dateien unter `.github/i18n/` (`README.de.md`, `README.zh.md`, `README.ar.md`, `README.tr.md` und `README.nl.md`) entsprechend.
 
 ## Lizenz & Links
 

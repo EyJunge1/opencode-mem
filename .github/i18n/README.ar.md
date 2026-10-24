@@ -5,9 +5,9 @@
 [![license](https://img.shields.io/npm/l/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
 [![GitHub stars](https://img.shields.io/github/stars/tickernelz/opencode-mem.svg)](https://github.com/tickernelz/opencode-mem)
 
-![OpenCode Memory Banner](../.github/pics/banner.png)
+![OpenCode Memory Banner](../pics/banner.png)
 
-اللغات: [🇬🇧](../README.md) | [🇩🇪](./README.de.md) | [🇨🇳](./README.zh.md) | **🇸🇦** | [🇹🇷](./README.tr.md) | [🇳🇱](./README.nl.md)
+اللغات: [🇬🇧](../../README.md) | [🇩🇪](./README.de.md) | [🇨🇳](./README.zh.md) | **🇸🇦** | [🇹🇷](./README.tr.md) | [🇳🇱](./README.nl.md)
 
 نظام ذاكرة دائم لوكلاء البرمجة بالذكاء الاصطناعي يتيح الاحتفاظ بالسياق طويل الأمد عبر الجلسات باستخدام تقنية قاعدة بيانات متجهات محلية.
 
@@ -217,7 +217,7 @@ memory({ mode: "import", inputPath: "./memories.json" });
 
 **Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (نفس مجلد `.config\opencode` أعلاه — وليس AppData). التخزين الافتراضي يُحل إلى `%USERPROFILE%\.opencode-mem\data` (صيغة `~` تتوسع إلى منزل المستخدم على Windows أيضًا).
 
-ينشئ المكون الإضافي قالبًا كاملًا معلَّقًا في هذا المسار عند أول تشغيل. لكل إعداد وتعليق، انظر [`opencode-mem.example.jsonc`](../opencode-mem.example.jsonc).
+ينشئ المكون الإضافي قالبًا كاملًا معلَّقًا في هذا المسار عند أول تشغيل. لكل إعداد وتعليق، انظر [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc).
 
 ### التقاط رسائل الدردشة وحقنها (`chatMessage`)
 
@@ -552,7 +552,7 @@ bun run format
 
 يسعى هذا المشروع بنشاط للمساهمات ليصبح المكون الإضافي النهائي للذاكرة لوكلاء البرمجة بالذكاء الاصطناعي. سواء كنت تصلح أخطاء، أو تضيف ميزات، أو تحسّن التوثيق، أو توسّع دعم نماذج التضمين، مساهماتك حاسمة. قاعدة الشيفرة منظمة جيدًا وجاهزة للتحسين. افتح القضايا بقوالب Issue أو Feature request، واملأ قالب طلب السحب عند إرسال PR — نراجع وندمج المساهمات بسرعة.
 
-**ترجمات README:** `README.md` (الإنجليزية) هو المصدر المعتمد. عند تغيير محتواه، حدّث الملفات ضمن `i18n/` (`README.de.md` و`README.zh.md` و`README.ar.md` و`README.tr.md` و`README.nl.md`) لتطابقها.
+**ترجمات README:** `README.md` (الإنجليزية) هو المصدر المعتمد. عند تغيير محتواه، حدّث الملفات ضمن `.github/i18n/` (`README.de.md` و`README.zh.md` و`README.ar.md` و`README.tr.md` و`README.nl.md`) لتطابقها.
 
 ## الترخيص والروابط
 

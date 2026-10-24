@@ -5,9 +5,9 @@
 [![license](https://img.shields.io/npm/l/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
 [![GitHub stars](https://img.shields.io/github/stars/tickernelz/opencode-mem.svg)](https://github.com/tickernelz/opencode-mem)
 
-![OpenCode Memory Banner](../.github/pics/banner.png)
+![OpenCode Memory Banner](../pics/banner.png)
 
-Talen: [🇬🇧](../README.md) | [🇩🇪](./README.de.md) | [🇨🇳](./README.zh.md) | [🇸🇦](./README.ar.md) | [🇹🇷](./README.tr.md) | **🇳🇱**
+Talen: [🇬🇧](../../README.md) | [🇩🇪](./README.de.md) | [🇨🇳](./README.zh.md) | [🇸🇦](./README.ar.md) | [🇹🇷](./README.tr.md) | **🇳🇱**
 
 Een persistent geheugensysteem voor AI-codingagents dat langetermijncontextbehoud over sessies mogelijk maakt met lokale vectordatabasetechnologie.
 
@@ -217,7 +217,7 @@ Configureer op `~/.config/opencode/opencode-mem.jsonc`:
 
 **Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (zelfde `.config\opencode`-directory als hierboven — niet AppData). Standaardopslag lost op naar `%USERPROFILE%\.opencode-mem\data` (de `~`-vorm expandt ook op Windows naar je gebruikershome).
 
-De plugin maakt bij de eerste start een volledig becommentarieerd template op dit pad. Voor elke instelling en commentaar, zie [`opencode-mem.example.jsonc`](../opencode-mem.example.jsonc).
+De plugin maakt bij de eerste start een volledig becommentarieerd template op dit pad. Voor elke instelling en commentaar, zie [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc).
 
 ### Chatberichtvastlegging en -injectie (`chatMessage`)
 
@@ -553,7 +553,7 @@ bun run format
 
 Dit project zoekt actief bijdragen om de definitieve geheugenplugin voor AI-codingagents te worden. Of je bugs fixt, features toevoegt, documentatie verbetert of embeddingmodelondersteuning uitbreidt: je bijdragen zijn cruciaal. De codebase is goed gestructureerd en klaar voor verbetering. Open issues met de Issue- of Feature request-templates, en vul het pull request-template in wanneer je een PR indient — we reviewen en mergen bijdragen snel.
 
-**README-vertalingen:** `README.md` (Engels) is de bron van waarheid. Wanneer je de inhoud wijzigt, werk dan de bestanden onder `i18n/` (`README.de.md`, `README.zh.md`, `README.ar.md`, `README.tr.md` en `README.nl.md`) bij zodat ze overeenkomen.
+**README-vertalingen:** `README.md` (Engels) is de bron van waarheid. Wanneer je de inhoud wijzigt, werk dan de bestanden onder `.github/i18n/` (`README.de.md`, `README.zh.md`, `README.ar.md`, `README.tr.md` en `README.nl.md`) bij zodat ze overeenkomen.
 
 ## Licentie & links
 

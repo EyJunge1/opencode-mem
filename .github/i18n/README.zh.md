@@ -5,9 +5,9 @@
 [![license](https://img.shields.io/npm/l/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
 [![GitHub stars](https://img.shields.io/github/stars/tickernelz/opencode-mem.svg)](https://github.com/tickernelz/opencode-mem)
 
-![OpenCode Memory Banner](../.github/pics/banner.png)
+![OpenCode Memory Banner](../pics/banner.png)
 
-语言: [🇬🇧](../README.md) | [🇩🇪](./README.de.md) | **🇨🇳** | [🇸🇦](./README.ar.md) | [🇹🇷](./README.tr.md) | [🇳🇱](./README.nl.md)
+语言: [🇬🇧](../../README.md) | [🇩🇪](./README.de.md) | **🇨🇳** | [🇸🇦](./README.ar.md) | [🇹🇷](./README.tr.md) | [🇳🇱](./README.nl.md)
 
 面向 AI 编程代理的持久记忆系统，基于本地向量数据库技术，实现跨会话的长期上下文保留。
 
@@ -217,7 +217,7 @@ memory({ mode: "import", inputPath: "./memories.json" });
 
 **Windows：** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc`（与上述相同的 `.config\opencode` 目录 — 不是 AppData）。默认存储解析为 `%USERPROFILE%\.opencode-mem\data`（`~` 形式在 Windows 上也会展开为你的用户主目录）。
 
-插件在首次启动时会在此路径创建完整的注释模板。有关每项设置与注释，参见 [`opencode-mem.example.jsonc`](../opencode-mem.example.jsonc)。
+插件在首次启动时会在此路径创建完整的注释模板。有关每项设置与注释，参见 [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc)。
 
 ### 聊天消息捕获与注入（`chatMessage`）
 
@@ -547,7 +547,7 @@ bun run format
 
 本项目积极寻求贡献，以成为 AI 编程代理的权威记忆插件。无论你是修复缺陷、添加功能、改进文档，还是扩展嵌入模型支持，你的贡献都至关重要。代码库结构良好，已准备好增强。请使用 Issue 或 Feature request 模板提出问题，并在提交 PR 时填写 pull request 模板 — 我们会快速审查并合并贡献。
 
-**README 翻译：** `README.md`（英文）为唯一权威来源。更改其内容时，请同步更新 `i18n/` 下的文件（`README.de.md`、`README.zh.md`、`README.ar.md`、`README.tr.md` 和 `README.nl.md`）。
+**README 翻译：** `README.md`（英文）为唯一权威来源。更改其内容时，请同步更新 `.github/i18n/` 下的文件（`README.de.md`、`README.zh.md`、`README.ar.md`、`README.tr.md` 和 `README.nl.md`）。
 
 ## 许可证与链接
 
