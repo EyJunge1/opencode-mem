@@ -1,10 +1,25 @@
 const UNZONED_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const UNZONED_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/;
-const CONTROL_WHITESPACE_RE = /[\u0000-\u001F\u007F]+/g;
 
 /** Collapse control whitespace so display metadata cannot break Markdown/XML structure. */
 function sanitizeDisplayText(value: string): string {
-  return value.replace(CONTROL_WHITESPACE_RE, " ").trim();
+  let result = "";
+  let pendingSpace = false;
+
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 0x1f || code === 0x7f) {
+      pendingSpace = result.length > 0;
+      continue;
+    }
+    if (pendingSpace) {
+      result += " ";
+      pendingSpace = false;
+    }
+    result += character;
+  }
+
+  return result.trim();
 }
 
 /**
