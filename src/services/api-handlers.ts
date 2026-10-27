@@ -1559,18 +1559,182 @@ export async function handleGetTagMigrationProgress(): Promise<ApiResponse<Migra
   return { success: true, data: migrationProgress };
 }
 
+type TagMigrationChannel = "opencode" | "external";
+
+function isOpencodeTagMigrationConfigured(): boolean {
+  // "inherit" needs a live session model; tag migration has none.
+  return Boolean(
+    CONFIG.opencodeProvider && CONFIG.opencodeModel && CONFIG.opencodeModel !== "inherit"
+  );
+}
+
+function isExternalTagMigrationConfigured(): boolean {
+  return Boolean(CONFIG.memoryModel && CONFIG.memoryApiUrl);
+}
+
+function normalizeMigrationTags(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .filter((t): t is string => typeof t === "string")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+async function generateTagsViaOpencode(content: string): Promise<string[]> {
+  const { loadOpencodeProvider } = await import("./ai/opencode-provider-loader.js");
+  const { generateStructuredOutput } = await loadOpencodeProvider();
+  const { getOpenCodeClient } = await import("./ai/profile-llm-client.js");
+  const { z } = await import("zod");
+
+  const v2Client = await getOpenCodeClient();
+  const schema = z.object({
+    tags: z.array(z.string()).min(1).max(8),
+  });
+
+  const result = await generateStructuredOutput({
+    client: v2Client,
+    providerID: CONFIG.opencodeProvider!,
+    modelID: CONFIG.opencodeModel!,
+    ...(CONFIG.opencodeVariant ? { variant: CONFIG.opencodeVariant } : {}),
+    systemPrompt: "You are a technical tagger.",
+    userPrompt: `Generate 2-4 short technical tags for this memory content.\n\n${content}`,
+    schema,
+  });
+
+  return normalizeMigrationTags(result.tags);
+}
+
+async function generateTagsViaExternal(
+  content: string,
+  memoryId: string,
+  getProvider: () => Promise<{
+    executeToolCall: (
+      systemPrompt: string,
+      userPrompt: string,
+      toolSchema: unknown,
+      sessionId: string
+    ) => Promise<{ success: boolean; data?: { tags?: unknown }; error?: string }>;
+  }>
+): Promise<{ tags: string[] | null; error?: string }> {
+  const provider = await getProvider();
+  const prompt = `Generate 2-4 short technical tags for this memory content. Call the save_tags tool with a "tags" array.\n\n${content}`;
+  const result = await provider.executeToolCall(
+    "You are a technical tagger.",
+    prompt,
+    {
+      type: "function",
+      function: {
+        name: "save_tags",
+        description: "Save generated tags",
+        parameters: {
+          type: "object",
+          properties: { tags: { type: "array", items: { type: "string" } } },
+          required: ["tags"],
+        },
+      },
+    },
+    `migration_${memoryId}`
+  );
+
+  if (result.success && result.data?.tags) {
+    const tags = normalizeMigrationTags(result.data.tags);
+    if (tags.length > 0) return { tags };
+    return { tags: null, error: "no tags returned" };
+  }
+  return { tags: null, error: result.error ?? "no tags returned" };
+}
+
+async function generateMigrationTags(
+  content: string,
+  memoryId: string,
+  getExternalProvider: () => Promise<{
+    executeToolCall: (
+      systemPrompt: string,
+      userPrompt: string,
+      toolSchema: unknown,
+      sessionId: string
+    ) => Promise<{ success: boolean; data?: { tags?: unknown }; error?: string }>;
+  }>
+): Promise<{ tags: string[] | null; error?: string }> {
+  const order = CONFIG.autoCaptureProviderOrder ?? "opencode-first";
+  const channels: TagMigrationChannel[] =
+    order === "external-first" ? ["external", "opencode"] : ["opencode", "external"];
+
+  let lastError: string | undefined;
+
+  for (let i = 0; i < channels.length; i++) {
+    const channel = channels[i]!;
+    const configured =
+      channel === "opencode"
+        ? isOpencodeTagMigrationConfigured()
+        : isExternalTagMigrationConfigured();
+    if (!configured) continue;
+
+    try {
+      if (channel === "opencode") {
+        const tags = await generateTagsViaOpencode(content);
+        if (tags.length > 0) return { tags };
+        lastError = "no tags returned";
+      } else {
+        const result = await generateTagsViaExternal(content, memoryId, getExternalProvider);
+        if (result.tags) return result;
+        lastError = result.error ?? "no tags returned";
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      const nextConfigured = channels
+        .slice(i + 1)
+        .find((c) =>
+          c === "opencode" ? isOpencodeTagMigrationConfigured() : isExternalTagMigrationConfigured()
+        );
+      if (!nextConfigured) break;
+      log(`tag-migration: ${channel} provider failed, falling back`, {
+        memoryId,
+        error: lastError,
+        fallback: nextConfigured,
+      });
+    }
+  }
+
+  if (lastError) return { tags: null, error: lastError };
+  return {
+    tags: null,
+    error:
+      "No tag-migration provider configured. Set opencodeProvider/opencodeModel or memoryModel/memoryApiUrl/memoryApiKey.",
+  };
+}
+
 export async function handleRunTagMigrationBatch(
   batchSize: number = 5
 ): Promise<ApiResponse<{ processed: number; total: number; hasMore: boolean; errors: number }>> {
   try {
     await ensureTursoReady();
-    const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
-    const { buildMemoryProviderConfig } = await import("./ai/provider-config.js");
-    const providerConfig = buildMemoryProviderConfig(CONFIG, {
-      maxIterations: 1,
-      iterationTimeout: 30000,
-    });
-    const provider = AIProviderFactory.createProvider(CONFIG.memoryProvider, providerConfig);
+
+    if (!isOpencodeTagMigrationConfigured() && !isExternalTagMigrationConfigured()) {
+      return {
+        success: false,
+        error:
+          "No tag-migration provider configured. Set opencodeProvider/opencodeModel or memoryModel/memoryApiUrl/memoryApiKey.",
+      };
+    }
+
+    let externalProvider: Awaited<ReturnType<typeof createExternalTagProvider>> | null = null;
+    async function createExternalTagProvider() {
+      const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
+      const { buildMemoryProviderConfig } = await import("./ai/provider-config.js");
+      const providerConfig = buildMemoryProviderConfig(CONFIG, {
+        maxIterations: 1,
+        iterationTimeout: 30000,
+      });
+      return AIProviderFactory.createProvider(CONFIG.memoryProvider, providerConfig);
+    }
+    const getExternalProvider = async () => {
+      if (!externalProvider) {
+        externalProvider = await createExternalTagProvider();
+      }
+      return externalProvider;
+    };
+
     const projectShards = await tursoShardManager.getAllShards("project", "");
 
     const allMemories: { memory: any; shard: any }[] = [];
@@ -1626,26 +1790,9 @@ export async function handleRunTagMigrationBatch(
         }
 
         if (currentTags.length === 0) {
-          const prompt = `Generate 2-4 short technical tags for this memory content. Call the save_tags tool with a "tags" array.\n\n${m.content}`;
-          const result = await provider.executeToolCall(
-            "You are a technical tagger.",
-            prompt,
-            {
-              type: "function",
-              function: {
-                name: "save_tags",
-                description: "Save generated tags",
-                parameters: {
-                  type: "object",
-                  properties: { tags: { type: "array", items: { type: "string" } } },
-                  required: ["tags"],
-                },
-              },
-            },
-            `migration_${m.id}`
-          );
-          if (result.success && result.data?.tags) {
-            currentTags = result.data.tags;
+          const result = await generateMigrationTags(m.content, m.id, getExternalProvider);
+          if (result.tags && result.tags.length > 0) {
+            currentTags = result.tags;
             await db.run("UPDATE memories SET tags = ? WHERE id = ?", [
               currentTags.join(","),
               m.id,
