@@ -13,6 +13,12 @@ import { CONFIG } from "../config.js";
 import { log, serializeError } from "./logger.js";
 import type { MemoryType } from "../types/index.js";
 import type { MemoryRecord } from "./turso/types.js";
+import {
+  deleteMemoryMarkdownFile,
+  isMarkdownBackend,
+  writeMemoryMarkdownFile,
+} from "./markdown/backend.js";
+import { pluginMemoryRelPath } from "./markdown/vault.js";
 
 export type MemoryScope = "project" | "all-projects";
 
@@ -214,6 +220,22 @@ export class LocalMemoryClient {
         const sessionId =
           typeof dynamicMetadata.sessionID === "string" ? dynamicMetadata.sessionID : undefined;
 
+        if (isMarkdownBackend()) {
+          writeMemoryMarkdownFile({
+            id,
+            content,
+            type,
+            tags,
+            containerTag,
+            createdAt: now,
+            updatedAt: now,
+            source: typeof dynamicMetadata.source === "string" ? dynamicMetadata.source : "manual",
+            title: displayName,
+          });
+          dynamicMetadata.markdownRelPath = pluginMemoryRelPath(id);
+          if (!dynamicMetadata.source) dynamicMetadata.source = "manual";
+        }
+
         const record: MemoryRecord = {
           id,
           content,
@@ -264,10 +286,20 @@ export class LocalMemoryClient {
         const memory = await tursoVectorSearch.getMemoryById(db, memoryId);
 
         if (memory) {
+          if (isMarkdownBackend()) {
+            const meta = safeJSONParse(memory.metadata);
+            const rel =
+              meta && typeof meta.markdownRelPath === "string" ? meta.markdownRelPath : null;
+            deleteMemoryMarkdownFile(memoryId, rel);
+          }
           await tursoVectorSearch.deleteVector(db, memoryId);
           await tursoShardManager.decrementVectorCount(shard.id);
           return { success: true };
         }
+      }
+
+      if (isMarkdownBackend()) {
+        deleteMemoryMarkdownFile(memoryId);
       }
 
       return { success: false, error: "Memory not found" };

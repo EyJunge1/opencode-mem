@@ -35,6 +35,24 @@ type SkillItem = {
 
 type SkillsFile = { items: SkillItem[] };
 
+type MarkdownVaultFile = {
+  id: string;
+  relPath: string;
+  title?: string;
+  mtimeMs: number;
+  source?: string;
+  containerTag?: string;
+};
+
+type MarkdownStatus = {
+  enabled: boolean;
+  path: string | null;
+  fileCount: number;
+  lastReconcileAt: number | null;
+  watcherActive: boolean;
+  files: MarkdownVaultFile[];
+};
+
 function readJson<T>(filePath: string): T {
   return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
 }
@@ -129,6 +147,11 @@ export function opencodeMemSimPlugin(simRoot: string): Plugin {
       let skills: SkillItem[] = readJson<SkillsFile>(path.join(simRoot, "skills.json")).items.map(
         (item) => ({ ...item })
       );
+      const markdownFixture = readJson<MarkdownStatus>(path.join(simRoot, "markdown-status.json"));
+      const markdownStatus: MarkdownStatus = {
+        ...markdownFixture,
+        files: markdownFixture.files.map((file) => ({ ...file })),
+      };
 
       function findMemory(id: string) {
         return memories.find((item) => item.id === id);
@@ -136,6 +159,11 @@ export function opencodeMemSimPlugin(simRoot: string): Plugin {
 
       function findSkill(id: string) {
         return skills.find((item) => item.id === id);
+      }
+
+      function syncMarkdownFileCount() {
+        markdownStatus.fileCount = markdownStatus.files.length;
+        markdownStatus.lastReconcileAt = Date.now();
       }
 
       server.middlewares.use((req, res, next) => {
@@ -209,7 +237,52 @@ export function opencodeMemSimPlugin(simRoot: string): Plugin {
             return;
           }
 
+          if (pathname === "/api/markdown/status" && method === "GET") {
+            sendJson(res, 200, { success: true, data: markdownStatus });
+            return;
+          }
+
+          if (pathname === "/api/markdown/reindex" && method === "POST") {
+            syncMarkdownFileCount();
+            sendJson(res, 200, {
+              success: true,
+              data: {
+                scanned: markdownStatus.fileCount,
+                upserted: 0,
+                unchanged: markdownStatus.fileCount,
+                deleted: 0,
+                errors: [],
+                finishedAt: markdownStatus.lastReconcileAt,
+              },
+            });
+            return;
+          }
+
           const memoryIdMatch = pathname.match(/^\/api\/memories\/([^/]+)$/);
+          if (memoryIdMatch && method === "GET") {
+            const id = decodeURIComponent(memoryIdMatch[1]);
+            const item = findMemory(id);
+            if (!item || item.type !== "memory") {
+              sendJson(res, 404, { success: false, error: "Memory not found" });
+              return;
+            }
+            sendJson(res, 200, {
+              success: true,
+              data: {
+                id: item.id,
+                content: item.content,
+                type: item.memoryType,
+                tags: item.tags || [],
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+                displayName: item.displayName,
+                metadata: item.metadata,
+                isPinned: item.isPinned,
+              },
+            });
+            return;
+          }
+
           if (memoryIdMatch && method === "PUT") {
             const id = decodeURIComponent(memoryIdMatch[1]);
             const item = findMemory(id);
@@ -236,6 +309,11 @@ export function opencodeMemSimPlugin(simRoot: string): Plugin {
                   item.memoryType = parsed.type || undefined;
                 }
                 item.updatedAt = new Date().toISOString();
+                // Keep vault file list titles in sync for plugin-owned sims.
+                const vaultFile = markdownStatus.files.find((file) => file.id === id);
+                if (vaultFile && typeof parsed.content === "string") {
+                  vaultFile.mtimeMs = Date.now();
+                }
                 sendJson(res, 200, stubOk("Updated"));
               } catch (error) {
                 sendJson(res, 400, {
@@ -257,6 +335,8 @@ export function opencodeMemSimPlugin(simRoot: string): Plugin {
               sendJson(res, 404, { success: false, error: "Memory not found" });
               return;
             }
+            markdownStatus.files = markdownStatus.files.filter((file) => file.id !== id);
+            syncMarkdownFileCount();
             sendJson(res, 200, stubOk("Deleted"));
             return;
           }

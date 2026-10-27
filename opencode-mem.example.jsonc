@@ -7,8 +7,14 @@
   // Project overrides: <project>/.opencode/opencode-mem.jsonc
   // On first startup the plugin also writes a starter config at the global path.
 
-  // Storage location for vector database
+  // Storage location for vector database (and search index when using markdown backend)
   "storagePath": "~/.opencode-mem/data",
+
+  // Memory persistence: "database" (default) or "markdown".
+  // When "markdown", all .md files under markdownPath are the source of truth;
+  // Turso under storagePath is only a rebuildable semantic-search index.
+  // "memoryBackend": "markdown",
+  // "markdownPath": "~/Documents/LLM-Wiki",
 
   "userEmailOverride": "",
   "userNameOverride": "",

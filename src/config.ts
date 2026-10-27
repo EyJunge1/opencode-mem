@@ -23,6 +23,17 @@ if (!existsSync(DATA_DIR)) {
 
 interface OpenCodeMemConfig {
   storagePath?: string;
+  /**
+   * Memory persistence backend. `database` (default) stores content in Turso.
+   * `markdown` uses a folder of `.md` files as source of truth; Turso is only
+   * a rebuildable semantic-search index.
+   */
+  memoryBackend?: "database" | "markdown";
+  /**
+   * Absolute or `~/…` path to the Markdown vault. Required when
+   * `memoryBackend` is `"markdown"`. All `.md` files under this path are indexed.
+   */
+  markdownPath?: string;
   userEmailOverride?: string;
   userNameOverride?: string;
   memory?: {
@@ -228,6 +239,7 @@ const DEFAULTS: Required<
     | "webServerAuthUsername"
     | "webServerApiToken"
     | "databaseEncryptionKey"
+    | "markdownPath"
   >
 > & {
   embeddingApiUrl?: string;
@@ -261,11 +273,13 @@ const DEFAULTS: Required<
   webServerAuthUsername?: string;
   webServerApiToken?: string;
   databaseEncryptionKey?: string;
+  markdownPath?: string;
   memory?: {
     defaultScope?: "project" | "all-projects";
   };
 } = {
   storagePath: join(DATA_DIR, "data"),
+  memoryBackend: "database",
   embeddingModel: "Xenova/nomic-embed-text-v1",
   embeddingDimensions: 768,
   embeddingUseTaskPrefixes: false,
@@ -348,6 +362,11 @@ function expandPath(path: string): string {
   return path;
 }
 
+function normalizeMemoryBackend(value: unknown): "database" | "markdown" {
+  if (value === "markdown") return "markdown";
+  return "database";
+}
+
 function loadConfigFromPaths(paths: string[]): OpenCodeMemConfig {
   for (const path of paths) {
     if (existsSync(path)) {
@@ -389,8 +408,12 @@ const CONFIG_TEMPLATE = `{
   // OpenCode Memory Plugin Configuration
   // ============================================
   
-  // Storage location for vector database
+  // Storage location for vector database (and search index when using markdown backend)
   "storagePath": "~/.opencode-mem/data",
+
+  // Memory persistence: "database" (default) or "markdown"
+  // "memoryBackend": "markdown",
+  // "markdownPath": "~/Documents/LLM-Wiki",
 
   "userEmailOverride": "",
   "userNameOverride": "",
@@ -1104,8 +1127,18 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     );
   }
 
+  const memoryBackend = normalizeMemoryBackend(fileConfig.memoryBackend);
+  const markdownPathRaw =
+    typeof fileConfig.markdownPath === "string" ? fileConfig.markdownPath.trim() : "";
+  const markdownPath = markdownPathRaw ? expandPath(markdownPathRaw) : undefined;
+  if (memoryBackend === "markdown" && !markdownPath) {
+    throw new Error('memoryBackend "markdown" requires markdownPath to be set');
+  }
+
   return {
     storagePath: expandPath(fileConfig.storagePath ?? DEFAULTS.storagePath),
+    memoryBackend,
+    markdownPath,
     userEmailOverride: fileConfig.userEmailOverride,
     userNameOverride: fileConfig.userNameOverride,
     embeddingModel,

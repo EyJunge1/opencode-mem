@@ -16,11 +16,13 @@ This sets `OPENCODE_MEM_SIM=1` and serves `/api/*` from fixtures in [`sim/`](./s
 via a Vite middleware (see [`vite-plugins/opencode-mem-sim.ts`](./vite-plugins/opencode-mem-sim.ts)).
 Normal `bun run dev` still proxies to `:4747`.
 
-Covered: health, tags, stats, memories (paginated + tag filter), search, user
-profile, changelog, migration detect (no-op), AI cleanup preview, skills (CRUD
-in-memory from [`sim/skills.json`](./sim/skills.json)). Other mutating
-`POST`/`PUT`/`DELETE` calls return stub success so toast paths stay testable —
-nothing is written back to disk.
+Covered: health, tags, stats, memories (paginated + tag filter + get-by-id),
+search, user profile, changelog, migration detect (no-op), AI cleanup preview,
+skills (CRUD in-memory from [`sim/skills.json`](./sim/skills.json)), and the
+**Markdown vault** sidebar (`GET /api/markdown/status`, `POST /api/markdown/reindex`
+from [`sim/markdown-status.json`](./sim/markdown-status.json) — enabled so the
+nav link appears). Other mutating `POST`/`PUT`/`DELETE` calls return stub
+success so toast paths stay testable — nothing is written back to disk.
 
 GitHub Markdown cannot paint CSS, but it **can** show colors via small SVG
 swatches (see [`docs/swatches/`](./docs/swatches/)).

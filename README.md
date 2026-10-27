@@ -235,6 +235,29 @@ Configure at `~/.config/opencode/opencode-mem.jsonc`:
 
 The plugin creates a full commented template at this path on first startup. For every setting and comment, see [`opencode-mem.example.jsonc`](opencode-mem.example.jsonc).
 
+### Markdown vault backend (`memoryBackend`)
+
+By default memories live only in Turso under `storagePath`. Optionally set a **generic Markdown folder** as the source of truth (Obsidian/Raneto-compatible plain `.md` files — not an Obsidian-specific integration):
+
+```jsonc
+{
+  "memoryBackend": "markdown",
+  "markdownPath": "~/Documents/LLM-Wiki",
+}
+```
+
+| Key             | Default      | What it does                                                                                                                                       |
+| --------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memoryBackend` | `"database"` | `"database"` keeps content in Turso. `"markdown"` uses all `.md` files under `markdownPath` as source of truth.                                    |
+| `markdownPath`  | —            | Required when `memoryBackend` is `"markdown"`. Absolute or `~/…` path to the vault folder. No separate memory subfolder — the path _is_ the store. |
+
+When Markdown mode is on:
+
+- Plugin-created memories are written as `{id}.md` with YAML frontmatter + body.
+- Existing notes in the folder (any Markdown page style) are imported/indexed; Turso is only a rebuildable semantic-search index.
+- File adds/edits/deletes are watched and re-indexed; the Web UI shows a **Markdown** sidebar page (status, file list, reindex) only in this mode.
+- Switching to Markdown rebuilds the index from the folder — DB-only rows without a matching file are dropped. Export with `memory export` first if you need to keep old database memories.
+
 ### Chat message capture and injection (`chatMessage`)
 
 These settings live under the `chatMessage` key in `~/.config/opencode/opencode-mem.jsonc`:

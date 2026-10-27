@@ -4,10 +4,11 @@ export const ROUTES = {
   profile: "/user-profile",
   // Keep off `/skills` — that prefix serves the OpenCode HTTP skill catalog.
   skills: "/skill-library",
+  markdown: "/markdown-vault",
   stats: "/stats",
 } as const;
 
-export type AppView = "project" | "profile" | "skills" | "stats";
+export type AppView = "project" | "profile" | "skills" | "markdown" | "stats";
 
 export function normalizePath(pathname: string): string {
   const path = pathname.replace(/\/+$/, "") || "/";
@@ -18,6 +19,7 @@ export function viewFromPath(pathname: string): AppView {
   const path = normalizePath(pathname);
   if (path === ROUTES.profile) return "profile";
   if (path === ROUTES.skills) return "skills";
+  if (path === ROUTES.markdown) return "markdown";
   if (path === ROUTES.stats) return "stats";
   return "project";
 }
@@ -25,6 +27,7 @@ export function viewFromPath(pathname: string): AppView {
 export function pathForView(view: AppView): string {
   if (view === "profile") return ROUTES.profile;
   if (view === "skills") return ROUTES.skills;
+  if (view === "markdown") return ROUTES.markdown;
   if (view === "stats") return ROUTES.stats;
   return ROUTES.project;
 }
@@ -36,6 +39,7 @@ export function isAppPath(pathname: string): boolean {
     path === ROUTES.project ||
     path === ROUTES.profile ||
     path === ROUTES.skills ||
+    path === ROUTES.markdown ||
     path === ROUTES.stats
   );
 }
@@ -48,6 +52,7 @@ export function resolveAppPath(pathname: string): string {
     path === ROUTES.project ||
     path === ROUTES.profile ||
     path === ROUTES.skills ||
+    path === ROUTES.markdown ||
     path === ROUTES.stats
   )
     return path;

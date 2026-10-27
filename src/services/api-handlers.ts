@@ -19,6 +19,15 @@ import {
   collectShardStats,
   type CollectDailyStatsOptions,
 } from "./stats-service.js";
+import {
+  deleteMemoryMarkdownFile,
+  getMarkdownStatus,
+  isMarkdownBackend,
+  reindexMarkdownVault,
+  writeMemoryMarkdownFile,
+} from "./markdown/backend.js";
+import { pluginMemoryRelPath } from "./markdown/vault.js";
+import type { ReconcileResult } from "./markdown/reconcile.js";
 
 async function getAllMemoryShards(): Promise<ShardInfo[]> {
   await ensureTursoReady();
@@ -413,6 +422,22 @@ export async function handleAddMemory(data: {
       const id = `mem_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const now = Date.now();
 
+      const meta: Record<string, unknown> = { source: "api" };
+      if (isMarkdownBackend()) {
+        writeMemoryMarkdownFile({
+          id,
+          content: data.content,
+          type: data.type,
+          tags,
+          containerTag: data.containerTag,
+          createdAt: now,
+          updatedAt: now,
+          source: "api",
+          title: data.displayName,
+        });
+        meta.markdownRelPath = pluginMemoryRelPath(id);
+      }
+
       const record = {
         id,
         content: data.content,
@@ -429,7 +454,7 @@ export async function handleAddMemory(data: {
         projectPath: data.projectPath,
         projectName: data.projectName,
         gitRepoUrl: data.gitRepoUrl,
-        metadata: JSON.stringify({ source: "api" }),
+        metadata: JSON.stringify(meta),
       };
       const db = await tursoConnectionManager.getConnection(shard.dbPath);
       await tursoVectorSearch.insertVector(db, record);
@@ -453,8 +478,15 @@ export async function handleDeleteMemory(
       const db = await tursoConnectionManager.getConnection(shard.dbPath);
       const memory = await tursoVectorSearch.getMemoryById(db, id);
       if (memory) {
+        const metadata = safeJSONParse(memory.metadata);
+        if (isMarkdownBackend()) {
+          const rel =
+            metadata && typeof metadata.markdownRelPath === "string"
+              ? metadata.markdownRelPath
+              : null;
+          deleteMemoryMarkdownFile(id, rel);
+        }
         if (cascade) {
-          const metadata = safeJSONParse(memory.metadata);
           const linkedPromptId = metadata?.promptId;
           if (linkedPromptId) await userPromptManager.deletePrompt(linkedPromptId);
         }
@@ -462,9 +494,12 @@ export async function handleDeleteMemory(
         await tursoShardManager.decrementVectorCount(shard.id);
         return {
           success: true,
-          data: { deletedPrompt: cascade && !!safeJSONParse(memory.metadata)?.promptId },
+          data: { deletedPrompt: cascade && !!metadata?.promptId },
         };
       }
+    }
+    if (isMarkdownBackend()) {
+      deleteMemoryMarkdownFile(id);
     }
     return { success: false, error: "Memory not found" };
   } catch (error) {
@@ -528,6 +563,27 @@ export async function handleUpdateMemory(
     }
 
     const db = await tursoConnectionManager.getConnection(foundShard.dbPath);
+    const updatedAt = Date.now();
+    const memoryType = data.type || (existingMemory.type ? String(existingMemory.type) : undefined);
+    const containerTag = String(existingMemory.container_tag);
+    const existingMeta = safeJSONParse(existingMemory.metadata) || {};
+
+    if (isMarkdownBackend()) {
+      writeMemoryMarkdownFile({
+        id,
+        content: newContent,
+        type: memoryType,
+        tags,
+        containerTag,
+        createdAt: Number(existingMemory.created_at),
+        updatedAt,
+        source: typeof existingMeta.source === "string" ? existingMeta.source : "api",
+        title: existingMemory.display_name ? String(existingMemory.display_name) : undefined,
+      });
+      existingMeta.markdownRelPath = pluginMemoryRelPath(id);
+    }
+
+    const metadataJson = JSON.stringify(existingMeta);
 
     await db.transaction("write", async (tx) => {
       await tx.execute({ sql: `DELETE FROM memories WHERE id = ?`, args: [id] });
@@ -543,12 +599,12 @@ export async function handleUpdateMemory(
           newContent,
           JSON.stringify(Array.from(vector)),
           ...(tagsVector ? [JSON.stringify(Array.from(tagsVector))] : []),
-          String(existingMemory.container_tag),
+          containerTag,
           tags.length > 0 ? tags.join(",") : null,
-          data.type || (existingMemory.type ? String(existingMemory.type) : null),
+          memoryType || null,
           Number(existingMemory.created_at),
-          Date.now(),
-          existingMemory.metadata ? String(existingMemory.metadata) : null,
+          updatedAt,
+          metadataJson,
           existingMemory.session_id
             ? String(existingMemory.session_id)
             : parseSessionIdFromMetadata(
@@ -567,6 +623,73 @@ export async function handleUpdateMemory(
     return { success: true };
   } catch (error) {
     log("handleUpdateMemory: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleGetMemory(id: string): Promise<ApiResponse<Memory>> {
+  try {
+    if (!id) return { success: false, error: "id is required" };
+    const shards = await getAllMemoryShards();
+    for (const shard of shards) {
+      const db = await tursoConnectionManager.getConnection(shard.dbPath);
+      const m = await tursoVectorSearch.getMemoryById(db, id);
+      if (m) {
+        return {
+          success: true,
+          data: {
+            id: String(m.id),
+            content: String(m.content),
+            type: m.type ? String(m.type) : undefined,
+            tags: m.tags
+              ? String(m.tags)
+                  .split(",")
+                  .map((t: string) => t.trim())
+                  .filter(Boolean)
+              : [],
+            createdAt: safeToISOString(m.created_at),
+            updatedAt: m.updated_at ? safeToISOString(m.updated_at) : undefined,
+            metadata: safeJSONParse(m.metadata),
+            displayName: m.display_name ? String(m.display_name) : undefined,
+            userName: m.user_name ? String(m.user_name) : undefined,
+            userEmail: m.user_email ? String(m.user_email) : undefined,
+            projectPath: m.project_path ? String(m.project_path) : undefined,
+            projectName: m.project_name ? String(m.project_name) : undefined,
+            gitRepoUrl: m.git_repo_url ? String(m.git_repo_url) : undefined,
+            isPinned: Number(m.is_pinned ?? 0) === 1,
+          },
+        };
+      }
+    }
+    return { success: false, error: "Memory not found" };
+  } catch (error) {
+    log("handleGetMemory: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleMarkdownStatus(): Promise<
+  ApiResponse<Awaited<ReturnType<typeof getMarkdownStatus>>>
+> {
+  try {
+    const data = await getMarkdownStatus();
+    return { success: true, data };
+  } catch (error) {
+    log("handleMarkdownStatus: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleMarkdownReindex(): Promise<ApiResponse<ReconcileResult>> {
+  try {
+    if (!isMarkdownBackend()) {
+      return { success: false, error: "markdown backend is not enabled" };
+    }
+    await ensureTursoReady();
+    const data = await reindexMarkdownVault();
+    return { success: true, data };
+  } catch (error) {
+    log("handleMarkdownReindex: error", { error: String(error) });
     return { success: false, error: String(error) };
   }
 }

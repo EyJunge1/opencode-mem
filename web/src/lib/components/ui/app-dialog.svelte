@@ -30,7 +30,8 @@
   <DialogHeader class="shrink-0 pe-10">
     <DialogTitle>{title}</DialogTitle>
   </DialogHeader>
-  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+  <!-- pt so floating field labels (top-0 -translate-y-1/2) are not clipped -->
+  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto pt-4">
     {@render children?.()}
   </div>
   {#if footer}

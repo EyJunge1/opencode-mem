@@ -64,16 +64,17 @@
     <label
       for={id}
       class={cn(
-        "pointer-events-none absolute inset-s-2.5 z-10 max-w-[calc(100%-1.25rem)] truncate rounded-none leading-none transition-[top,transform,font-size,color,background-color,padding] duration-150",
+        "pointer-events-none absolute inset-s-2.5 z-10 max-w-[calc(100%-1.25rem)] rounded-none leading-tight transition-[top,transform,font-size,color,background-color,padding] duration-150",
         controlled
           ? floated
-            ? "top-0 -translate-y-1/2 bg-(--floating-label-bg,var(--card)) px-1 text-xs font-medium text-foreground-bright"
-            : "top-1/2 -translate-y-1/2 bg-transparent px-0 text-sm font-normal text-muted-foreground"
+            ? "top-0 -translate-y-1/2 bg-(--floating-label-bg,var(--card)) px-1 py-px text-xs font-medium text-foreground-bright"
+            : "top-1/2 -translate-y-1/2 bg-transparent px-0 py-0 text-sm font-normal text-muted-foreground"
           : [
-              "top-0 -translate-y-1/2 bg-(--floating-label-bg,var(--card)) px-1 text-xs font-medium text-foreground-bright",
+              "top-0 -translate-y-1/2 bg-(--floating-label-bg,var(--card)) px-1 py-px text-xs font-medium text-foreground-bright",
               "group-has-[input:placeholder-shown:not(:focus)]/field:top-1/2",
               "group-has-[input:placeholder-shown:not(:focus)]/field:bg-transparent",
               "group-has-[input:placeholder-shown:not(:focus)]/field:px-0",
+              "group-has-[input:placeholder-shown:not(:focus)]/field:py-0",
               "group-has-[input:placeholder-shown:not(:focus)]/field:text-sm",
               "group-has-[input:placeholder-shown:not(:focus)]/field:font-normal",
               "group-has-[input:placeholder-shown:not(:focus)]/field:text-muted-foreground",
@@ -81,6 +82,7 @@
               "group-has-[textarea:placeholder-shown:not(:focus)]/field:translate-y-0",
               "group-has-[textarea:placeholder-shown:not(:focus)]/field:bg-transparent",
               "group-has-[textarea:placeholder-shown:not(:focus)]/field:px-0",
+              "group-has-[textarea:placeholder-shown:not(:focus)]/field:py-0",
               "group-has-[textarea:placeholder-shown:not(:focus)]/field:text-sm",
               "group-has-[textarea:placeholder-shown:not(:focus)]/field:font-normal",
               "group-has-[textarea:placeholder-shown:not(:focus)]/field:text-muted-foreground",

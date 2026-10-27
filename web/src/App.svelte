@@ -15,6 +15,7 @@
   import ProfileView from "$lib/components/explorer/ProfileView.svelte";
   import SkillDialog from "$lib/components/explorer/SkillDialog.svelte";
   import SkillsView from "$lib/components/explorer/SkillsView.svelte";
+  import MarkdownVaultView from "$lib/components/explorer/MarkdownVaultView.svelte";
   import StatsView from "$lib/components/explorer/StatsView.svelte";
   import TagMigrationDialog from "$lib/components/explorer/TagMigrationDialog.svelte";
   import TagFilter from "$lib/components/explorer/TagFilter.svelte";
@@ -32,8 +33,10 @@
   import { createRouter } from "$lib/router.svelte";
   import { createMemoriesExplorer } from "$lib/stores/memories-explorer.svelte";
   import { createSkillsStore } from "$lib/stores/skills.svelte";
+  import { createMarkdownVaultStore } from "$lib/stores/markdown-vault.svelte";
   import { createStatsStore } from "$lib/stores/stats.svelte";
   import { createUserProfile } from "$lib/stores/user-profile.svelte";
+  import { fetchAPI, toastApiResult } from "$lib/api";
   import {
     GAP,
     GAP_LOOSE,
@@ -62,6 +65,7 @@
   const explorer = createMemoriesExplorer();
   const profile = createUserProfile();
   const skills = createSkillsStore();
+  const markdownVault = createMarkdownVaultStore();
   const stats = createStatsStore();
 
   let sidebarOpen = $state(false);
@@ -74,9 +78,11 @@
       ? i18n.t("tab-project")
       : router.view === "skills"
         ? i18n.t("tab-skills")
-        : router.view === "stats"
-          ? i18n.t("tab-stats")
-          : i18n.t("tab-profile")
+        : router.view === "markdown"
+          ? i18n.t("tab-markdown")
+          : router.view === "stats"
+            ? i18n.t("tab-stats")
+            : i18n.t("tab-profile")
   );
 
   $effect(() => {
@@ -104,6 +110,7 @@
       await explorer.loadStats();
       await explorer.checkMigrationStatus();
       await explorer.checkAuthWarning();
+      await markdownVault.loadStatus();
     })();
     const refreshTimer = setInterval(() => {
       void explorer.loadStats();
@@ -124,6 +131,9 @@
     if (router.view === "skills") {
       void skills.loadSkills();
     }
+    if (router.view === "markdown") {
+      void markdownVault.loadStatus();
+    }
     if (router.view === "stats") {
       void stats.loadStats();
     }
@@ -135,6 +145,41 @@
     void explorer.loadStats();
     if (router.view === "profile") void profile.loadUserProfile();
     if (router.view === "skills") void skills.loadSkills();
+    if (router.view === "markdown") void markdownVault.loadStatus();
+  }
+
+  async function openMarkdownFile(file: { id: string }) {
+    const result = await fetchAPI<{
+      id: string;
+      content: string;
+      type?: string;
+      tags?: string[];
+    }>(`/api/memories/${encodeURIComponent(file.id)}`);
+    if (!result.success || !result.data) {
+      await toastApiResult(result, { failKey: "markdown-open-fail" });
+      return;
+    }
+    explorer.openEditWithData({
+      id: result.data.id,
+      content: result.data.content,
+      type: result.data.type,
+      tags: result.data.tags,
+    });
+  }
+
+  async function deleteMarkdownFile(id: string) {
+    await explorer.deleteMemory(id, false);
+    if (markdownVault.enabled) void markdownVault.loadStatus();
+  }
+
+  async function addMemoryFromUi(event?: Event) {
+    await explorer.addMemory(event);
+    if (markdownVault.enabled) void markdownVault.loadStatus();
+  }
+
+  async function saveMarkdownAwareEdit(content: string, nextTags?: string[], nextType?: string) {
+    await explorer.saveEdit(content, nextTags, nextType);
+    if (markdownVault.enabled) void markdownVault.loadStatus();
   }
 
   function onHomeClick(event: MouseEvent) {
@@ -157,7 +202,9 @@
     projectLabel={i18n.t("tab-project")}
     profileLabel={i18n.t("tab-profile")}
     skillsLabel={i18n.t("tab-skills")}
+    markdownLabel={i18n.t("tab-markdown")}
     statsLabel={i18n.t("tab-stats")}
+    showMarkdown={markdownVault.enabled}
     {langLabel}
     languageLabel={i18n.t("nav-language")}
     themeLabel={i18n.t("nav-theme")}
@@ -238,6 +285,14 @@
           <span class={META_CHIP}>
             {i18n.t("text-total", {
               count: skills.isSearching ? skills.filteredSkills.length : skills.skills.length,
+            })}
+          </span>
+        {:else if router.view === "markdown" && markdownVault.enabled}
+          <span class={META_CHIP}>
+            {i18n.t("text-total", {
+              count: markdownVault.isSearching
+                ? markdownVault.filteredFiles.length
+                : (markdownVault.status?.fileCount ?? 0),
             })}
           </span>
         {/if}
@@ -395,6 +450,43 @@
           onEdit={skills.openEdit}
           onDelete={skills.deleteSkill}
         />
+      {:else if router.view === "markdown"}
+        <div class={PAGE_TOOLBAR}>
+          <div class={cn("flex w-full min-w-0 items-center", GAP)}>
+            <div class="flex min-w-0 flex-1 justify-center px-1">
+              <SearchInput
+                id="markdown-search-input"
+                class="w-full max-w-xl"
+                placeholder={i18n.t("placeholder-search-markdown")}
+                bind:value={markdownVault.searchInput}
+                showClear={markdownVault.isSearching}
+                onClear={markdownVault.clearSearch}
+              />
+            </div>
+            <div class={cn("flex shrink-0 items-center", GAP)}>
+              <Button
+                variant="default"
+                size="icon"
+                aria-label={i18n.t("btn-add-markdown")}
+                title={i18n.t("btn-add-markdown")}
+                onclick={() => (explorer.addOpen = true)}
+              >
+                <Plus class={ICON} aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        <MarkdownVaultView
+          status={markdownVault.status}
+          filtered={markdownVault.filteredFiles}
+          loading={markdownVault.loading}
+          reindexing={markdownVault.reindexing}
+          error={markdownVault.error}
+          isSearching={markdownVault.isSearching}
+          onReindex={markdownVault.reindex}
+          onEdit={openMarkdownFile}
+          onDelete={deleteMarkdownFile}
+        />
       {:else if router.view === "stats"}
         <StatsView
           data={stats.data}
@@ -431,7 +523,7 @@
   bind:type={explorer.addType}
   bind:contentTags={explorer.addTags}
   bind:content={explorer.addContent}
-  onSubmit={explorer.addMemory}
+  onSubmit={addMemoryFromUi}
 />
 <EditMemoryDialog
   open={explorer.editOpen}
@@ -440,7 +532,7 @@
   type={explorer.editType}
   tags={explorer.editTags}
   knownTags={explorer.knownTags}
-  onSave={explorer.saveEdit}
+  onSave={saveMarkdownAwareEdit}
 />
 <TagMigrationDialog
   open={explorer.tagMigrationOpen}
