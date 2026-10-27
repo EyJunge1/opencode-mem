@@ -162,27 +162,30 @@ describe("turso WAL index recovery", () => {
       try {
         const db = await manager.getConnection(dbPath);
         values = (await db.all<{ v: string }>("SELECT v FROM t ORDER BY id")).map((row) => row.v);
+
+        // Assert while the connection is still open: closeAll runs
+        // PRAGMA wal_checkpoint(TRUNCATE) and empties the -wal afterward.
+        expect(values).toEqual(["checkpointed", "wal-only"]);
+        expect(existsSync(walPath)).toBe(true);
+        expect(statSync(walPath).size).toBeGreaterThan(0);
+        // Same inode: the file was kept, not moved and recreated.
+        expect(statSync(walPath).ino).toBe(walInode);
+
+        const [quarantined] = quarantineDirs(baseDir);
+        const quarantinedFiles = readdirSync(
+          join(baseDir, "recovery", quarantined as string)
+        ).sort();
+        expect(quarantinedFiles).toContain("memories.db-tshm");
+        expect(quarantinedFiles.every((name) => /-(shm|tshm)$/.test(name))).toBe(true);
+        // Engine evidence, not an assumption: the old -tshm is in quarantine *and*
+        // a fresh, non-empty index exists beside the WAL again, rebuilt on reopen.
+        // The seeded WAL has no torn trailing frame; a torn WAL is the
+        // "retry fails, original error surfaces, WAL untouched" case.
+        expect(existsSync(`${dbPath}-tshm`)).toBe(true);
+        expect(statSync(`${dbPath}-tshm`).size).toBeGreaterThan(0);
       } finally {
         await manager.closeAll();
       }
-
-      // The WAL was not discarded, and its committed row survived the recovery.
-      expect(values).toEqual(["checkpointed", "wal-only"]);
-      expect(existsSync(walPath)).toBe(true);
-      expect(statSync(walPath).size).toBeGreaterThan(0);
-      // Same inode: the file was kept, not moved and recreated.
-      expect(statSync(walPath).ino).toBe(walInode);
-
-      const [quarantined] = quarantineDirs(baseDir);
-      const quarantinedFiles = readdirSync(join(baseDir, "recovery", quarantined as string)).sort();
-      expect(quarantinedFiles).toContain("memories.db-tshm");
-      expect(quarantinedFiles.every((name) => /-(shm|tshm)$/.test(name))).toBe(true);
-      // Engine evidence, not an assumption: the old -tshm is in quarantine *and*
-      // a fresh, non-empty index exists beside the WAL again, rebuilt on reopen.
-      // The seeded WAL has no torn trailing frame; a torn WAL is the
-      // "retry fails, original error surfaces, WAL untouched" case.
-      expect(existsSync(`${dbPath}-tshm`)).toBe(true);
-      expect(statSync(`${dbPath}-tshm`).size).toBeGreaterThan(0);
     }
   );
 
