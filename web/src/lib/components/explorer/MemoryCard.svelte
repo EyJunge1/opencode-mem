@@ -143,10 +143,10 @@
       pinned={opts.pinned}
       isLinked={opts.isLinked}
       deleteLabel={opts.deleteLabel}
-      showPinEdit={opts.showPinEdit}
+      showPin={opts.showPinEdit !== false}
       {onPin}
       {onUnpin}
-      {onEdit}
+      onEdit={opts.showPinEdit === false ? undefined : onEdit}
       onDelete={opts.onDelete}
     />
   </div>

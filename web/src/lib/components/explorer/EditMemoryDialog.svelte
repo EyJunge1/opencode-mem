@@ -2,9 +2,9 @@
   import AppDialog from "$lib/components/ui/app-dialog.svelte";
   import DialogActions from "$lib/components/ui/dialog-actions.svelte";
   import FormField from "$lib/components/ui/form-field.svelte";
+  import MarkdownContentField from "$lib/components/ui/markdown-content-field.svelte";
   import NativeSelect from "$lib/components/ui/native-select.svelte";
   import TagsField from "$lib/components/ui/tags-field.svelte";
-  import Textarea from "$lib/components/ui/textarea.svelte";
   import { useI18n } from "$lib/i18n/context.svelte";
   import { MEMORY_TYPES } from "$lib/memory-types";
   import { STACK_FORM } from "$lib/ui/styles";
@@ -72,9 +72,14 @@
         {/each}
       </NativeSelect>
     </FormField>
-    <FormField id="edit-content" label={i18n.t("label-content")} value={draft}>
-      <Textarea id="edit-content" rows={6} bind:value={draft} required />
-    </FormField>
+    <MarkdownContentField
+      id="edit-content"
+      label={i18n.t("label-content")}
+      bind:value={draft}
+      rows={6}
+      required
+      resetKey={open}
+    />
     <FormField label={i18n.t("label-tags")} floating={false} spacing="normal">
       <TagsField
         value={draftTags}

@@ -3,7 +3,7 @@
     {
       "id": "mem_pin_architecture",
       "type": "memory",
-      "content": "Keep a clear split between the SPA and the API: the frontend only talks to /api; shared request/response types live in a common package.",
+      "content": "# Architecture decision\n\nKeep a clear split between the SPA and the API.\n\n## Boundaries\n\n- The frontend **only** talks to `/api`\n- Shared request/response types live in a common package\n- No direct DB access from the UI\n\n```ts\nfetch('/api/memories')\n```",
       "createdAt": "2026-09-12T10:00:00.000Z",
       "updatedAt": "2026-09-28T14:22:00.000Z",
       "displayName": "checkout-web",
@@ -28,7 +28,7 @@
     {
       "id": "mem_feature_toast",
       "type": "memory",
-      "content": "Notifications use a stacked toast component with success, error, warning, and info variants.",
+      "content": "# Toast notifications\n\nNotifications use a stacked toast component.\n\n## Variants\n\n| Variant | Use |\n| --- | --- |\n| `success` | Saved / completed |\n| `error` | Failed requests |\n| `warning` | Soft conflicts |\n| `info` | Neutral status |\n\n> Prefer toasts for short feedback; use dialogs for destructive confirms.",
       "createdAt": "2026-09-22T11:00:00.000Z",
       "displayName": "checkout-web",
       "projectName": "checkout-web",
@@ -127,7 +127,7 @@
     {
       "id": "mem_docs_i18n",
       "type": "memory",
-      "content": "UI strings live in a central translations map. Prefer Title Case labels; avoid SCREAMING labels.",
+      "content": "# i18n guidelines\n\nUI strings live in a central translations map.\n\n## Rules\n\n- Prefer **Title Case** labels\n- Avoid `SCREAMING` labels\n- Keep keys stable (`tab-markdown`, not free text)\n\n### Example\n\n```ts\ni18n.t(\"btn-add-markdown\")\n```",
       "createdAt": "2026-09-10T07:20:00.000Z",
       "displayName": "docs-portal",
       "projectName": "docs-portal",
@@ -156,6 +156,34 @@
       "memoryType": "configuration",
       "tags": ["dev", "fixtures"],
       "isPinned": false
+    },
+    {
+      "id": "md_sim_raneto_page",
+      "type": "memory",
+      "content": "# Raneto-style page\n\nThis note was imported from a Markdown vault (plain frontmatter + body).\n\n## Workflow\n\n1. Edit in Obsidian / Raneto / any editor\n2. Save the `.md` file\n3. Watcher or **Reindex** updates the search index\n\n### Frontmatter example\n\n```yaml\n---\ntitle: Raneto-style page\ntags: [wiki, llm]\n---\n```\n\nEdit it here or externally — both paths stay in sync.",
+      "createdAt": "2026-09-01T08:00:00.000Z",
+      "updatedAt": "2026-10-10T12:00:00.000Z",
+      "displayName": "Raneto-style page",
+      "memoryType": "documentation",
+      "tags": ["wiki", "markdown-import"],
+      "isPinned": false,
+      "metadata": {
+        "source": "markdown-import",
+        "markdownRelPath": "wiki/Raneto-style-page.md"
+      }
+    },
+    {
+      "id": "md_sim_plain_note",
+      "type": "memory",
+      "content": "## plain-note\n\nA plain note without rich frontmatter.\n\nThe vault indexer derives a stable id from the **relative path**:\n\n- `notes/plain-note.md` → `md_<hash>`\n- Renames change the id; prefer stable paths\n\nUseful for quick scratch notes that still show up in semantic search.",
+      "createdAt": "2026-09-03T08:00:00.000Z",
+      "displayName": "plain-note",
+      "tags": ["wiki", "markdown-import"],
+      "isPinned": false,
+      "metadata": {
+        "source": "markdown-import",
+        "markdownRelPath": "notes/plain-note.md"
+      }
     }
   ]
 }

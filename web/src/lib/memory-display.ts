@@ -42,4 +42,6 @@ export function memoryCardClass(opts: {
 
 /** In-card heading — not a floating notch (those are for editable form labels only). */
 export const CARD_TITLE =
-  "m-0 flex max-w-full items-center " + GAP_TIGHT + " text-sm font-semibold text-foreground-bright";
+  "m-0 flex max-w-full items-center " +
+  GAP_TIGHT +
+  " text-sm font-semibold leading-snug text-foreground-bright";

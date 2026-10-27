@@ -375,6 +375,33 @@ export class MemoryPortabilityService {
         containerTag: target.tag,
       });
 
+      try {
+        const { isMarkdownBackend, writeMemoryMarkdownFile } =
+          await import("./markdown/backend.js");
+        if (isMarkdownBackend()) {
+          for (const item of prepared) {
+            writeMemoryMarkdownFile({
+              id: item.record.id,
+              content: item.record.content,
+              type: item.record.type,
+              tags: item.record.tags
+                ? item.record.tags
+                    .split(",")
+                    .map((t) => t.trim())
+                    .filter(Boolean)
+                : undefined,
+              containerTag: item.record.containerTag,
+              createdAt: item.record.createdAt,
+              updatedAt: item.record.updatedAt,
+              source: "import",
+              title: item.record.displayName,
+            });
+          }
+        }
+      } catch (mdError) {
+        log("Memory import markdown write-through failed", { error: String(mdError) });
+      }
+
       return {
         success: true,
         dryRun: false,

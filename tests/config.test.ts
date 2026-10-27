@@ -31,6 +31,10 @@ describe("config", () => {
       expect(CONFIG.storagePath.length).toBeGreaterThan(0);
     });
 
+    it("should expose a valid memoryBackend", () => {
+      expect(["database", "markdown"]).toContain(CONFIG.memoryBackend);
+    });
+
     it("should default to Xenova/nomic-embed-text-v1 embedding model", () => {
       expect(typeof CONFIG.embeddingModel).toBe("string");
     });

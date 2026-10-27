@@ -486,6 +486,19 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     }
   }
 
+  if (isConfigured() && CONFIG.memoryBackend === "markdown") {
+    try {
+      if (!tursoReadyForWeb) {
+        await ensureTursoReady();
+        tursoReadyForWeb = true;
+      }
+      const { startMarkdownBackend } = await import("./services/markdown/backend.js");
+      await startMarkdownBackend();
+    } catch (mdError) {
+      log("Markdown backend failed to start", { error: String(mdError) });
+    }
+  }
+
   if (CONFIG.webServerEnabled && tursoReadyForWeb) {
     const webAuth = new WebAuth({
       password: CONFIG.webServerAuthPassword,
@@ -590,6 +603,12 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     // Drain in-flight (and already-queued-before-abort) captures before
     // closing storage: abort only skips not-yet-started jobs.
     await awaitCaptureDrain();
+    try {
+      const { stopMarkdownBackend } = await import("./services/markdown/backend.js");
+      stopMarkdownBackend();
+    } catch {
+      /* ignore */
+    }
     if (webServer) await webServer.stop();
     if (memoryClient) await memoryClient.close();
   };

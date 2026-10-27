@@ -378,8 +378,9 @@ describe("turso WAL index recovery", () => {
 
     const logged = readFileSync(logFile, "utf8");
     expect(logged).toContain("WAL index recovery failed");
-    expect(logged).toContain(dbPath);
-    expect(logged).toContain(quarantineDir);
+    // Logger JSON-escapes paths; assert the serialized form so Windows `\` matches.
+    expect(logged).toContain(JSON.stringify(dbPath));
+    expect(logged).toContain(JSON.stringify(quarantineDir));
     expect(logged).toContain("short read on WAL frame");
   });
 

@@ -43,6 +43,9 @@ import {
   handleDeleteSkill,
   handleSkillsCatalogIndex,
   handleSkillsCatalogFile,
+  handleMarkdownStatus,
+  handleMarkdownReindex,
+  handleGetMemory,
 } from "./api-handlers.js";
 
 /**
@@ -541,6 +544,15 @@ export class WebServer {
         return this.jsonResponse(result);
       }
 
+      if (path.startsWith("/api/memories/") && method === "GET") {
+        const id = path.split("/").pop();
+        if (!id || id === "bulk-delete") {
+          return this.jsonResponse({ success: false, error: "Invalid ID" });
+        }
+        const result = await handleGetMemory(id);
+        return this.jsonResponse(result);
+      }
+
       if (path.startsWith("/api/memories/") && method === "PUT") {
         const id = path.split("/").pop();
         if (!id) {
@@ -570,6 +582,16 @@ export class WebServer {
         }
 
         const result = await handleSearch(query, tag, page, pageSize);
+        return this.jsonResponse(result);
+      }
+
+      if (path === "/api/markdown/status" && method === "GET") {
+        const result = await handleMarkdownStatus();
+        return this.jsonResponse(result);
+      }
+
+      if (path === "/api/markdown/reindex" && method === "POST") {
+        const result = await handleMarkdownReindex();
         return this.jsonResponse(result);
       }
 

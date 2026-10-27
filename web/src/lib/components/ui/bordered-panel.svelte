@@ -48,8 +48,8 @@
         {#if leading}
           {@render leading()}
         {/if}
-        <h2 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold text-foreground-bright">
-          {title}
+        <h2 class="m-0 min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground-bright">
+          <span class="block truncate">{title}</span>
         </h2>
         {#if trailing}
           {@render trailing()}
@@ -75,8 +75,8 @@
         {#if leading}
           {@render leading()}
         {/if}
-        <h2 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold text-foreground-bright">
-          {title}
+        <h2 class="m-0 min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground-bright">
+          <span class="block truncate">{title}</span>
         </h2>
         {#if trailing}
           {@render trailing()}

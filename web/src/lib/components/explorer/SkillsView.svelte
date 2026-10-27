@@ -1,23 +1,13 @@
 <script lang="ts">
-  import PenLine from "@lucide/svelte/icons/pen-line";
   import ScrollText from "@lucide/svelte/icons/scroll-text";
-  import Trash2 from "@lucide/svelte/icons/trash-2";
   import type { SkillItem } from "$lib/stores/skills.svelte";
   import Badge from "$lib/components/ui/badge.svelte";
-  import Button from "$lib/components/ui/button.svelte";
   import EmptyState from "$lib/components/ui/empty-state.svelte";
+  import MemoryActions from "$lib/components/explorer/MemoryActions.svelte";
   import { useI18n } from "$lib/i18n/context.svelte";
   import { formatDate } from "$lib/format";
   import { CARD_TITLE } from "$lib/memory-display";
-  import {
-    CARD_PAD,
-    GAP,
-    GAP_TIGHT,
-    ICON_SM,
-    STACK,
-    STACK_TIGHT,
-    SURFACE_CARD,
-  } from "$lib/ui/styles";
+  import { CARD_PAD, GAP, GAP_TIGHT, STACK, STACK_TIGHT, SURFACE_CARD } from "$lib/ui/styles";
   import { cn } from "$lib/utils";
 
   type Props = {
@@ -49,7 +39,9 @@
         <div class={cn(SURFACE_CARD, CARD_PAD, STACK_TIGHT)}>
           <div class={cn("flex items-center", GAP)}>
             <div class={cn("flex min-w-0 flex-1 items-center", GAP)}>
-              <h3 class={cn(CARD_TITLE, "min-w-0 truncate")}>{skill.name}</h3>
+              <h3 class={cn(CARD_TITLE, "min-w-0")}>
+                <span class="truncate">{skill.name}</span>
+              </h3>
               {#if !skill.enabled}
                 <Badge variant="secondary" class="shrink-0">{i18n.t("skill-disabled")}</Badge>
               {/if}
@@ -57,26 +49,16 @@
                 <Badge variant="outline" class="shrink-0 text-[10px]">auto</Badge>
               {/if}
             </div>
-            <div class="flex shrink-0 items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                title={i18n.t("btn-edit")}
-                aria-label={i18n.t("btn-edit")}
-                onclick={() => onEdit?.(skill)}
-              >
-                <PenLine class={ICON_SM} aria-hidden="true" />
-              </Button>
-              <Button
-                variant="destructive"
-                size="icon-xs"
-                title={i18n.t("btn-delete")}
-                aria-label={i18n.t("btn-delete")}
-                onclick={() => onDelete?.(skill.id)}
-              >
-                <Trash2 class={ICON_SM} aria-hidden="true" />
-              </Button>
-            </div>
+            <MemoryActions
+              id={skill.id}
+              showPin={false}
+              onEdit={onEdit
+                ? (_id) => {
+                    onEdit(skill);
+                  }
+                : undefined}
+              onDelete={onDelete ? (id) => onDelete(id) : undefined}
+            />
           </div>
           {#if skill.description}
             <p class="text-sm">{skill.description}</p>

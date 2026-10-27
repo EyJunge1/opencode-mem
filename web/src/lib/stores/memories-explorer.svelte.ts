@@ -262,6 +262,14 @@ export function createMemoriesExplorer() {
     editOpen = true;
   }
 
+  function openEditWithData(data: { id: string; content: string; type?: string; tags?: string[] }) {
+    editId = data.id;
+    editContent = data.content;
+    editType = data.type || "";
+    editTags = [...(data.tags || [])];
+    editOpen = true;
+  }
+
   async function saveEdit(content: string, nextTags?: string[], nextType?: string) {
     const tags = nextTags ?? editTags;
     const type = nextType ?? editType;
@@ -616,6 +624,7 @@ export function createMemoriesExplorer() {
     deselectAll,
     addMemory,
     openEdit,
+    openEditWithData,
     saveEdit,
     updateMemoryTags,
     deleteMemory,

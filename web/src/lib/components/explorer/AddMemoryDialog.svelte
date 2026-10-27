@@ -2,9 +2,9 @@
   import AppDialog from "$lib/components/ui/app-dialog.svelte";
   import DialogActions from "$lib/components/ui/dialog-actions.svelte";
   import FormField from "$lib/components/ui/form-field.svelte";
+  import MarkdownContentField from "$lib/components/ui/markdown-content-field.svelte";
   import NativeSelect from "$lib/components/ui/native-select.svelte";
   import TagsField from "$lib/components/ui/tags-field.svelte";
-  import Textarea from "$lib/components/ui/textarea.svelte";
   import { useI18n } from "$lib/i18n/context.svelte";
   import { MEMORY_TYPES } from "$lib/memory-types";
   import type { TagInfo } from "$lib/types";
@@ -83,9 +83,14 @@
         onChange={(next) => (contentTags = next)}
       />
     </FormField>
-    <FormField id="add-content" label={i18n.t("label-content")} value={content}>
-      <Textarea id="add-content" rows={5} required bind:value={content} />
-    </FormField>
+    <MarkdownContentField
+      id="add-content"
+      label={i18n.t("label-content")}
+      bind:value={content}
+      rows={5}
+      required
+      resetKey={open}
+    />
   </form>
   {#snippet footer()}
     <DialogActions

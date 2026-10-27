@@ -11,8 +11,9 @@
     id: string;
     pinned?: boolean;
     isLinked?: boolean;
-    deleteLabel: string;
-    showPinEdit?: boolean;
+    deleteLabel?: string;
+    /** Show pin/unpin controls (memories). Default true. */
+    showPin?: boolean;
     onPin?: (id: string) => void;
     onUnpin?: (id: string) => void;
     onEdit?: (id: string) => void;
@@ -24,7 +25,7 @@
     pinned = false,
     isLinked = false,
     deleteLabel,
-    showPinEdit = true,
+    showPin = true,
     onPin,
     onUnpin,
     onEdit,
@@ -32,10 +33,11 @@
   }: Props = $props();
 
   const i18n = useI18n();
+  const resolvedDeleteLabel = $derived(deleteLabel ?? i18n.t("btn-delete"));
 </script>
 
 <div class="flex shrink-0 items-center gap-1">
-  {#if showPinEdit}
+  {#if showPin}
     {#if pinned}
       <Button
         variant="ghost"
@@ -58,6 +60,8 @@
         <Pin class={ICON_SM} aria-hidden="true" />
       </Button>
     {/if}
+  {/if}
+  {#if onEdit}
     <Button
       variant="ghost"
       size="icon-xs"
@@ -68,13 +72,15 @@
       <PenLine class={ICON_SM} aria-hidden="true" />
     </Button>
   {/if}
-  <Button
-    variant="destructive"
-    size="icon-xs"
-    title={deleteLabel}
-    aria-label={deleteLabel}
-    onclick={() => onDelete?.(id, isLinked)}
-  >
-    <Trash2 class={ICON_SM} aria-hidden="true" />
-  </Button>
+  {#if onDelete}
+    <Button
+      variant="destructive"
+      size="icon-xs"
+      title={resolvedDeleteLabel}
+      aria-label={resolvedDeleteLabel}
+      onclick={() => onDelete?.(id, isLinked)}
+    >
+      <Trash2 class={ICON_SM} aria-hidden="true" />
+    </Button>
+  {/if}
 </div>

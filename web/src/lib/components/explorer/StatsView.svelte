@@ -64,8 +64,7 @@
 </script>
 
 <div class={STACK_SECTION} aria-busy={loading}>
-  <div class={cn("flex flex-wrap items-center justify-between", GAP)}>
-    <p class="text-sm text-muted-foreground">{i18n.t("stats-description")}</p>
+  <div class={cn("flex flex-wrap items-center justify-end", GAP)}>
     <Button type="button" variant="outline" disabled={loading} onclick={() => onRefresh?.()}>
       <RefreshCw
         class={cn(ICON_SM, loading && "animate-spin motion-reduce:animate-none")}

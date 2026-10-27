@@ -1,6 +1,7 @@
 <script lang="ts">
   import Activity from "@lucide/svelte/icons/activity";
   import Brain from "@lucide/svelte/icons/brain";
+  import FileText from "@lucide/svelte/icons/file-text";
   import Folder from "@lucide/svelte/icons/folder";
   import Languages from "@lucide/svelte/icons/languages";
   import Moon from "@lucide/svelte/icons/moon";
@@ -33,7 +34,9 @@
     projectLabel: string;
     profileLabel: string;
     skillsLabel: string;
+    markdownLabel: string;
     statsLabel: string;
+    showMarkdown?: boolean;
     langLabel: string;
     languageLabel: string;
     themeLabel: string;
@@ -50,7 +53,9 @@
     projectLabel,
     profileLabel,
     skillsLabel,
+    markdownLabel,
     statsLabel,
+    showMarkdown = false,
     langLabel,
     languageLabel,
     themeLabel,
@@ -182,6 +187,21 @@
         <span class="truncate text-start">{skillsLabel}</span>
       {/if}
     </a>
+    {#if showMarkdown}
+      <a
+        href={ROUTES.markdown}
+        class={navClass(currentView === "markdown")}
+        aria-current={currentView === "markdown" ? "page" : undefined}
+        title={markdownLabel}
+        aria-label={markdownLabel}
+        onclick={(e) => onNavClick(e, ROUTES.markdown)}
+      >
+        <FileText class={cn(ICON, "shrink-0")} aria-hidden="true" />
+        {#if !iconOnly}
+          <span class="truncate text-start">{markdownLabel}</span>
+        {/if}
+      </a>
+    {/if}
     <a
       href={ROUTES.stats}
       class={navClass(currentView === "stats")}

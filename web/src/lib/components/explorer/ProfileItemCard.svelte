@@ -44,12 +44,14 @@
 <div class={cn(SURFACE_CARD, CARD_PAD, STACK_TIGHT)}>
   <div class={cn("flex items-center", GAP)}>
     <div class={cn("flex min-w-0 flex-1 items-center", GAP)}>
-      <h3 class={cn(CARD_TITLE, "min-w-0 truncate")}>
-        {#if variant === "workflow"}
-          {item.description || i18n.t("profile-workflows")}
-        {:else}
-          {item.category || "General"}
-        {/if}
+      <h3 class={cn(CARD_TITLE, "min-w-0")}>
+        <span class="truncate">
+          {#if variant === "workflow"}
+            {item.description || i18n.t("profile-workflows")}
+          {:else}
+            {item.category || "General"}
+          {/if}
+        </span>
       </h3>
       <span
         class={cn(META_CHIP, "h-7 min-w-7 justify-center font-medium text-foreground")}
