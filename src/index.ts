@@ -13,6 +13,7 @@ import { userPromptManager } from "./services/user-prompt/user-prompt-manager.js
 import { startWebServer, WebServer } from "./services/web-server.js";
 import { ensureTursoReady } from "./services/turso/ready.js";
 import { tursoConnectionManager } from "./services/turso/connection-manager.js";
+import { retainPluginTurso } from "./services/turso/plugin-refs.js";
 import { WebAuth } from "./services/web-auth.js";
 
 import { isConfigured, CONFIG, initConfig } from "./config.js";
@@ -374,6 +375,10 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   // skipped; in-flight work keeps its original (uncancellable) semantics.
   const pluginLifetime = new AbortController();
   let cleanedUp = false;
+
+  // Lease the shared Turso pool for this plugin instance. Several OpenCode
+  // sessions share one process; dispose must not closeAll while siblings live (#443).
+  retainPluginTurso();
 
   const GLOBAL_PLUGIN_WARMUP_KEY = Symbol.for("opencode-mem.plugin.warmedup");
 
