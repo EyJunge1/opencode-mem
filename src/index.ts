@@ -695,8 +695,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       memories = memories.filter((m: any) => new Date(m.createdAt).getTime() > cutoffDate);
     }
 
-    if (memories.length === 0) return "";
-
+    // Still format an empty project-memory payload so injectProfile can emit
+    // <user_profile> on its own (e.g. chatMessage.maxMemories: 0).
     const projectMemories = {
       results: memories.map((m: any) => ({
         similarity: 1.0,
