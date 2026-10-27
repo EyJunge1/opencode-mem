@@ -108,7 +108,12 @@ mock.module(${JSON.stringify(loggerUrl)}, () => ({
 }));
 
 mock.module(${JSON.stringify(configUrl)}, () => ({
-  CONFIG: { memoryProvider: "openai-chat" },
+  CONFIG: {
+    memoryProvider: "openai-chat",
+    memoryModel: "gpt-4o-mini",
+    memoryApiUrl: "https://api.example.com/v1",
+    memoryApiKey: "test-key",
+  },
 }));
 
 mock.module(${JSON.stringify(providerConfigUrl)}, () => ({

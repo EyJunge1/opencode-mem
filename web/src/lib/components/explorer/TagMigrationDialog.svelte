@@ -58,7 +58,10 @@
       });
 
       if (!result.success || !result.data) {
-        status = i18n.t("toast-migration-failed") + ": " + (result.error || "");
+        const failedMsg =
+          i18n.t("toast-migration-failed") + (result.error ? `: ${result.error}` : "");
+        status = failedMsg;
+        toast.error(failedMsg);
         running = false;
         return;
       }
