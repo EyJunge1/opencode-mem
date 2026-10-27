@@ -1,4 +1,5 @@
 import type { Database } from "@tursodatabase/database";
+import { safeLog } from "../logger.js";
 
 export type SqlValue = null | string | number | bigint | boolean | Uint8Array | ArrayBuffer;
 export type SqlArgs = SqlValue[] | Record<string, SqlValue>;
@@ -112,8 +113,18 @@ function bindArgs(args?: SqlArgs): SqlValue[] | [Record<string, SqlValue>] {
   return [normalized];
 }
 
+/**
+ * Upper bound for the pre-close WAL checkpoint. The host SIGTERMs and SIGKILLs
+ * the service after ~5s, so a checkpoint that cannot finish (another process
+ * holds a read lock) must not eat the whole shutdown budget.
+ */
+const CHECKPOINT_TIMEOUT_MS = 1500;
+
 export class TursoDb {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly checkpointTimeoutMs: number = CHECKPOINT_TIMEOUT_MS
+  ) {}
 
   getClient(): Database {
     return this.database;
@@ -203,7 +214,66 @@ export class TursoDb {
     return wrapped[txnMode]();
   }
 
+  /**
+   * Checkpoint the WAL into the main DB before closing so a SIGKILL during
+   * teardown cannot leave a 0-byte `-wal` beside a stale `-tshm` (every later
+   * open then fails with "short read on WAL frame"). Never throws: a busy or
+   * slow checkpoint is logged and skipped.
+   *
+   * The timeout only bounds how long we *prefer* to wait before logging a
+   * failure — turso's `close()` does not take `execLock`, so we must still
+   * await settlement of the pragma before returning. Closing under an
+   * in-flight statement would recreate the tear this helper exists to avoid.
+   * A truncate stuck on a foreign reader can therefore still hold shutdown
+   * past the bound until the reader leaves (or the host SIGKILLs).
+   */
+  private async checkpointBeforeClose(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const checkpoint = this.database.all("PRAGMA wal_checkpoint(TRUNCATE)");
+    try {
+      const rows = await Promise.race([
+        checkpoint,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(`timed out after ${this.checkpointTimeoutMs}ms`)),
+            this.checkpointTimeoutMs
+          );
+        }),
+      ]);
+      // `PRAGMA wal_checkpoint` returns {busy, log, checkpointed}; busy>0 means a
+      // reader blocked the truncate and the WAL was only partially checkpointed.
+      const result = Array.isArray(rows) ? rows[0] : undefined;
+      safeLog("Turso WAL checkpoint before close", {
+        busy: result?.busy,
+        log: result?.log,
+        checkpointed: result?.checkpointed,
+      });
+    } catch (error) {
+      safeLog("Turso WAL checkpoint before close failed", { error: String(error) });
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      // Always drain the pragma before close(), including after a timeout win:
+      // a late rejection must not escape unhandled, and the native close must
+      // not race an in-flight statement on the same handle.
+      await checkpoint.catch(() => {});
+    }
+  }
+
   async close(): Promise<void> {
+    await this.checkpointBeforeClose();
     await this.database.close();
+  }
+
+  /**
+   * Close without the WAL checkpoint, for the synchronous `exit` handler where
+   * async continuations never run. The turso async `close()` calls the native
+   * close in its first statement with nothing awaited before it, so an
+   * un-awaited call really does release the handle — but it leaves the `-wal`
+   * in place, which is unavoidable without an event loop.
+   */
+  closeSync(): void {
+    // Errors surface as a rejected promise (never a throw) and are ignored:
+    // the process is exiting and there is no budget left to act on them.
+    void this.database.close().catch(() => {});
   }
 }

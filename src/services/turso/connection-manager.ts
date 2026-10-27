@@ -3,7 +3,7 @@ import type { DatabaseOpts, EncryptionOpts } from "@tursodatabase/database-commo
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve, relative, isAbsolute, sep } from "node:path";
 import { CONFIG } from "../../config.js";
-import { log } from "../logger.js";
+import { safeLog } from "../logger.js";
 import { collectReleasedSqliteHandles } from "./sqlite-handle-release.js";
 import { TursoDb } from "./turso-db.js";
 import { resolveOrCreateDatabaseEncryptionKey } from "./encryption-key.js";
@@ -387,7 +387,7 @@ export class TursoConnectionManager {
           try {
             await db.close();
           } catch (error) {
-            log("Error closing Turso database", { path: dbPath, error: String(error) });
+            safeLog("Error closing Turso database", { path: dbPath, error: String(error) });
           }
 
           this.connections.delete(dbPath);
@@ -408,13 +408,17 @@ export class TursoConnectionManager {
 
     this.closingPromise = (async () => {
       await Promise.allSettled([...this.pending.values(), ...this.closingConnections.values()]);
-      for (const [path, db] of this.connections) {
-        try {
-          await db.close();
-        } catch (error) {
-          log("Error closing Turso database", { path, error: String(error) });
-        }
-      }
+      // Close in parallel: each close runs a bounded WAL checkpoint, and the
+      // host allows only ~5s between SIGTERM and SIGKILL.
+      await Promise.allSettled(
+        [...this.connections].map(async ([path, db]) => {
+          try {
+            await db.close();
+          } catch (error) {
+            safeLog("Error closing Turso database", { path, error: String(error) });
+          }
+        })
+      );
       this.connections.clear();
       this.pending.clear();
       await collectReleasedSqliteHandles();
@@ -430,9 +434,9 @@ export class TursoConnectionManager {
   closeAllSync(): void {
     for (const [path, db] of this.connections) {
       try {
-        void db.close();
+        db.closeSync();
       } catch (error) {
-        log("Error closing Turso database (sync)", { path, error: String(error) });
+        safeLog("Error closing Turso database (sync)", { path, error: String(error) });
       }
     }
     this.connections.clear();
