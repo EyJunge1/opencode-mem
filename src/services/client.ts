@@ -105,9 +105,14 @@ export class LocalMemoryClient {
   }
 
   async close(): Promise<void> {
-    const { closeTursoAndInvalidateCaches } = await import("./turso/lifecycle.js");
-    await closeTursoAndInvalidateCaches();
-    this.reset();
+    // Release one plugin-instance lease. Only the last live instance closes the
+    // process-wide Turso pool — otherwise a disposing session races sibling
+    // idle handlers with "database connection is not open" (#443).
+    const { releasePluginTurso } = await import("./turso/lifecycle.js");
+    const closed = await releasePluginTurso();
+    if (closed) {
+      this.reset();
+    }
   }
 
   async searchMemories(query: string, containerTag: string, scope: MemoryScope = "project") {

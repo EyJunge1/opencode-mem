@@ -3,7 +3,7 @@ import type { DatabaseOpts, EncryptionOpts } from "@tursodatabase/database-commo
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve, relative, isAbsolute, sep } from "node:path";
 import { CONFIG } from "../../config.js";
-import { safeLog } from "../logger.js";
+import { log, safeLog } from "../logger.js";
 import { collectReleasedSqliteHandles } from "./sqlite-handle-release.js";
 import { TursoDb } from "./turso-db.js";
 import { resolveOrCreateDatabaseEncryptionKey } from "./encryption-key.js";
