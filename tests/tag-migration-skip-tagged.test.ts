@@ -110,6 +110,7 @@ mock.module(${JSON.stringify(userPromptManagerUrl)}, () => ({
 
 mock.module(${JSON.stringify(loggerUrl)}, () => ({
   log: () => {},
+  safeLog: () => {},
   serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 

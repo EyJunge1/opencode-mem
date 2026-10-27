@@ -105,7 +105,7 @@ mock.module(${JSON.stringify(profileManagerUrl)}, () => ({
   },
 }));
 
-mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {}, serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }) }));
+mock.module(${JSON.stringify(loggerUrl)}, () => ({ log: () => {}, safeLog: () => {}, serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }) }));
 
 let capturedSystemPrompt = null;
 let capturedUserPrompt = null;

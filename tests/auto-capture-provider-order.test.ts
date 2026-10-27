@@ -112,6 +112,7 @@ mock.module(${JSON.stringify(promptManagerUrl)}, () => ({
 
 mock.module(${JSON.stringify(loggerUrl)}, () => ({
   log: (message, data) => logs.push({ message, data }),
+  safeLog: (message, data) => logs.push({ message, data }),
   serializeError: (error) => ({
     error: error instanceof Error ? error.message : String(error),
     name: error instanceof Error ? error.name : undefined,

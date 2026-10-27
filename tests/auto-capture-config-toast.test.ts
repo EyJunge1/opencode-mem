@@ -60,6 +60,7 @@ mock.module(${JSON.stringify(configUrl)}, () => ({
 
 mock.module(${JSON.stringify(loggerUrl)}, () => ({
   log: (message) => logs.push(message),
+  safeLog: () => {},
 }));
 
 const { notifyAutoCaptureProviderStatus } = await import(${JSON.stringify(statusUrl)});

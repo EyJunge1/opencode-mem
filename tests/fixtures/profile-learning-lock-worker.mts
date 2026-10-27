@@ -81,7 +81,7 @@ mock.module(configUrl, () => ({
   initConfig: () => {},
   isConfigured: () => true,
 }));
-mock.module(loggerUrl, () => ({ log: () => {} }));
+mock.module(loggerUrl, () => ({ log: () => {}, safeLog: () => {} }));
 
 // current-boot-invalid: the LOCAL machine's boot identity reads as garbage.
 // The implementation must treat the local boot id as "unknown" and never use
