@@ -74,6 +74,7 @@ mock.module(configUrl, () => ({
 const loggerUrl = new URL("../../src/services/logger.js", import.meta.url).href;
 mock.module(loggerUrl, () => ({
   log: () => {},
+  safeLog: () => {},
   serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 
