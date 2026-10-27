@@ -60,6 +60,7 @@ mock.module(moduleUrl("services/user-prompt/user-prompt-manager"), () => ({
 }));
 mock.module(moduleUrl("services/logger"), () => ({
   log() {},
+  safeLog() {},
   serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 mock.module(moduleUrl("services/web-server"), () => ({

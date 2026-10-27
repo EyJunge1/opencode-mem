@@ -46,8 +46,12 @@ mock.module(moduleUrl("services/tags"), () => ({
   }),
 }));
 mock.module(moduleUrl("services/context"), () => ({
-  formatContextForPrompt: async (_user, data) =>
-    "<memory_context>" + data.results.map((m) => m.memory).join("|") + "</memory_context>",
+  // Mirror production: empty project memories yield "" unless a profile block exists.
+  formatContextForPrompt: async (_user, data) => {
+    const results = data?.results ?? [];
+    if (results.length === 0) return "";
+    return "<memory_context>" + results.map((m) => m.memory).join("|") + "</memory_context>";
+  },
 }));
 mock.module(moduleUrl("services/user-prompt/user-prompt-manager"), () => ({
   userPromptManager: {
@@ -57,6 +61,7 @@ mock.module(moduleUrl("services/user-prompt/user-prompt-manager"), () => ({
 }));
 mock.module(moduleUrl("services/logger"), () => ({
   log() {},
+  safeLog() {},
   serializeError: (error) => ({ error: error instanceof Error ? error.message : String(error) }),
 }));
 mock.module(moduleUrl("services/web-server"), () => ({

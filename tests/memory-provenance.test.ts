@@ -88,6 +88,11 @@ describe("memory provenance formatting", () => {
     expect(result).toContain('<memory relevance="50%">\nFallback chunk\n</memory>');
   });
 
+  it("returns empty string when project memories are empty and no profile applies", async () => {
+    expect(await formatContextForPrompt(null, { results: [] })).toBe("");
+    expect(await formatContextForPrompt(null, {})).toBe("");
+  });
+
   it("renders exact compaction output with provenance", () => {
     expect(
       formatMemoriesForCompaction([
