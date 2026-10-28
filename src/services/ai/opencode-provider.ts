@@ -377,12 +377,32 @@ export interface StructuredOutputOptions<T> {
   retryCount?: number;
 }
 
+/** Last host-reported session model from `chat.params` / the V2 context hook. */
+let rememberedSessionModel: { providerID: string; modelID: string } | undefined;
+
+/**
+ * Remember the concrete model the host is using for the current session.
+ * OpenCode v2 no longer writes `model.json`, so profile-learning and other
+ * non-prompt structured-output paths need this in-process fallback for
+ * `opencodeModel: "inherit"` (issue #453).
+ */
+export function rememberSessionModel(providerID: string, modelID: string): void {
+  if (!providerID || !modelID || modelID === "inherit") return;
+  rememberedSessionModel = { providerID, modelID };
+}
+
+/** Test helper: drop the in-process session model between cases. */
+export function clearRememberedSessionModelForTests(): void {
+  rememberedSessionModel = undefined;
+}
+
 /**
  * Resolve `opencodeModel: "inherit"` to a concrete provider/model.
  *
- * Prefer an explicit prompt-recorded model (auto-capture path). Otherwise fall
- * back to OpenCode's recent model list so profile-learning / conflict / dedup
- * paths don't send the literal model id "inherit" (ProviderModelNotFoundError).
+ * Prefer an explicit prompt-recorded model (auto-capture path). Otherwise use
+ * the last host-reported session model, then OpenCode's recent `model.json`
+ * list (v1 hosts), so profile-learning / conflict / dedup paths don't send the
+ * literal model id "inherit" (ProviderModelNotFoundError).
  */
 export function resolveOpencodeModelRef(opts: {
   providerID: string;
@@ -395,6 +415,10 @@ export function resolveOpencodeModelRef(opts: {
 
   if (opts.prompt?.providerId && opts.prompt?.modelId) {
     return { providerID: opts.prompt.providerId, modelID: opts.prompt.modelId };
+  }
+
+  if (rememberedSessionModel) {
+    return rememberedSessionModel;
   }
 
   const recent = readRecentOpencodeModel(opts.providerID);

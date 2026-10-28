@@ -25,6 +25,9 @@ import {
   STRUCTURED_OUTPUT_PERMISSIONS,
   STRUCTURED_OUTPUT_TOOLS,
   takeStructuredOutputStepAbortError,
+  rememberSessionModel,
+  clearRememberedSessionModelForTests,
+  resolveOpencodeModelRef,
 } from "../src/services/ai/opencode-provider.js";
 
 const schema = z.object({
@@ -1054,9 +1057,11 @@ describe("resolveOpencodeModelRef / inherit", () => {
     const { join } = await import("node:path");
     tempRoot = mkdtempSync(join(tmpdir(), "opencode-mem-inherit-"));
     process.env.XDG_STATE_HOME = tempRoot;
+    clearRememberedSessionModelForTests();
   });
 
   afterEach(async () => {
+    clearRememberedSessionModelForTests();
     if (originalStateHome === undefined) {
       delete process.env.XDG_STATE_HOME;
     } else {
@@ -1069,16 +1074,15 @@ describe("resolveOpencodeModelRef / inherit", () => {
     }
   });
 
-  it("passes concrete model ids through unchanged", async () => {
-    const { resolveOpencodeModelRef } = await import("../src/services/ai/opencode-provider.js");
+  it("passes concrete model ids through unchanged", () => {
     expect(resolveOpencodeModelRef({ providerID: "local", modelID: "h100/qwen:latest" })).toEqual({
       providerID: "local",
       modelID: "h100/qwen:latest",
     });
   });
 
-  it("prefers the recorded prompt model when modelID is inherit", async () => {
-    const { resolveOpencodeModelRef } = await import("../src/services/ai/opencode-provider.js");
+  it("prefers the recorded prompt model when modelID is inherit", () => {
+    rememberSessionModel("opencode-go", "should-not-win");
     expect(
       resolveOpencodeModelRef({
         providerID: "local",
@@ -1089,6 +1093,32 @@ describe("resolveOpencodeModelRef / inherit", () => {
       providerID: "anthropic",
       modelID: "claude-haiku-4-5-20251001",
     });
+  });
+
+  it("uses the remembered host session model before model.json", async () => {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const stateDir = join(tempRoot!, "opencode");
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(
+      join(stateDir, "model.json"),
+      JSON.stringify({
+        recent: [{ providerID: "local", modelID: "from-model-json" }],
+      })
+    );
+    rememberSessionModel("opencode-go", "host-session-model");
+    expect(resolveOpencodeModelRef({ providerID: "local", modelID: "inherit" })).toEqual({
+      providerID: "opencode-go",
+      modelID: "host-session-model",
+    });
+  });
+
+  it("ignores blank or literal inherit values when remembering the session model", () => {
+    rememberSessionModel("opencode-go", "inherit");
+    rememberSessionModel("", "ignored");
+    expect(() => resolveOpencodeModelRef({ providerID: "local", modelID: "inherit" })).toThrow(
+      /no session model was recorded and no recent OpenCode model is available/
+    );
   });
 
   it("falls back to OpenCode recent model.json when inherit has no prompt model", async () => {
@@ -1106,15 +1136,13 @@ describe("resolveOpencodeModelRef / inherit", () => {
       })
     );
 
-    const { resolveOpencodeModelRef } = await import("../src/services/ai/opencode-provider.js");
     expect(resolveOpencodeModelRef({ providerID: "local", modelID: "inherit" })).toEqual({
       providerID: "local",
       modelID: "h100/qwen:latest",
     });
   });
 
-  it("throws a clear error when inherit has no prompt model and no recent list", async () => {
-    const { resolveOpencodeModelRef } = await import("../src/services/ai/opencode-provider.js");
+  it("throws a clear error when inherit has no prompt model and no recent list", () => {
     expect(() => resolveOpencodeModelRef({ providerID: "local", modelID: "inherit" })).toThrow(
       /no session model was recorded and no recent OpenCode model is available/
     );
