@@ -53,13 +53,17 @@ Beim Start werden unterbrochene Re-Embed-Swaps wiederhergestellt, libSQL-DiskANN
 
 Unter macOS und Linux können mehrere OpenCode-Sitzungen denselben `storagePath` über Turso’s experimentelles `multiprocess_wal` teilen (jeder Prozess muss denselben Modus nutzen — nach dem Upgrade alle Sitzungen neu starten). Unter Windows lehnt die Engine dieses Flag ab, sodass nur eine OpenCode-Sitzung die Speicherdatenbanken gleichzeitig besitzen kann.
 
+`tursoMultiprocessWal: false` öffnet stattdessen im Single-Owner-Modus: andere Prozesse scheitern dann mit `database is locked`, statt den Store zu teilen. Das ist die sicherere Wahl, wenn Nicht-Plugin-Tools dieselben Dateien anfassen, weil ein _schreibender_ fremder SQLite-Prozess den WAL-Index von Turso veraltet macht und der eigene nächste Write still verloren geht. `tursoAutoHeal` (Standard `true`) verschiebt die Index-Sidecars `-shm`/`-tshm` eines Stores nach `storagePath/recovery/<db>-<timestamp>/` und versucht einmal erneut, wenn ein Open wegen veraltetem WAL-Index scheitert — nachdem eine Kopie der Hauptdatenbank verifiziert wurde. Eine nicht leere `-wal` wird nie verschoben, sodass committed aber noch nicht checkpointete Transaktionen erhalten bleiben; nur fehlende oder 0-Byte-`-wal` werden entfernt. Gleichzeitige Sitzungen serialisieren das Heilen über `storagePath/recovery/<db>.lock`.
+
 Beim ersten Start nach dem Upgrade migriert opencode-mem vorhandene Memory-Shard-Datenbanken automatisch in das native Turso/libSQL-Vektorformat:
 
 - Jeder Shard wird vor dem Rewrite als `<shard>.db.legacy.bak` gesichert
 - Der Fortschritt wird pro Shard in `<shard>.db.turso-migrate.json` verfolgt
 - Ein globaler Marker `.turso-migrated` wird erst geschrieben, wenn alle Shards erfolgreich verifiziert wurden
+- Normale Inserts und Deletes entwerten eine abgeschlossene Shard-Migration nicht; beim Start wird weiterhin geprüft, dass Vektoren lesbar sind und zu den gespeicherten Dimensionen passen
 - Während der Migration keine mehreren OpenCode-Instanzen gegen denselben `storagePath` betreiben; eine Lock-Datei (`.turso-migrate.lock`) verhindert parallele Migration
 - Manuelle Dimensionsmigrationen nutzen `.turso-operation.lock`; andere Plugin-Prozesse lehnen neue Memory-Writes ab, bis die Migration fertig ist
+- Locks verfallen nach 30 Minuten ohne Fortschritts-Timestamp-Update (oder Datei-Änderungszeit, falls der Timestamp fehlt), auch wenn der besitzende Prozess noch lebt. Dieses Lease nutzt Wanduhrzeit: ein Vorwärtssprung der Uhr um mehr als 30 Minuten kann eine laufende Operation früh beenden; ein Rückwärtssprung oder ein zukunftsdatiertes Lock kann ein inertes Lock verlängern. Locks tragen eine eindeutige Acquisition-ID, und Stale-Cleanup entfernt nur die genau inspizierte Datei. Migrationen senden Heartbeats und brechen ab, wenn sie den Besitzverlust feststellen. Stale-Lock-Cleanup wird zur Diagnose geloggt.
 
 Wird die Migration unterbrochen, setzt der nächste Start die Arbeit aus dem Backup automatisch fort.
 
@@ -161,15 +165,27 @@ Du musst OpenCode **nicht** bitten, Dinge zu „merken“, damit das Plugin funk
 
 Manuelle Suche/Hinzufügen/Listen funktionieren auch, wenn für Auto-Capture kein Provider konfiguriert ist. Auto-Capture und Lernen des Benutzerprofils brauchen einen Provider, der strukturierte/Tool-Call-Ausgabe liefern kann.
 
-### Speicher vs. AGENTS.md / Projektdokumentation
+### Speicher vs. AGENTS.md vs. Skills
 
-| In **memory** speichern                                                                      | In **AGENTS.md** / statischen Docs speichern                     |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Projektspezifische Entscheidungen, Bug-Muster, „wir haben X versucht und es ist gescheitert“ | Stabile Regeln und Workflows, die sich selten ändern             |
-| Über Sitzungen hinweg entdeckte Benutzerpräferenzen                                          | Immer gültige Coding-Konventionen und Prozesse                   |
-| Fakten, die dir über Chats hinweg folgen sollen                                              | Anweisungen, die jeder Agent unabhängig von Retrieval sehen soll |
+| In **memory** speichern                                                                      | In **AGENTS.md** / statischen Docs speichern                     | Als **Skills** speichern (Web-UI / `skills.db`)                 |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| Projektspezifische Entscheidungen, Bug-Muster, „wir haben X versucht und es ist gescheitert“ | Stabile Regeln und Workflows, die sich selten ändern             | Wiederverwendbare Prozeduren, die der Agent bei Bedarf lädt     |
+| Über Sitzungen hinweg entdeckte Benutzerpräferenzen                                          | Immer gültige Coding-Konventionen und Prozesse                   | Team-editierbare Skill-Packs über denselben Storage             |
+| Fakten, die dir über Chats hinweg folgen sollen                                              | Anweisungen, die jeder Agent unabhängig von Retrieval sehen soll | OpenCode-natives `skill`-Tool (V2-Plugin-Bridge)                |
 
-Faustregel: Ist es eine dauerhafte Projektanweisung, gehört sie in AGENTS.md; ist es Kontext, der aus echter Arbeit wächst, soll ihn der Speicher (oder Auto-Capture) halten.
+Faustregel: dauerhafte Always-on-Projektanweisungen → `AGENTS.md`; wachsender Arbeitskontext → Speicher; wiederverwendbare On-Demand-Prozeduren → **Skills**.
+
+#### Shared Skills (V2)
+
+- Skills im Web-Explorer anlegen/bearbeiten (**Skills**-Tab unter `/skill-library`).
+- Persistiert in `skills.db` unter dem Plugin-Storage-Pfad (nicht als Memory-Vektoren).
+- Unter OpenCode **V2** registriert das Plugin aktivierte Skills über `ctx.skill.transform`, sodass der Agent sie mit dem nativen `skill`-Tool laden kann.
+- Optionaler HTTP-Katalog für andere OpenCode-Instanzen: `"skills": ["http://127.0.0.1:4747/skills/"]` (liefert `/skills/index.json` und `/skills/<id>/<id>.md` — getrennt vom UI-Pfad).
+- REST: `GET/POST /api/skills`, `GET/PUT/DELETE /api/skills/:id`.
+
+### Health-Stats
+
+Der **Stats**-Tab der Web-UI (unter `/stats`) zeigt auf einen Blick die Gesundheit des Memory-Systems: Totals pro Scope, Memory-Zählungen pro Shard mit Warnungen zu veralteten/fehlenden Shards und einem Proxy für Same-Tag-Duplikate, die aktive User-Profil-Version sowie eine 14-Tage-Aktivitätsserie (Captures, übersprungene Captures, Profil-/Compaction-Injections und nach Message gebucketete Fehler) aus den strukturierten Plugin-Logs in `~/.opencode-mem/`. Nur lesend — `GET /api/stats` — und degradiert pro Abschnitt, wenn eine Datenbank fehlt, sodass bei Incidents weiter berichtet wird.
 
 ### Intelligente promptbasierte Speicherextraktion
 
@@ -218,6 +234,29 @@ Konfiguration unter `~/.config/opencode/opencode-mem.jsonc`:
 **Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (dasselbe Verzeichnis `.config\opencode` wie oben — nicht AppData). Der Standard-Storage löst sich zu `%USERPROFILE%\.opencode-mem\data` auf (die `~`-Form expandiert unter Windows ebenfalls zu deinem User-Home).
 
 Das Plugin legt beim ersten Start eine voll kommentierte Vorlage unter diesem Pfad an. Für jede Einstellung und jeden Kommentar siehe [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc).
+
+### Markdown-Vault-Backend (`memoryBackend`)
+
+Standardmäßig liegen Memories nur in Turso unter `storagePath`. Optional kannst du einen **generischen Markdown-Ordner** als Source of Truth setzen (Obsidian-/Raneto-kompatible reine `.md`-Dateien — keine Obsidian-spezifische Integration):
+
+```jsonc
+{
+  "memoryBackend": "markdown",
+  "markdownPath": "~/Documents/LLM-Wiki",
+}
+```
+
+| Schlüssel       | Standard     | Was er tut                                                                                                                                         |
+| --------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memoryBackend` | `"database"` | `"database"` hält den Inhalt in Turso. `"markdown"` nutzt alle `.md`-Dateien unter `markdownPath` als Source of Truth.                             |
+| `markdownPath`  | —            | Erforderlich bei `memoryBackend: "markdown"`. Absoluter oder `~/…`-Pfad zum Vault-Ordner. Kein separates Memory-Unterverzeichnis — der Pfad _ist_ der Store. |
+
+Wenn Markdown-Modus aktiv ist:
+
+- Vom Plugin erzeugte Memories werden als `{id}.md` mit YAML-Frontmatter + Body geschrieben.
+- Vorhandene Notizen im Ordner (beliebiger Markdown-Seitenstil) werden importiert/indexiert; Turso ist nur ein neu aufbaubarer Semantic-Search-Index.
+- Datei-Adds/Edits/Deletes werden beobachtet und neu indexiert; die Web-UI zeigt nur in diesem Modus eine **Markdown**-Sidebar-Seite (Status, Dateiliste, Reindex).
+- Der Wechsel zu Markdown baut den Index aus dem Ordner neu — DB-only-Zeilen ohne passende Datei entfallen. Zuerst mit `memory export` exportieren, wenn du alte Datenbank-Memories behalten willst.
 
 ### Erfassung und Injection von Chat-Nachrichten (`chatMessage`)
 
