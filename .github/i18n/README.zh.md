@@ -53,13 +53,17 @@ opencode-mem **不**需要 GPU。本地嵌入通过 `@huggingface/transformers` 
 
 在 macOS 与 Linux 上，多个 OpenCode 会话可通过 Turso 的实验性 `multiprocess_wal` 共享同一 `storagePath`（每个进程必须使用相同模式 — 升级后请重启所有会话）。在 Windows 上引擎会拒绝该标志，因此同一时间只能有一个 OpenCode 会话拥有记忆数据库。
 
+`tursoMultiprocessWal: false` 改为单所有者模式打开：其他进程会以 `database is locked` 失败，而不是共享存储。若非插件工具会触碰相同文件，这更安全——因为_正在写入_的外部 SQLite 进程会使 Turso 的 WAL 索引过期，随后本进程的下一次写入会静默丢失。`tursoAutoHeal`（默认 `true`）在因过期 WAL 索引导致打开失败时，会在验证主数据库副本后，将存储的 `-shm`/`-tshm` 索引旁路文件移到 `storagePath/recovery/<db>-<timestamp>/` 并重试一次。非空 `-wal` 永不移动，因此已提交但未检查点的事务得以保留；仅删除缺失或 0 字节的 `-wal`。并发会话通过 `storagePath/recovery/<db>.lock` 串行化修复。
+
 升级后首次启动时，opencode-mem 会自动将现有记忆分片数据库迁移为原生 Turso/libSQL 向量格式：
 
 - 每个分片在重写前备份为 `<shard>.db.legacy.bak`
 - 进度按分片记录在 `<shard>.db.turso-migrate.json`
 - 仅在所有分片验证成功后才写入全局标记 `.turso-migrated`
+- 普通插入与删除不会使已完成的分片迁移失效；启动时仍会检查向量可读且与已存维度匹配
 - 迁移期间请勿对同一 `storagePath` 运行多个 OpenCode 实例；锁文件（`.turso-migrate.lock`）可防止并发迁移
 - 手动维度迁移使用 `.turso-operation.lock`；在迁移完成前，其他插件进程会拒绝新的记忆写入
+- 若 30 分钟内没有进度时间戳更新（若无时间戳则看文件修改时间），锁会过期，即使持有进程仍在运行。该租约使用挂钟时间：向前拨钟超过 30 分钟可能使进行中的操作过早过期；向后拨钟或未来日期的锁可能延长空闲锁寿命。锁带有唯一获取 id，过期清理只删除其检查过的那个文件。迁移过程会发送心跳，一旦发现所有权丢失即中止。过期锁清理会写入日志以便诊断。
 
 若迁移被中断，下次启动会自动从备份恢复。
 
@@ -161,15 +165,27 @@ v2 插件通过模型的系统上下文提供自动记忆上下文。
 
 即使自动捕获未配置提供商，手动搜索/添加/列表仍可工作。自动捕获与用户画像学习需要能返回结构化/工具调用输出的提供商。
 
-### 记忆 vs AGENTS.md / 项目文档
+### 记忆 vs AGENTS.md vs Skills
 
-| 存入**记忆**                                  | 存入 **AGENTS.md** / 静态文档        |
-| --------------------------------------------- | ------------------------------------ |
-| 项目特定决策、缺陷模式、“我们试过 X 但失败了” | 很少变化的稳定规则与工作流           |
-| 跨会话发现的用户偏好                          | 始终生效的编码约定与流程             |
-| 应跟随你跨聊天的事实                          | 无论检索如何、每个代理都应看到的指令 |
+| 存入**记忆**                                  | 存入 **AGENTS.md** / 静态文档        | 存为 **Skills**（Web UI / `skills.db`）       |
+| --------------------------------------------- | ------------------------------------ | --------------------------------------------- |
+| 项目特定决策、缺陷模式、“我们试过 X 但失败了” | 很少变化的稳定规则与工作流           | 代理按需加载的可复用流程                      |
+| 跨会话发现的用户偏好                          | 始终生效的编码约定与流程             | 通过同一存储共享、可由团队编辑的 skill 包     |
+| 应跟随你跨聊天的事实                          | 无论检索如何、每个代理都应看到的指令 | OpenCode 原生 `skill` 工具（V2 插件桥接）     |
 
-经验法则：若是持久的项目指令，放入 AGENTS.md；若是从实际工作中增长的上下文，让记忆（或自动捕获）来保存。
+经验法则：持久的始终生效项目指令 → `AGENTS.md`；不断增长的工作上下文 → 记忆；可复用的按需流程 → **Skills**。
+
+#### Shared Skills（V2）
+
+- 在 Web 资源管理器中创建/编辑 skills（**Skills** 选项卡，路径 `/skill-library`）。
+- 保存在插件存储路径下的 `skills.db`（不是记忆向量）。
+- 在 OpenCode **V2** 上，插件通过 `ctx.skill.transform` 注册已启用的 skills，以便代理用原生 `skill` 工具加载。
+- 供其他 OpenCode 实例使用的可选 HTTP 目录：`"skills": ["http://127.0.0.1:4747/skills/"]`（提供 `/skills/index.json` 与 `/skills/<id>/<id>.md` — 与 UI 路径分开）。
+- REST：`GET/POST /api/skills`，`GET/PUT/DELETE /api/skills/:id`。
+
+### 健康统计
+
+Web UI 的 **Stats** 选项卡（`/stats`）一眼展示记忆系统健康状况：按范围合计、带过期/缺失分片警告与同标签重复代理的每分片记忆计数、当前用户画像版本，以及从 `~/.opencode-mem/` 中插件结构化日志解析出的 14 天活动序列（捕获、跳过的捕获、画像/压缩注入，以及按消息分桶的错误）。只读 — `GET /api/stats` — 若某数据库不可用则按区块降级，以便在事故期间仍能继续报告。
 
 ### 基于提示的智能记忆提取
 
@@ -218,6 +234,29 @@ memory({ mode: "import", inputPath: "./memories.json" });
 **Windows：** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc`（与上述相同的 `.config\opencode` 目录 — 不是 AppData）。默认存储解析为 `%USERPROFILE%\.opencode-mem\data`（`~` 形式在 Windows 上也会展开为你的用户主目录）。
 
 插件在首次启动时会在此路径创建完整的注释模板。有关每项设置与注释，参见 [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc)。
+
+### Markdown vault 后端（`memoryBackend`）
+
+默认情况下，记忆仅存放在 `storagePath` 下的 Turso 中。也可选将**通用 Markdown 文件夹**设为事实来源（兼容 Obsidian/Raneto 的纯 `.md` 文件 — 并非 Obsidian 专用集成）：
+
+```jsonc
+{
+  "memoryBackend": "markdown",
+  "markdownPath": "~/Documents/LLM-Wiki",
+}
+```
+
+| 键              | 默认         | 作用                                                                                                                       |
+| --------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `memoryBackend` | `"database"` | `"database"` 将内容保存在 Turso。`"markdown"` 将 `markdownPath` 下所有 `.md` 文件作为事实来源。                            |
+| `markdownPath`  | —            | `memoryBackend` 为 `"markdown"` 时必填。vault 文件夹的绝对路径或 `~/…`。没有单独的记忆子文件夹 — 该路径_就是_存储本身。 |
+
+启用 Markdown 模式时：
+
+- 插件创建的记忆以 `{id}.md` 写入，含 YAML frontmatter + 正文。
+- 文件夹中已有笔记（任意 Markdown 页面风格）会被导入/索引；Turso 仅作为可重建的语义搜索索引。
+- 监视文件新增/编辑/删除并重新索引；Web UI 仅在此模式下显示 **Markdown** 侧边栏页（状态、文件列表、重新索引）。
+- 切换到 Markdown 会从文件夹重建索引 — 没有对应文件的仅数据库行会被丢弃。若需保留旧数据库记忆，请先用 `memory export` 导出。
 
 ### 聊天消息捕获与注入（`chatMessage`）
 

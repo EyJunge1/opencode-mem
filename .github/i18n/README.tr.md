@@ -53,13 +53,17 @@ Başlangıçta kesintiye uğramış yeniden-embedding değişimleri kurtarılır
 
 macOS ve Linux’ta birden fazla OpenCode oturumu, Turso’nun deneysel `multiprocess_wal` özelliğiyle aynı `storagePath`’i paylaşabilir (her süreç aynı modu kullanmalıdır — yükseltmeden sonra tüm oturumları yeniden başlatın). Windows’ta motor bu bayrağı reddeder; bu nedenle aynı anda yalnızca bir OpenCode oturumu bellek veritabanlarının sahibi olabilir.
 
+`tursoMultiprocessWal: false` bunun yerine tek-sahip modunda açar: diğer süreçler depoyu paylaşmak yerine `database is locked` ile başarısız olur. Eklenti dışı araçlar aynı dosyalara dokunuyorsa bu daha güvenlidir; çünkü _yazan_ yabancı bir SQLite süreci Turso’nun WAL dizinini bayatlatır ve bir sonraki yazma sessizce kaybolur. `tursoAutoHeal` (varsayılan `true`), bir açılış bayat WAL dizininden dolayı başarısız olduğunda ana veritabanının bir kopyasını doğruladıktan sonra deponun `-shm`/`-tshm` indeks yan dosyalarını `storagePath/recovery/<db>-<timestamp>/` altına taşır ve bir kez yeniden dener. Boş olmayan bir `-wal` asla taşınmaz; böylece commit edilmiş ama henüz checkpoint edilmemiş işlemler korunur; yalnızca eksik veya 0 baytlık `-wal` kaldırılır. Eşzamanlı oturumlar iyileştirmeyi `storagePath/recovery/<db>.lock` üzerinden serileştirir.
+
 Yükseltmeden sonraki ilk başlangıçta opencode-mem mevcut bellek shard veritabanlarını yerel Turso/libSQL vektör biçimine otomatik olarak taşır:
 
 - Her shard yeniden yazılmadan önce `<shard>.db.legacy.bak` olarak yedeklenir
 - İlerleme shard başına `<shard>.db.turso-migrate.json` içinde izlenir
 - Genel bir `.turso-migrated` işaretçisi yalnızca tüm shard’lar başarıyla doğrulandıktan sonra yazılır
+- Normal eklemeler ve silmeler tamamlanmış bir shard migrasyonunu geçersiz kılmaz; başlangıçta vektörlerin okunabilir olduğu ve saklanan boyutlarla eşleştiği hâlâ kontrol edilir
 - Migrasyon sırasında aynı `storagePath`’e karşı birden fazla OpenCode örneği çalıştırmayın; bir kilit dosyası (`.turso-migrate.lock`) eşzamanlı migrasyonu engeller
 - Manuel boyut migrasyonları `.turso-operation.lock` kullanır; diğer eklenti süreçleri migrasyon bitene kadar yeni bellek yazılarını reddeder
+- Kilitler, ilerleme zaman damgası güncellemesi olmadan (veya zaman damgası yoksa dosya değişiklik zamanı) 30 dakika sonra sona erer; sahip süreç hâlâ canlı olsa bile. Bu kira duvar saati kullanır: 30 dakikadan büyük ileri saat sıçraması ilerleyen bir işlemi erken sonlandırabilir; geri sıçrama veya geleceğe tarihli kilit hareketsiz bir kilidin ömrünü uzatabilir. Kilitler benzersiz bir edinme kimliği taşır ve bayat temizleme yalnızca incelediği dosyayı kaldırır. Migrasyonlar ilerlerken heartbeat gönderir ve sahipliğin kaybolduğunu fark ederlerse iptal eder. Bayat-kilit temizliği tanı için günlüğe yazılır.
 
 Migrasyon kesintiye uğrarsa, sonraki başlangıç yedekten otomatik olarak devam eder.
 
@@ -163,15 +167,27 @@ Eklentinin çalışması için OpenCode’dan bir şeyleri “hatırlamasını�
 
 Manuel arama/ekleme/listeleme, otomatik yakalama için yapılandırılmış bir sağlayıcı olmasa bile çalışır. Otomatik yakalama ve kullanıcı profili öğrenme, yapılandırılmış/araç-çağrısı çıktısı döndürebilen bir sağlayıcı gerektirir.
 
-### Bellek ve AGENTS.md / proje dokümanları
+### Bellek ve AGENTS.md ve Skills
 
-| **Bellekte** saklayın                                                  | **AGENTS.md** / statik dokümanlarda saklayın                    |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Projeye özgü kararlar, hata kalıpları, “X’i denedik ve başarısız oldu” | Nadiren değişen kararlı kurallar ve iş akışları                 |
-| Oturumlar boyunca keşfedilen kullanıcı tercihleri                      | Her zaman geçerli kodlama kuralları ve süreç                    |
-| Sohbetler arasında sizi takip etmesi gereken gerçekler                 | Erişimden bağımsız olarak her ajanın görmesi gereken talimatlar |
+| **Bellekte** saklayın                                                  | **AGENTS.md** / statik dokümanlarda saklayın                    | **Skills** olarak saklayın (web arayüzü / `skills.db`)     |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| Projeye özgü kararlar, hata kalıpları, “X’i denedik ve başarısız oldu” | Nadiren değişen kararlı kurallar ve iş akışları                 | Ajanın gerektiğinde yüklediği yeniden kullanılabilir prosedürler |
+| Oturumlar boyunca keşfedilen kullanıcı tercihleri                      | Her zaman geçerli kodlama kuralları ve süreç                    | Aynı depolama üzerinden düzenlenebilir ekip skill paketleri |
+| Sohbetler arasında sizi takip etmesi gereken gerçekler                 | Erişimden bağımsız olarak her ajanın görmesi gereken talimatlar | OpenCode yerel `skill` aracı (V2 eklenti köprüsü)          |
 
-Parmak kuralı: kalıcı bir proje talimatıysa AGENTS.md’ye koyun; gerçek çalışmadan büyüyen bağlamsa belleğin (veya otomatik yakalamanın) tutmasına izin verin.
+Parmak kuralı: kalıcı always-on proje talimatları → `AGENTS.md`; büyüyen çalışma bağlamı → bellek; yeniden kullanılabilir on-demand prosedürler → **Skills**.
+
+#### Shared Skills (V2)
+
+- Web gezgininde skill oluşturun/düzenleyin (**Skills** sekmesi `/skill-library`).
+- Eklenti depolama yolundaki `skills.db` içinde saklanır (bellek vektörleri olarak değil).
+- OpenCode **V2**’de eklenti, etkin skill’leri `ctx.skill.transform` ile kaydeder; ajan bunları yerel `skill` aracıyla yükleyebilir.
+- Diğer OpenCode örnekleri için isteğe bağlı HTTP kataloğu: `"skills": ["http://127.0.0.1:4747/skills/"]` (`/skills/index.json` ve `/skills/<id>/<id>.md` sunar — UI yolundan ayrı).
+- REST: `GET/POST /api/skills`, `GET/PUT/DELETE /api/skills/:id`.
+
+### Sağlık istatistikleri
+
+Web arayüzünün **Stats** sekmesi (`/stats`) bellek sistemi sağlığını bir bakışta gösterir: kapsam başına toplamlar, bayat/eksik shard uyarıları ve aynı-etiket çoğaltma vekiliyle shard başına bellek sayıları, etkin kullanıcı profili sürümü ve `~/.opencode-mem/` içindeki yapılandırılmış eklenti günlüklerinden ayrıştırılan 14 günlük etkinlik serisi (yakalamalar, atlanan yakalamalar, profil/sıkıştırma enjeksiyonları ve mesaja göre gruplanmış hatalar). Salt okunur — `GET /api/stats` — ve bir veritabanı kullanılamazsa bölüm bölüm bozulur; böylece olay sırasında raporlamaya devam eder.
 
 ### Akıllı prompt tabanlı bellek çıkarımı
 
@@ -220,6 +236,29 @@ Boyut migrasyonları önce her yeni embedding’i üretir, bunları geçici inde
 **Windows:** `%USERPROFILE%\.config\opencode\opencode-mem.jsonc` (yukarıdakiyle aynı `.config\opencode` dizini — AppData değil). Varsayılan depolama `%USERPROFILE%\.opencode-mem\data` olarak çözülür (`~` biçimi Windows’ta da kullanıcı ev dizinine genişler).
 
 Eklenti ilk başlangıçta bu yolda tam yorumlu bir şablon oluşturur. Her ayar ve yorum için bkz. [`opencode-mem.example.jsonc`](../../opencode-mem.example.jsonc).
+
+### Markdown vault backend (`memoryBackend`)
+
+Varsayılan olarak bellekler yalnızca `storagePath` altındaki Turso’da yaşar. İsteğe bağlı olarak **genel bir Markdown klasörünü** doğruluk kaynağı olarak ayarlayabilirsiniz (Obsidian/Raneto uyumlu düz `.md` dosyaları — Obsidian’a özel bir entegrasyon değildir):
+
+```jsonc
+{
+  "memoryBackend": "markdown",
+  "markdownPath": "~/Documents/LLM-Wiki",
+}
+```
+
+| Anahtar         | Varsayılan   | Ne yapar                                                                                                                                           |
+| --------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memoryBackend` | `"database"` | `"database"` içeriği Turso’da tutar. `"markdown"`, `markdownPath` altındaki tüm `.md` dosyalarını doğruluk kaynağı olarak kullanır.               |
+| `markdownPath`  | —            | `memoryBackend` `"markdown"` iken zorunlu. Vault klasörüne mutlak veya `~/…` yolu. Ayrı bir bellek alt klasörü yok — yol _kendisi_ depodur.       |
+
+Markdown modu açıkken:
+
+- Eklentinin oluşturduğu bellekler YAML frontmatter + gövde ile `{id}.md` olarak yazılır.
+- Klasördeki mevcut notlar (herhangi bir Markdown sayfa stili) içe aktarılır/indekslenir; Turso yalnızca yeniden oluşturulabilir bir anlamsal arama indeksidir.
+- Dosya ekleme/düzenleme/silme izlenir ve yeniden indekslenir; Web arayüzü yalnızca bu modda bir **Markdown** kenar çubuğu sayfası gösterir (durum, dosya listesi, yeniden indeks).
+- Markdown’a geçiş indeksi klasörden yeniden oluşturur — eşleşen dosyası olmayan yalnızca-DB satırları düşer. Eski veritabanı belleklerini saklamak istiyorsanız önce `memory export` ile dışa aktarın.
 
 ### Sohbet mesajı yakalama ve enjekte etme (`chatMessage`)
 
