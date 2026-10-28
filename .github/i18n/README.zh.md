@@ -446,7 +446,7 @@ memory({ mode: "import", inputPath: "./memories.json" });
 
 若设置了 `opencodeProvider` 与 `opencodeModel`，它们优先于下方的手动 `memoryProvider` 设置。
 
-**跟随会话模型：** 设置 `"opencodeModel": "inherit"` 以在调用时使用具体的 OpenCode 模型，而非固定 id。对于**自动捕获**，每个提示通过 `chat.params` 钩子记录，捕获请求重用该提示的提供商/模型。对于**画像学习**及其他结构化输出路径（不绑定到单条用户消息），`inherit` 回退到 OpenCode `model.json` 最近列表中的最新模型（优先使用已配置的 `opencodeProvider`）。发送字面模型 id `inherit` 永远无效，此前会在这些路径上导致 `ProviderModelNotFoundError: Model not found: <provider>/inherit`。`opencodeProvider` 仍作为正常配置门控是必需的。
+**跟随会话模型：** 设置 `"opencodeModel": "inherit"` 以在调用时使用具体的 OpenCode 模型，而非固定 id。对于**自动捕获**，每个提示通过 `chat.params` 钩子记录，捕获请求重用该提示的提供商/模型。对于**画像学习**及其他结构化输出路径（不绑定到单条用户消息），`inherit` 先复用主机在 `chat.params` / V2 context 钩子上报的最近模型，再回退到 OpenCode `model.json` 最近列表（若存在；优先使用已配置的 `opencodeProvider`）。OpenCode v2 不再写入 `model.json`，因此进程内会话模型是主要回退。发送字面模型 id `inherit` 永远无效，此前会在这些路径上导致 `ProviderModelNotFoundError: Model not found: <provider>/inherit`。`opencodeProvider` 仍作为正常配置门控是必需的。
 
 **回退：** 手动 API 配置（若不使用 opencodeProvider）：
 

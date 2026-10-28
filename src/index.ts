@@ -27,6 +27,7 @@ import { loadOpencodeProvider } from "./services/ai/opencode-provider-loader.js"
 import {
   isInternalStructuredSession,
   noteStructuredOutputStep,
+  rememberSessionModel,
   STRUCTURED_OUTPUT_AGENT,
   STRUCTURED_OUTPUT_MAX_STEPS,
   STRUCTURED_OUTPUT_TOOLS,
@@ -831,6 +832,13 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
     "chat.params": async (input, output) => {
       applyStructuredOutputChatParams(input, output);
+
+      const sessionModel = input?.model;
+      if (typeof sessionModel?.providerID === "string" && typeof sessionModel?.id === "string") {
+        // Keep the host-resolved model for inherit on idle paths (profile
+        // learning, dedup, …). OpenCode v2 no longer writes model.json (#453).
+        rememberSessionModel(sessionModel.providerID, sessionModel.id);
+      }
 
       if (!isConfigured() || CONFIG.opencodeModel !== "inherit") return;
 
