@@ -33,7 +33,8 @@ export function buildMemoryProviderConfig(
     config.memoryProvider === "orcarouter" ||
     config.memoryProvider === "atlas-cloud" ||
     config.memoryProvider === "cheaper-inference" ||
-    config.memoryProvider === "api-route";
+    config.memoryProvider === "api-route" ||
+    config.memoryProvider === "runcrate";
 
   if (!memoryModel && !isPresetProvider) issues.push("missing memoryModel");
   if (!memoryApiUrl && !isPresetProvider) issues.push("missing memoryApiUrl");

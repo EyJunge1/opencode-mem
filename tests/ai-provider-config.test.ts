@@ -236,6 +236,30 @@ describe("AI provider config", () => {
     ).toThrow("missing memoryApiKey");
   });
 
+  it("builds runcrate config from only an API key, defaulting model and endpoint", () => {
+    const providerConfig = buildMemoryProviderConfig({
+      memoryProvider: "runcrate",
+      memoryApiKey: "runcrate-test-key",
+    });
+
+    expect(providerConfig).toEqual({
+      model: "",
+      apiUrl: "",
+      apiKey: "runcrate-test-key",
+      forceToolChoice: undefined,
+      maxIterations: undefined,
+      iterationTimeout: undefined,
+    });
+  });
+
+  it("still requires an API key for the runcrate provider", () => {
+    expect(() =>
+      buildMemoryProviderConfig({
+        memoryProvider: "runcrate",
+      })
+    ).toThrow("missing memoryApiKey");
+  });
+
   it("omits temperature for openai-chat when memoryTemperature is false", async () => {
     let capturedBody: Record<string, unknown> | undefined;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {

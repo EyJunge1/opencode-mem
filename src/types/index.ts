@@ -26,4 +26,5 @@ export type AIProviderType =
   | "anthropic"
   | "minimax"
   | "google-gemini"
-  | "orcarouter";
+  | "orcarouter"
+  | "runcrate";

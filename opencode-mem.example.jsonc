@@ -195,7 +195,7 @@
   // Faster opencode failover: also lower "opencodeTimeoutMs" (default 90000).
   // "autoCaptureProviderOrder": "external-first",
 
-  // Provider type: "api-route" | "atlas-cloud" | "cheaper-inference" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter"
+  // Provider type: "api-route" | "atlas-cloud" | "cheaper-inference" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter" | "runcrate"
   // Note: "openai-chat" is a generic OpenAI API-compatible mode.
   // Any service that follows the OpenAI Chat Completions API can use it via custom "memoryApiUrl".
   "memoryProvider": "openai-chat",
@@ -286,6 +286,15 @@
   //   // conversation context are sent to global.api-route.com.
   //   // "memoryModel": "gpt-6.1-sol"
 
+  // Runcrate (OpenAI-compatible Chat Completions preset, with session support):
+  //   "memoryProvider": "runcrate"
+  //   "memoryApiKey": "env://RUNCRATE_API_KEY"
+  //   // memoryApiUrl and memoryModel are optional — they default to
+  //   // https://api.runcrate.ai/v1 and "deepseek-ai/DeepSeek-V4.1-Flash".
+  //   // When selected, auto-capture/profile prompts, responses, and relevant
+  //   // conversation context are sent to api.runcrate.ai.
+  //   // "memoryModel": "deepseek-ai/DeepSeek-V4.1-Flash"
+
   // Groq (OpenAI-compatible, use openai-chat provider):
   //   "memoryProvider": "openai-chat"
   //   "memoryModel": "llama-3.3-70b-versatile"
@@ -314,7 +323,7 @@
   // Set to false and add "memoryTemperature": false in config when using such models
   "memoryTemperature": 0.3,
 
-  // Force tool calls on openai-chat / orcarouter / atlas-cloud / cheaper-inference / api-route (tool_choice: "required"). Default true.
+  // Force tool calls on openai-chat / orcarouter / atlas-cloud / cheaper-inference / api-route / runcrate (tool_choice: "required"). Default true.
   // Some thinking/reasoning models reject forced tool choice — set false to fall back to "auto":
   // "forceToolChoice": false,
 
