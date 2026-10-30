@@ -69,10 +69,12 @@ export class CleanupService {
 
       for (const shard of allShards) {
         const db = await tursoConnectionManager.getConnection(shard.dbPath);
+        // Ensure deleted_at (v3) exists before filtering on it.
+        await tursoShardManager.ensureShardSchema(db);
         const oldMemories = await db.all(
           `
           SELECT id, container_tag, is_pinned FROM memories
-          WHERE updated_at < ?
+          WHERE updated_at < ? AND deleted_at IS NULL
         `,
           [cutoffTime]
         );
@@ -100,6 +102,21 @@ export class CleanupService {
           } catch (error) {
             log("Cleanup: delete error", { memoryId: memory.id, error: String(error) });
           }
+        }
+
+        // Hard-purge soft-deleted trash past retention.
+        const trashCutoff = Date.now() - CONFIG.dreaming.trashRetentionDays * 24 * 60 * 60 * 1000;
+        try {
+          const purged = await tursoVectorSearch.purgeDeletedBefore(db, trashCutoff);
+          for (const _id of purged) {
+            await tursoShardManager.decrementVectorCount(shard.id);
+            totalDeleted++;
+          }
+          if (purged.length > 0) {
+            log("Cleanup: purged trash", { count: purged.length, shardId: shard.id });
+          }
+        } catch (error) {
+          log("Cleanup: trash purge error", { shardId: shard.id, error: String(error) });
         }
       }
 

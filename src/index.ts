@@ -4,6 +4,7 @@ import { tool } from "@opencode-ai/plugin";
 
 import { memoryClient } from "./services/client.js";
 import { formatContextForPrompt } from "./services/context.js";
+import { shouldRefreshRecallOnPrompt } from "./services/memory-recall.js";
 import { buildMemoryProvenanceSuffix } from "./services/memory-provenance.js";
 import { getTags } from "./services/tags.js";
 import { stripPrivateContent, isFullyPrivate } from "./services/privacy.js";
@@ -704,26 +705,16 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   };
 
   const loadMemoryContext = async (sessionID: string): Promise<string> => {
-    const listResult = await memoryClient.listMemories(
-      tags.project.tag,
-      CONFIG.chatMessage.maxMemories,
-      "project",
-      {
-        excludeSessionId: CONFIG.chatMessage.excludeCurrentSession ? sessionID : undefined,
-        createdAfter: CONFIG.chatMessage.maxAgeDays
-          ? Date.now() - CONFIG.chatMessage.maxAgeDays * 86400000
-          : undefined,
-      }
-    );
-
-    const memories = listResult.success ? listResult.memories : [];
+    const { loadRecallMemoriesForSession } = await import("./services/memory-recall.js");
+    const queryText = await userPromptManager.getLatestPromptTextForSession(sessionID);
+    const memories = await loadRecallMemoriesForSession(tags.project.tag, sessionID, queryText);
 
     // Still format an empty project-memory payload so injectProfile can emit
     // <user_profile> on its own (e.g. chatMessage.maxMemories: 0).
     const projectMemories = {
-      results: memories.map((m: any) => ({
-        similarity: 1.0,
-        memory: m.summary,
+      results: memories.map((m) => ({
+        similarity: m.similarity,
+        memory: m.memory,
         id: m.id,
         createdAt: m.createdAt,
         projectName: m.projectName,
@@ -742,7 +733,11 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     // Internal V2 bridge; V1 still injects synthetic parts through chat.message.
     memoryContext: {
       enabled: () => isConfigured() && CONFIG.chatMessage.enabled,
-      refreshOnPrompt: () => CONFIG.chatMessage.injectOn === "always",
+      refreshOnPrompt: () =>
+        shouldRefreshRecallOnPrompt(
+          CONFIG.chatMessage.recall ?? "relevant",
+          CONFIG.chatMessage.injectOn ?? "first"
+        ),
       capturePrompt: async (
         input: { sessionID: string },
         output: { message: { id: string }; parts: Part[] }
@@ -788,8 +783,13 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
         const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
         const isAfterCompaction = lastMessage?.info?.summary === true;
 
+        // Relevance/both re-inject every authored turn so the query matches the
+        // current message (issue #460). Legacy recent keeps injectOn: first.
         const shouldInject =
-          CONFIG.chatMessage.injectOn === "always" ||
+          shouldRefreshRecallOnPrompt(
+            CONFIG.chatMessage.recall ?? "relevant",
+            CONFIG.chatMessage.injectOn ?? "first"
+          ) ||
           !hasNonSyntheticUserMessages ||
           (isAfterCompaction &&
             messages.filter(
@@ -1311,6 +1311,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
             if (webServer?.isServerOwner()) {
               const { cleanupService } = await import("./services/cleanup-service.js");
               if (await cleanupService.shouldRunCleanup()) await cleanupService.runCleanup();
+
+              const { dreamingService } = await import("./services/dreaming-service.js");
+              await dreamingService.maybeRun(directory);
             }
           } catch (error) {
             log("Idle processing error", { error: String(error) });

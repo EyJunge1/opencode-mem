@@ -265,7 +265,10 @@ These settings live under the `chatMessage` key in `~/.config/opencode/opencode-
 | Option                                                 | Default          | What it does                                                                                                                                                                                                                                                                                           |
 | ------------------------------------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `enabled`                                              | `true`           | Capture authored user prompts and inject memory context.                                                                                                                                                                                                                                               |
-| `injectOn`                                             | `"first"`        | Inject memory context on the first user message of a session, or on `"always"` every authored turn.                                                                                                                                                                                                    |
+| `injectOn`                                             | `"first"`        | For `recall: "recent"`, inject on the first user message or on `"always"` every authored turn. With `recall: "relevant"` / `"both"`, context always refreshes each authored turn (issue #460).                                                                                                         |
+| `recall`                                               | `"relevant"`     | How injected memories are chosen: `"relevant"` embeds the user message and runs vector search each turn; `"recent"` keeps the legacy newest-N listing; `"both"` prefers relevant then fills remaining slots with recent.                                                                               |
+| `recallScope`                                          | `"default"`      | Scope for auto-recall: `"default"` follows `memory.defaultScope`, or force `"project"` / `"all-projects"`. When searching all projects, hits from the current project get a small similarity boost.                                                                                                    |
+| `similarityThreshold`                                  | (top-level)      | Optional per-inject floor; otherwise uses the top-level `similarityThreshold`.                                                                                                                                                                                                                         |
 | `maxMemories` / `excludeCurrentSession` / `maxAgeDays` | `3` / `true` / — | How many memories the injected context holds, whether memories captured in the current session are excluded, and an optional age cutoff in days.                                                                                                                                                       |
 | `filterInjectedPrompts`                                | `true`           | Skip prompt text injected by the host or by other OpenCode plugins (system reminders, orchestration directives, background-task notifications) so it is never stored as if the user had typed it.                                                                                                      |
 | `injectionMarkers`                                     | built-ins        | Extra markers identifying injected blocks; added to the built-in list, never replacing it.                                                                                                                                                                                                             |
@@ -275,6 +278,15 @@ Session and age exclusions are applied before the injected memory limit, so excl
 memories do not consume slots that could hold eligible memories. Setting
 `chatMessage.maxMemories` to `0` disables project-memory injection while still allowing
 the user profile to be injected when enabled.
+
+### Dreaming (optional memory consolidation)
+
+Opt-in background pass that finds near-duplicate memories (same similarity threshold as
+deduplication), asks the configured `opencodeProvider` / `opencodeModel` to merge them,
+and soft-deletes superseded rows into recoverable trash. Pinned memories are never
+touched. Configure under `dreaming` in `opencode-mem.jsonc` (`enabled` default `false`).
+The web UI exposes **Trash** (restore) and **Dream** (manual run). Soft-deleted rows are
+hard-purged after `dreaming.trashRetentionDays` during normal cleanup.
 
 ### Choosing / configuring embeddings
 

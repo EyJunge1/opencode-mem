@@ -20,7 +20,6 @@ import {
   type CollectDailyStatsOptions,
 } from "./stats-service.js";
 import {
-  deleteMemoryMarkdownFile,
   getMarkdownStatus,
   isMarkdownBackend,
   reindexMarkdownVault,
@@ -479,31 +478,93 @@ export async function handleDeleteMemory(
       const memory = await tursoVectorSearch.getMemoryById(db, id);
       if (memory) {
         const metadata = safeJSONParse(memory.metadata);
-        if (isMarkdownBackend()) {
-          const rel =
-            metadata && typeof metadata.markdownRelPath === "string"
-              ? metadata.markdownRelPath
-              : null;
-          deleteMemoryMarkdownFile(id, rel);
-        }
+        // Soft-delete keeps the row in trash (recoverable). Markdown files stay
+        // until hard-purge so restore can re-surface the same note.
         if (cascade) {
           const linkedPromptId = metadata?.promptId;
           if (linkedPromptId) await userPromptManager.deletePrompt(linkedPromptId);
         }
-        await tursoVectorSearch.deleteVector(db, id);
-        await tursoShardManager.decrementVectorCount(shard.id);
+        const ok = await tursoVectorSearch.softDeleteVector(db, id);
+        if (!ok) return { success: false, error: "Memory not found" };
         return {
           success: true,
           data: { deletedPrompt: cascade && !!metadata?.promptId },
         };
       }
     }
-    if (isMarkdownBackend()) {
-      deleteMemoryMarkdownFile(id);
-    }
     return { success: false, error: "Memory not found" };
   } catch (error) {
     log("handleDeleteMemory: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleListTrash(limit = 200): Promise<
+  ApiResponse<
+    Array<{
+      id: string;
+      content: string;
+      deletedAt: number;
+      mergedInto?: string;
+      projectName?: string;
+      containerTag: string;
+    }>
+  >
+> {
+  try {
+    const shards = await getAllMemoryShards();
+    const items: Array<{
+      id: string;
+      content: string;
+      deletedAt: number;
+      mergedInto?: string;
+      projectName?: string;
+      containerTag: string;
+    }> = [];
+    for (const shard of shards) {
+      const db = await tursoConnectionManager.getConnection(shard.dbPath);
+      const rows = await tursoVectorSearch.listDeletedMemories(db, limit);
+      for (const row of rows) {
+        const meta = safeJSONParse(row.metadata) || {};
+        items.push({
+          id: String(row.id),
+          content: String(row.content),
+          deletedAt: Number(row.deleted_at),
+          mergedInto: typeof meta.mergedInto === "string" ? meta.mergedInto : undefined,
+          projectName: row.project_name ? String(row.project_name) : undefined,
+          containerTag: String(row.container_tag),
+        });
+      }
+    }
+    items.sort((a, b) => b.deletedAt - a.deletedAt);
+    return { success: true, data: items.slice(0, limit) };
+  } catch (error) {
+    log("handleListTrash: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleRestoreMemory(id: string): Promise<ApiResponse<{ restored: boolean }>> {
+  try {
+    if (!id) return { success: false, error: "id is required" };
+    const shards = await getAllMemoryShards();
+    for (const shard of shards) {
+      const db = await tursoConnectionManager.getConnection(shard.dbPath);
+      const memory = await tursoVectorSearch.getMemoryById(db, id, { includeDeleted: true });
+      if (!memory || memory.deleted_at == null) continue;
+      const ok = await tursoVectorSearch.restoreVector(db, id);
+      if (!ok) return { success: false, error: "Failed to restore memory" };
+      // Clear merge pointer so the restored row stands alone again.
+      const meta = safeJSONParse(memory.metadata) || {};
+      if (meta.mergedInto) {
+        delete meta.mergedInto;
+        await db.run(`UPDATE memories SET metadata = ? WHERE id = ?`, [JSON.stringify(meta), id]);
+      }
+      return { success: true, data: { restored: true } };
+    }
+    return { success: false, error: "Memory not found in trash" };
+  } catch (error) {
+    log("handleRestoreMemory: error", { error: String(error) });
     return { success: false, error: String(error) };
   }
 }
@@ -585,14 +646,21 @@ export async function handleUpdateMemory(
 
     const metadataJson = JSON.stringify(existingMeta);
 
+    const isPinned = Number(existingMemory.is_pinned ?? 0) === 1 ? 1 : 0;
+    const deletedAt =
+      existingMemory.deleted_at == null || existingMemory.deleted_at === undefined
+        ? null
+        : Number(existingMemory.deleted_at);
+
     await db.transaction("write", async (tx) => {
       await tx.execute({ sql: `DELETE FROM memories WHERE id = ?`, args: [id] });
       await tx.execute({
         sql: `
         INSERT INTO memories (
           id, content, vector, tags_vector, container_tag, tags, type, created_at, updated_at,
-          metadata, session_id, display_name, user_name, user_email, project_path, project_name, git_repo_url
-        ) VALUES (?, ?, vector32(?), ${tagsVector ? "vector32(?)" : "NULL"}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          metadata, session_id, display_name, user_name, user_email, project_path, project_name, git_repo_url,
+          is_pinned, deleted_at
+        ) VALUES (?, ?, vector32(?), ${tagsVector ? "vector32(?)" : "NULL"}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         args: [
           id,
@@ -616,6 +684,8 @@ export async function handleUpdateMemory(
           existingMemory.project_path ? String(existingMemory.project_path) : null,
           existingMemory.project_name ? String(existingMemory.project_name) : null,
           existingMemory.git_repo_url ? String(existingMemory.git_repo_url) : null,
+          isPinned,
+          deletedAt,
         ],
       });
     });
@@ -1045,6 +1115,41 @@ export async function handleRunDeduplication(): Promise<
     return { success: true, data: result };
   } catch (error) {
     log("handleRunDeduplication: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleDreamingStatus(): Promise<
+  ApiResponse<ReturnType<(typeof import("./dreaming-service.js"))["dreamingService"]["getStatus"]>>
+> {
+  try {
+    const { dreamingService } = await import("./dreaming-service.js");
+    return { success: true, data: dreamingService.getStatus() };
+  } catch (error) {
+    log("handleDreamingStatus: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleRunDreaming(
+  directory?: string
+): Promise<
+  ApiResponse<
+    Awaited<ReturnType<(typeof import("./dreaming-service.js"))["dreamingService"]["run"]>>
+  >
+> {
+  try {
+    if (!CONFIG.dreaming.enabled) {
+      return {
+        success: false,
+        error: "Dreaming is disabled. Set dreaming.enabled to true in opencode-mem.jsonc.",
+      };
+    }
+    const { dreamingService } = await import("./dreaming-service.js");
+    const result = await dreamingService.run(directory);
+    return { success: true, data: result };
+  } catch (error) {
+    log("handleRunDreaming: error", { error: String(error) });
     return { success: false, error: String(error) };
   }
 }
@@ -1647,7 +1752,7 @@ export async function handleDetectTagMigration(): Promise<
     for (const shard of projectShards) {
       const db = await tursoConnectionManager.getConnection(shard.dbPath);
       const row = await db.get(
-        "SELECT COUNT(*) as count FROM memories WHERE tags IS NULL OR tags = ''"
+        "SELECT COUNT(*) as count FROM memories WHERE (deleted_at IS NULL) AND (tags IS NULL OR tags = '')"
       );
       untaggedCount += Number(row?.count ?? 0);
     }
@@ -1864,7 +1969,7 @@ export async function handleRunTagMigrationBatch(
 
     for (const shard of projectShards) {
       const db = await tursoConnectionManager.getConnection(shard.dbPath);
-      const memories = await db.all("SELECT * FROM memories");
+      const memories = await db.all("SELECT * FROM memories WHERE deleted_at IS NULL");
       for (const m of memories) {
         allMemories.push({ memory: m, shard });
       }

@@ -290,7 +290,9 @@ export async function collectShardStats(shards: ShardInfo[]): Promise<ShardColle
         container_tag: unknown;
         type: unknown;
         c: number | bigint;
-      }>("SELECT container_tag, type, COUNT(*) c FROM memories GROUP BY container_tag, type");
+      }>(
+        "SELECT container_tag, type, COUNT(*) c FROM memories WHERE deleted_at IS NULL GROUP BY container_tag, type"
+      );
       for (const row of scopeTypeCounts) {
         const containerTag = String(row.container_tag ?? "");
         const type = row.type ? String(row.type) : "";
@@ -301,14 +303,14 @@ export async function collectShardStats(shards: ShardInfo[]): Promise<ShardColle
       }
 
       const aggregate = await db.get<{ c: number | bigint; mn: unknown; mx: unknown }>(
-        "SELECT COUNT(*) c, MIN(created_at) mn, MAX(created_at) mx FROM memories"
+        "SELECT COUNT(*) c, MIN(created_at) mn, MAX(created_at) mx FROM memories WHERE deleted_at IS NULL"
       );
       stats.memoryCount = Number(aggregate?.c ?? 0);
       stats.oldestCreatedAt = toISOStringOrNull(aggregate?.mn);
       stats.newestCreatedAt = toISOStringOrNull(aggregate?.mx);
 
       const duplicateTags = await db.all<{ c: number | bigint }>(
-        "SELECT tags, COUNT(*) c FROM memories WHERE tags IS NOT NULL AND tags != '' GROUP BY tags HAVING COUNT(*) > 1"
+        "SELECT tags, COUNT(*) c FROM memories WHERE deleted_at IS NULL AND tags IS NOT NULL AND tags != '' GROUP BY tags HAVING COUNT(*) > 1"
       );
       stats.duplicateTagCount = duplicateTags.reduce(
         (total, row) => total + Math.max(0, Number(row.c) - 1),

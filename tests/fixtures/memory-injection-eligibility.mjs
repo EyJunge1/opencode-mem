@@ -16,7 +16,11 @@ const config = {
     maxMemories: 3,
     excludeCurrentSession: true,
     filterInjectedPrompts: true,
+    recall: "recent",
+    recallScope: "default",
   },
+  memory: { defaultScope: "project" },
+  similarityThreshold: 0.6,
   compaction: { enabled: false },
   autoCaptureEnabled: false,
   webServerEnabled: false,
@@ -64,6 +68,7 @@ mock.module(moduleUrl("services/user-prompt/user-prompt-manager"), () => ({
   userPromptManager: {
     savePrompt: async () => {},
     setPromptModel: async () => {},
+    getLatestPromptTextForSession: async () => "fixture query",
     reset() {},
   },
 }));

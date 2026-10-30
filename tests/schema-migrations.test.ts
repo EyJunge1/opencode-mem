@@ -42,8 +42,8 @@ describe("schema migrations", () => {
     await db.close();
   });
 
-  it("migrates memory shards to session_id index (v2)", async () => {
-    baseDir = mkdtempSync(join(tmpdir(), "schema-mem-v2-"));
+  it("migrates memory shards through session_id (v2) and deleted_at (v3)", async () => {
+    baseDir = mkdtempSync(join(tmpdir(), "schema-mem-v3-"));
     const dbPath = join(baseDir, "shard.db");
     const native = await connect(dbPath);
     const db = new TursoDb(native);
@@ -74,13 +74,14 @@ describe("schema migrations", () => {
       dbPath,
       label: "memory-shard",
     });
-    expect(version).toBe(2);
+    expect(version).toBe(3);
 
-    const row = await db.get<{ session_id: string }>(
-      `SELECT session_id FROM memories WHERE id = ?`,
+    const row = await db.get<{ session_id: string; deleted_at: number | null }>(
+      `SELECT session_id, deleted_at FROM memories WHERE id = ?`,
       ["mem_legacy"]
     );
     expect(row?.session_id).toBe("sess_from_meta");
+    expect(row?.deleted_at ?? null).toBeNull();
     await db.close();
   });
 });

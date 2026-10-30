@@ -11,6 +11,10 @@ import {
 } from "./vector-utils.js";
 import type { TursoDb, TursoTx } from "./turso-db.js";
 
+/** Active (non-trashed) rows. Legacy DBs without deleted_at treat NULL as active. */
+export const ACTIVE_MEMORY_SQL = `(deleted_at IS NULL)`;
+export const ACTIVE_MEMORY_ALIAS_SQL = `(m.deleted_at IS NULL)`;
+
 function parseMetadata(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== "string") return undefined;
   try {
@@ -134,7 +138,7 @@ export class TursoVectorSearch {
                THEN vector_distance_cos(tags_vector, vector32(?))
                ELSE NULL END AS tags_dist
       FROM memories
-      WHERE id IN (${placeholders})
+      WHERE id IN (${placeholders}) AND ${ACTIVE_MEMORY_SQL}
     `
         : `
       SELECT id, content, tags, created_at, metadata, container_tag,
@@ -145,7 +149,7 @@ export class TursoVectorSearch {
                THEN vector_distance_cos(tags_vector, vector32(?))
                ELSE NULL END AS tags_dist
       FROM memories
-      WHERE id IN (${placeholders}) AND container_tag = ?
+      WHERE id IN (${placeholders}) AND container_tag = ? AND ${ACTIVE_MEMORY_SQL}
     `,
       containerTag === ""
         ? [queryJson, queryJson, ...ids]
@@ -191,6 +195,7 @@ export class TursoVectorSearch {
         tags: memoryTagsStr ? memoryTagsStr.split(",") : [],
         metadata: parseMetadata(row.metadata),
         containerTag: String(row.container_tag),
+        sessionId: row.session_id ? String(row.session_id) : undefined,
         displayName: row.display_name ? String(row.display_name) : undefined,
         userName: row.user_name ? String(row.user_name) : undefined,
         userEmail: row.user_email ? String(row.user_email) : undefined,
@@ -226,12 +231,14 @@ export class TursoVectorSearch {
         containerTag === ""
           ? `
           SELECT id FROM memories
-          WHERE content LIKE ? ESCAPE '\\' OR IFNULL(tags, '') LIKE ? ESCAPE '\\'
+          WHERE ${ACTIVE_MEMORY_SQL}
+            AND (content LIKE ? ESCAPE '\\' OR IFNULL(tags, '') LIKE ? ESCAPE '\\')
           LIMIT ?
         `
           : `
           SELECT id FROM memories
           WHERE container_tag = ?
+            AND ${ACTIVE_MEMORY_SQL}
             AND (content LIKE ? ESCAPE '\\' OR IFNULL(tags, '') LIKE ? ESCAPE '\\')
           LIMIT ?
         `,
@@ -257,7 +264,7 @@ export class TursoVectorSearch {
         ? `
         SELECT m.id AS id, vector_distance_cos(m.${columnName}, vector32(?)) AS dist
         FROM memories m
-        WHERE m.${columnName} IS NOT NULL
+        WHERE m.${columnName} IS NOT NULL AND ${ACTIVE_MEMORY_ALIAS_SQL}
         ORDER BY dist ASC
         LIMIT ?
       `
@@ -265,6 +272,7 @@ export class TursoVectorSearch {
         SELECT m.id AS id, vector_distance_cos(m.${columnName}, vector32(?)) AS dist
         FROM memories m
         WHERE m.${columnName} IS NOT NULL AND m.container_tag = ?
+          AND ${ACTIVE_MEMORY_ALIAS_SQL}
         ORDER BY dist ASC
         LIMIT ?
       `,
@@ -336,6 +344,58 @@ export class TursoVectorSearch {
     await db.run(`DELETE FROM memories WHERE id = ?`, [memoryId]);
   }
 
+  async softDeleteVector(
+    db: TursoDb,
+    memoryId: string,
+    metaPatch?: Record<string, unknown>
+  ): Promise<boolean> {
+    await this.prepareShardDb(db);
+    const existing = await this.getMemoryById(db, memoryId, { includeDeleted: false });
+    if (!existing) return false;
+    const meta = parseMetadata(existing.metadata) || {};
+    if (metaPatch) Object.assign(meta, metaPatch);
+    const changes = await db.run(
+      `UPDATE memories SET deleted_at = ?, metadata = ?, updated_at = ? WHERE id = ? AND ${ACTIVE_MEMORY_SQL}`,
+      [Date.now(), JSON.stringify(meta), Date.now(), memoryId]
+    );
+    return changes > 0;
+  }
+
+  async restoreVector(db: TursoDb, memoryId: string): Promise<boolean> {
+    await this.prepareShardDb(db);
+    const changes = await db.run(
+      `UPDATE memories SET deleted_at = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NOT NULL`,
+      [Date.now(), memoryId]
+    );
+    return changes > 0;
+  }
+
+  async listDeletedMemories(db: TursoDb, limit = 200): Promise<Record<string, unknown>[]> {
+    await this.prepareShardDb(db);
+    return db.all(
+      `
+      SELECT * FROM memories
+      WHERE deleted_at IS NOT NULL
+      ORDER BY deleted_at DESC
+      LIMIT ?
+    `,
+      [limit]
+    );
+  }
+
+  async purgeDeletedBefore(db: TursoDb, cutoffMs: number): Promise<string[]> {
+    await this.prepareShardDb(db);
+    const rows = await db.all(
+      `SELECT id FROM memories WHERE deleted_at IS NOT NULL AND deleted_at < ?`,
+      [cutoffMs]
+    );
+    const ids = rows.map((r) => String(r.id));
+    for (const id of ids) {
+      await this.deleteVector(db, id);
+    }
+    return ids;
+  }
+
   async updateVector(
     db: TursoDb,
     memoryId: string,
@@ -362,7 +422,8 @@ export class TursoVectorSearch {
     limit: number,
     filters: MemoryListFilters = {}
   ): Promise<Record<string, unknown>[]> {
-    const conditions: string[] = [];
+    await this.prepareShardDb(db);
+    const conditions: string[] = [ACTIVE_MEMORY_SQL];
     const args: Array<string | number> = [];
     if (containerTag !== "") {
       conditions.push("container_tag = ?");
@@ -388,7 +449,7 @@ export class TursoVectorSearch {
     return db.all(
       `
       SELECT * FROM memories
-      ${conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : ""}
+      WHERE ${conditions.join(" AND ")}
       ORDER BY is_pinned DESC, created_at DESC
       LIMIT ?
     `,
@@ -397,26 +458,38 @@ export class TursoVectorSearch {
   }
 
   async getAllMemories(db: TursoDb): Promise<Record<string, unknown>[]> {
-    return db.all(`SELECT * FROM memories ORDER BY created_at DESC`);
+    await this.prepareShardDb(db);
+    return db.all(`SELECT * FROM memories WHERE ${ACTIVE_MEMORY_SQL} ORDER BY created_at DESC`);
   }
 
   async getAllMemoriesWithExtractedVectors(
     db: TursoDb
   ): Promise<Array<Record<string, unknown> & { vector_json: string | null }>> {
+    await this.prepareShardDb(db);
     return db.all(`
       SELECT
         id,
         content,
         container_tag,
         created_at,
+        is_pinned,
         vector_extract(vector) AS vector_json
       FROM memories
+      WHERE ${ACTIVE_MEMORY_SQL}
       ORDER BY created_at DESC
     `);
   }
 
-  async getMemoryById(db: TursoDb, memoryId: string): Promise<Record<string, unknown> | null> {
-    return db.get(`SELECT * FROM memories WHERE id = ?`, [memoryId]);
+  async getMemoryById(
+    db: TursoDb,
+    memoryId: string,
+    options: { includeDeleted?: boolean } = {}
+  ): Promise<Record<string, unknown> | null> {
+    await this.prepareShardDb(db);
+    if (options.includeDeleted) {
+      return db.get(`SELECT * FROM memories WHERE id = ?`, [memoryId]);
+    }
+    return db.get(`SELECT * FROM memories WHERE id = ? AND ${ACTIVE_MEMORY_SQL}`, [memoryId]);
   }
 
   async getMemoriesBySessionID(db: TursoDb, sessionID: string): Promise<Record<string, unknown>[]> {
@@ -424,8 +497,11 @@ export class TursoVectorSearch {
     const rows = await db.all(
       `
       SELECT * FROM memories
-      WHERE session_id = ?
-         OR (session_id IS NULL AND metadata LIKE ?)
+      WHERE ${ACTIVE_MEMORY_SQL}
+        AND (
+          session_id = ?
+          OR (session_id IS NULL AND metadata LIKE ?)
+        )
       ORDER BY created_at DESC
     `,
       [sessionID, `%"sessionID":"${sessionID}"%`]
@@ -439,14 +515,15 @@ export class TursoVectorSearch {
   }
 
   async countVectors(db: TursoDb, containerTag: string): Promise<number> {
-    const row = await db.get(`SELECT COUNT(*) as count FROM memories WHERE container_tag = ?`, [
-      containerTag,
-    ]);
+    const row = await db.get(
+      `SELECT COUNT(*) as count FROM memories WHERE container_tag = ? AND ${ACTIVE_MEMORY_SQL}`,
+      [containerTag]
+    );
     return Number(row?.count ?? 0);
   }
 
   async countAllVectors(db: TursoDb): Promise<number> {
-    const row = await db.get(`SELECT COUNT(*) as count FROM memories`);
+    const row = await db.get(`SELECT COUNT(*) as count FROM memories WHERE ${ACTIVE_MEMORY_SQL}`);
     return Number(row?.count ?? 0);
   }
 
@@ -461,6 +538,7 @@ export class TursoVectorSearch {
         project_name,
         git_repo_url
       FROM memories
+      WHERE ${ACTIVE_MEMORY_SQL}
     `);
   }
 
@@ -474,6 +552,7 @@ export class TursoVectorSearch {
         COUNT(*) AS cnt
       FROM memories
       WHERE project_path IS NOT NULL AND project_path != ''
+        AND ${ACTIVE_MEMORY_SQL}
       GROUP BY project_path, container_tag
       ORDER BY cnt DESC, project_path ASC
     `);

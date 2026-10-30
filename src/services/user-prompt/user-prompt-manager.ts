@@ -144,6 +144,23 @@ export class UserPromptManager {
     return row ? this.rowToPrompt(row) : null;
   }
 
+  /** Latest saved prompt text for a session (any capture state), for relevance recall. */
+  async getLatestPromptTextForSession(sessionId: string): Promise<string | null> {
+    const db = await this.ready();
+    const row = await db.get(
+      `
+      SELECT content FROM user_prompts
+      WHERE session_id = ?
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,
+      [sessionId]
+    );
+    if (!row?.content) return null;
+    const text = String(row.content).trim();
+    return text.length > 0 ? text : null;
+  }
+
   async getUncapturedPromptsForSession(sessionId: string): Promise<UserPrompt[]> {
     const db = await this.ready();
     const maxRetries = CONFIG.autoCaptureMaxRetries ?? 3;
