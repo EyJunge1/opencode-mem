@@ -78,7 +78,11 @@ describe("markdown write-through", () => {
 
     const deleted = await memoryClient.deleteMemory(added.id);
     expect(deleted.success).toBe(true);
-    expect(existsSync(filePath)).toBe(false);
+    // Soft-delete keeps the markdown file so trash restore can re-surface it.
+    expect(existsSync(filePath)).toBe(true);
+    const listed = await memoryClient.listMemories(tag.tag, 20, "project");
+    expect(listed.success).toBe(true);
+    expect(listed.memories.some((m: { id: string }) => m.id === added.id)).toBe(false);
   });
 
   it("reconcile indexes foreign markdown pages", async () => {

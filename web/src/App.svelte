@@ -18,6 +18,7 @@
   import MarkdownVaultView from "$lib/components/explorer/MarkdownVaultView.svelte";
   import StatsView from "$lib/components/explorer/StatsView.svelte";
   import TagMigrationDialog from "$lib/components/explorer/TagMigrationDialog.svelte";
+  import TrashDialog from "$lib/components/explorer/TrashDialog.svelte";
   import TagFilter from "$lib/components/explorer/TagFilter.svelte";
   import Alert from "$lib/components/ui/alert.svelte";
   import AlertDescription from "$lib/components/ui/alert-description.svelte";
@@ -343,6 +344,12 @@
                 <RefreshCw class={ICON_SM} aria-hidden="true" />
                 {i18n.t("btn-deduplicate")}
               </Button>
+              <Button type="button" variant="outline" onclick={explorer.openTrash}>
+                {i18n.t("btn-trash")}
+              </Button>
+              <Button type="button" variant="outline" onclick={explorer.runDreaming}>
+                {i18n.t("btn-dreaming")}
+              </Button>
               <Button
                 variant="default"
                 size="icon"
@@ -548,4 +555,10 @@
   onOpenChange={(open) => (profile.aiCleanupOpen = open)}
   profile={profile.userProfile}
   onApplied={profile.loadUserProfile}
+/>
+<TrashDialog
+  bind:open={explorer.trashOpen}
+  items={explorer.trashItems}
+  loading={explorer.trashLoading}
+  onRestore={explorer.restoreTrashItem}
 />

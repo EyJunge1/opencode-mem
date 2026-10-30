@@ -13,11 +13,7 @@ import { CONFIG } from "../config.js";
 import { log, serializeError } from "./logger.js";
 import type { MemoryType } from "../types/index.js";
 import type { MemoryListFilters, MemoryRecord } from "./turso/types.js";
-import {
-  deleteMemoryMarkdownFile,
-  isMarkdownBackend,
-  writeMemoryMarkdownFile,
-} from "./markdown/backend.js";
+import { isMarkdownBackend, writeMemoryMarkdownFile } from "./markdown/backend.js";
 import { pluginMemoryRelPath } from "./markdown/vault.js";
 
 export type MemoryScope = "project" | "all-projects";
@@ -123,7 +119,12 @@ export class LocalMemoryClient {
     }
   }
 
-  async searchMemories(query: string, containerTag: string, scope: MemoryScope = "project") {
+  async searchMemories(
+    query: string,
+    containerTag: string,
+    scope: MemoryScope = "project",
+    options: { limit?: number; similarityThreshold?: number } = {}
+  ) {
     try {
       await this.initialize();
 
@@ -139,12 +140,15 @@ export class LocalMemoryClient {
         return { success: true as const, results: [], total: 0, timing: 0 };
       }
 
+      const limit = options.limit ?? CONFIG.maxMemories;
+      const similarityThreshold = options.similarityThreshold ?? CONFIG.similarityThreshold;
+
       const { results, warnings } = await tursoVectorSearch.searchAcrossShards(
         shards,
         queryVector,
         scope === "all-projects" ? "" : containerTag,
-        CONFIG.maxMemories,
-        CONFIG.similarityThreshold,
+        limit,
+        similarityThreshold,
         query
       );
 
@@ -288,20 +292,10 @@ export class LocalMemoryClient {
         const memory = await tursoVectorSearch.getMemoryById(db, memoryId);
 
         if (memory) {
-          if (isMarkdownBackend()) {
-            const meta = safeJSONParse(memory.metadata);
-            const rel =
-              meta && typeof meta.markdownRelPath === "string" ? meta.markdownRelPath : null;
-            deleteMemoryMarkdownFile(memoryId, rel);
-          }
-          await tursoVectorSearch.deleteVector(db, memoryId);
-          await tursoShardManager.decrementVectorCount(shard.id);
-          return { success: true };
+          // Soft-delete into trash (recoverable). Hard-purge happens via cleanup.
+          const ok = await tursoVectorSearch.softDeleteVector(db, memoryId);
+          return ok ? { success: true } : { success: false, error: "Memory not found" };
         }
-      }
-
-      if (isMarkdownBackend()) {
-        deleteMemoryMarkdownFile(memoryId);
       }
 
       return { success: false, error: "Memory not found" };

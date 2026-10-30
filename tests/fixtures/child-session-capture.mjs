@@ -9,7 +9,11 @@ const config = {
     excludeCurrentSession: true,
     filterInjectedPrompts: true,
     captureChildSessions: false,
+    recall: "recent",
+    recallScope: "default",
   },
+  memory: { defaultScope: "project" },
+  similarityThreshold: 0.6,
   compaction: { enabled: false },
   autoCaptureEnabled: false,
   webServerEnabled: false,
@@ -56,6 +60,7 @@ mock.module(moduleUrl("services/user-prompt/user-prompt-manager"), () => ({
   userPromptManager: {
     savePrompt: async (...args) => captures.push(args),
     setPromptModel: async () => {},
+    getLatestPromptTextForSession: async () => "fixture query",
   },
 }));
 mock.module(moduleUrl("services/logger"), () => ({

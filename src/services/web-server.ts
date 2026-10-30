@@ -14,6 +14,8 @@ import {
   handleListMemories,
   handleAddMemory,
   handleDeleteMemory,
+  handleListTrash,
+  handleRestoreMemory,
   handleBulkDelete,
   handleUpdateMemory,
   handleSearch,
@@ -22,6 +24,8 @@ import {
   handleUnpinMemory,
   handleRunCleanup,
   handleRunDeduplication,
+  handleDreamingStatus,
+  handleRunDreaming,
   handleDetectMigration,
   handleRunMigration,
   handleDetectTagMigration,
@@ -533,10 +537,26 @@ export class WebServer {
         return this.jsonResponse(result);
       }
 
+      if (path === "/api/memories/trash" && method === "GET") {
+        const limit = parseInt(url.searchParams.get("limit") || "200");
+        const result = await handleListTrash(limit);
+        return this.jsonResponse(result);
+      }
+
+      if (path.startsWith("/api/memories/") && path.endsWith("/restore") && method === "POST") {
+        const parts = path.split("/");
+        const id = parts[3];
+        if (!id || id === "trash") {
+          return this.jsonResponse({ success: false, error: "Invalid ID" });
+        }
+        const result = await handleRestoreMemory(id);
+        return this.jsonResponse(result);
+      }
+
       if (path.startsWith("/api/memories/") && method === "DELETE") {
         const parts = path.split("/");
         const id = parts[3];
-        if (!id || id === "bulk-delete") {
+        if (!id || id === "bulk-delete" || id === "trash") {
           return this.jsonResponse({ success: false, error: "Invalid ID" });
         }
         const cascade = url.searchParams.get("cascade") === "true";
@@ -546,7 +566,7 @@ export class WebServer {
 
       if (path.startsWith("/api/memories/") && method === "GET") {
         const id = path.split("/").pop();
-        if (!id || id === "bulk-delete") {
+        if (!id || id === "bulk-delete" || id === "trash") {
           return this.jsonResponse({ success: false, error: "Invalid ID" });
         }
         const result = await handleGetMemory(id);
@@ -626,6 +646,16 @@ export class WebServer {
 
       if (path === "/api/deduplicate" && method === "POST") {
         const result = await handleRunDeduplication();
+        return this.jsonResponse(result);
+      }
+
+      if (path === "/api/dreaming/status" && method === "GET") {
+        const result = await handleDreamingStatus();
+        return this.jsonResponse(result);
+      }
+
+      if (path === "/api/dreaming/run" && method === "POST") {
+        const result = await handleRunDreaming();
         return this.jsonResponse(result);
       }
 

@@ -42,10 +42,13 @@ export interface SearchResult {
   createdAt?: number;
   tags?: string[];
   metadata?: Record<string, unknown>;
+  containerTag?: string;
+  sessionId?: string;
   displayName?: string;
   userName?: string;
   userEmail?: string;
   projectPath?: string;
   projectName?: string;
   gitRepoUrl?: string;
+  isPinned?: unknown;
 }

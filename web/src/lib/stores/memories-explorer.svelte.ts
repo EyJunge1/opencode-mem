@@ -38,6 +38,18 @@ export function createMemoriesExplorer() {
   let editContent = $state("");
   let editType = $state("");
   let editTags = $state<string[]>([]);
+  let trashOpen = $state(false);
+  let trashLoading = $state(false);
+  let trashItems = $state<
+    Array<{
+      id: string;
+      content: string;
+      deletedAt: number;
+      mergedInto?: string;
+      projectName?: string;
+      containerTag: string;
+    }>
+  >([]);
 
   function snapshot() {
     return { currentPage, isSearching, searchQuery, selectedTags };
@@ -450,6 +462,48 @@ export function createMemoriesExplorer() {
     );
   }
 
+  async function openTrash() {
+    trashOpen = true;
+    trashLoading = true;
+    const result = await fetchAPI<typeof trashItems>("/api/memories/trash");
+    trashLoading = false;
+    if (result.success && result.data) {
+      trashItems = result.data;
+    } else {
+      trashItems = [];
+      toast.error(result.error || t("toast-trash-load-failed"));
+    }
+  }
+
+  async function restoreTrashItem(id: string) {
+    const result = await fetchAPI(`/api/memories/${id}/restore`, { method: "POST" });
+    await toastApiResult(result, {
+      successKey: "toast-restore-success",
+      failKey: "toast-restore-failed",
+      onSuccess: async () => {
+        trashItems = trashItems.filter((item) => item.id !== id);
+        await reloadAll();
+      },
+    });
+  }
+
+  async function runDreaming() {
+    const ok = await askConfirm({
+      title: t("confirm-dreaming-title"),
+      detail: t("confirm-dreaming"),
+      confirmLabel: t("btn-dreaming"),
+      tone: "danger",
+    });
+    if (!ok) return;
+    toast.info(t("status-dreaming"));
+    const result = await fetchAPI("/api/dreaming/run", { method: "POST" });
+    await toastApiResult(result, {
+      successKey: "toast-dreaming-success",
+      failKey: "toast-dreaming-failed",
+      onSuccess: () => reloadAll(),
+    });
+  }
+
   async function runMigration(strategy: "fresh-start" | "re-embed") {
     if (!migrationConfirmed) {
       toast.error(t("toast-migration-failed"));
@@ -597,6 +651,18 @@ export function createMemoriesExplorer() {
     set addContent(v: string) {
       addContent = v;
     },
+    get trashOpen() {
+      return trashOpen;
+    },
+    set trashOpen(v: boolean) {
+      trashOpen = v;
+    },
+    get trashLoading() {
+      return trashLoading;
+    },
+    get trashItems() {
+      return trashItems;
+    },
     get knownTags() {
       const set = new Set<string>();
       for (const memory of memories) {
@@ -634,6 +700,9 @@ export function createMemoriesExplorer() {
     unpinMemory,
     runCleanup,
     runDeduplication,
+    openTrash,
+    restoreTrashItem,
+    runDreaming,
     runMigration,
   };
 }

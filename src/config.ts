@@ -207,6 +207,19 @@ interface OpenCodeMemConfig {
     excludeCurrentSession?: boolean;
     maxAgeDays?: number;
     injectOn?: "first" | "always";
+    /**
+     * How auto-injected memories are selected.
+     * - recent: newest pinned/recency listing (legacy)
+     * - relevant: vector search against the current user prompt (default)
+     * - both: relevant first, then fill remaining slots with recent
+     */
+    recall?: "recent" | "relevant" | "both";
+    /**
+     * Scope for auto-recall search/list. "default" follows memory.defaultScope.
+     */
+    recallScope?: "project" | "all-projects" | "default";
+    /** Optional override of top-level similarityThreshold for relevant recall. */
+    similarityThreshold?: number;
     filterInjectedPrompts?: boolean;
     injectionMarkers?: string[];
     /**
@@ -216,6 +229,16 @@ interface OpenCodeMemConfig {
      * auto-capture / profile learning on the orchestrator's style.
      */
     captureChildSessions?: boolean;
+  };
+  /**
+   * Opt-in background memory consolidation ("dreaming"): merge near-duplicate
+   * memories via the configured LLM and soft-delete superseded rows into trash.
+   */
+  dreaming?: {
+    enabled?: boolean;
+    intervalHours?: number;
+    maxGroupsPerRun?: number;
+    trashRetentionDays?: number;
   };
 }
 
@@ -354,9 +377,18 @@ const DEFAULTS: Required<
     excludeCurrentSession: true,
     maxAgeDays: undefined,
     injectOn: "first",
+    recall: "relevant",
+    recallScope: "default",
+    similarityThreshold: undefined,
     filterInjectedPrompts: true,
     injectionMarkers: [...getDefaultInjectionMarkers()],
     captureChildSessions: false,
+  },
+  dreaming: {
+    enabled: false,
+    intervalHours: 24,
+    maxGroupsPerRun: 5,
+    trashRetentionDays: 30,
   },
 };
 
@@ -830,6 +862,16 @@ const CONFIG_TEMPLATE = `{
 
   // Chat message capture and injection behavior
   "chatMessage": {
+    // How auto-injected memories are picked for the prompt context.
+    // "relevant" (default) embeds the user message and runs vector search.
+    // "recent" keeps the legacy newest-N listing. "both" prefers relevant,
+    // then fills remaining slots with recent memories.
+    "recall": "relevant",
+    // Scope for auto-recall. "default" follows memory.defaultScope above.
+    // "recallScope": "default",
+    // Optional similarity floor for relevant recall (else similarityThreshold).
+    // "similarityThreshold": 0.6,
+
     // Skip prompt text injected by the host or by other OpenCode plugins
     // (system reminders, orchestration directives, background-task
     // notifications) so it is never stored as if the user had typed it.
@@ -846,6 +888,15 @@ const CONFIG_TEMPLATE = `{
     // Extra markers identifying injected blocks. These are ADDED to the
     // built-in list, never replace it.
     // "injectionMarkers": ["<my-plugin-banner>"]
+  },
+
+  // Opt-in background consolidation: merge near-duplicate memories via the
+  // configured LLM and soft-delete superseded rows into trash (recoverable).
+  "dreaming": {
+    "enabled": false,
+    "intervalHours": 24,
+    "maxGroupsPerRun": 5,
+    "trashRetentionDays": 30
   }
 }
 `;
@@ -1072,6 +1123,39 @@ export const OPENCODE_TIMEOUT_OUTER_MARGIN_MS = 30_000;
  */
 export function outerStructuredOutputTimeoutMs(configured: number | undefined): number {
   return (configured ?? OPENCODE_TIMEOUT_MS_DEFAULT) + OPENCODE_TIMEOUT_OUTER_MARGIN_MS;
+}
+
+export function normalizeChatMessageRecall(value: unknown): "recent" | "relevant" | "both" {
+  if (value === "recent" || value === "relevant" || value === "both") return value;
+  return "relevant";
+}
+
+export function normalizeChatMessageRecallScope(
+  value: unknown
+): "project" | "all-projects" | "default" {
+  if (value === "project" || value === "all-projects" || value === "default") return value;
+  return "default";
+}
+
+export function normalizeDreamingIntervalHours(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return 24;
+  }
+  return Math.max(1, Math.trunc(value));
+}
+
+export function normalizeDreamingMaxGroupsPerRun(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return 5;
+  }
+  return Math.max(1, Math.trunc(value));
+}
+
+export function normalizeDreamingTrashRetentionDays(value: unknown): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) {
+    return 30;
+  }
+  return value;
 }
 
 /**
@@ -1312,11 +1396,26 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
       maxAgeDays: fileConfig.chatMessage?.maxAgeDays,
       injectOn: (fileConfig.chatMessage?.injectOn ?? DEFAULTS.chatMessage.injectOn) as
         "first" | "always",
+      recall: normalizeChatMessageRecall(fileConfig.chatMessage?.recall),
+      recallScope: normalizeChatMessageRecallScope(fileConfig.chatMessage?.recallScope),
+      similarityThreshold:
+        typeof fileConfig.chatMessage?.similarityThreshold === "number" &&
+        Number.isFinite(fileConfig.chatMessage.similarityThreshold)
+          ? fileConfig.chatMessage.similarityThreshold
+          : DEFAULTS.chatMessage.similarityThreshold,
       filterInjectedPrompts:
         fileConfig.chatMessage?.filterInjectedPrompts ?? DEFAULTS.chatMessage.filterInjectedPrompts,
       injectionMarkers: normalizeInjectionMarkers(fileConfig.chatMessage?.injectionMarkers),
       captureChildSessions:
         fileConfig.chatMessage?.captureChildSessions ?? DEFAULTS.chatMessage.captureChildSessions,
+    },
+    dreaming: {
+      enabled: fileConfig.dreaming?.enabled ?? DEFAULTS.dreaming.enabled,
+      intervalHours: normalizeDreamingIntervalHours(fileConfig.dreaming?.intervalHours),
+      maxGroupsPerRun: normalizeDreamingMaxGroupsPerRun(fileConfig.dreaming?.maxGroupsPerRun),
+      trashRetentionDays: normalizeDreamingTrashRetentionDays(
+        fileConfig.dreaming?.trashRetentionDays
+      ),
     },
   };
 }

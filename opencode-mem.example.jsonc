@@ -131,6 +131,14 @@
     // "maxAgeDays": 30,
     // "first" = only on the first user message in a session; "always" = every message
     "injectOn": "first",
+    // "relevant" (default) = vector search against each authored user prompt
+    // (refreshes every turn even when injectOn is "first");
+    // "recent" = newest-N listing (honors injectOn); "both" = relevant first, then fill
+    "recall": "relevant",
+    // "default" follows memory.defaultScope; or "project" / "all-projects"
+    "recallScope": "default",
+    // Optional override of top-level similarityThreshold for relevant recall:
+    // "similarityThreshold": 0.6,
     // Skip prompt text injected by the host or by other OpenCode plugins
     // (system reminders, orchestration directives, background-task
     // notifications) so it is never stored as if the user had typed it.
@@ -145,6 +153,15 @@
     // Extra markers identifying injected blocks. These are ADDED to the
     // built-in list, never replace it.
     // "injectionMarkers": ["<my-plugin-banner>"],
+  },
+
+  // Opt-in background consolidation ("dreaming"): merge near-duplicates via LLM
+  // and soft-delete superseded memories into recoverable trash.
+  "dreaming": {
+    "enabled": false,
+    "intervalHours": 24,
+    "maxGroupsPerRun": 5,
+    "trashRetentionDays": 30,
   },
 
   // ============================================

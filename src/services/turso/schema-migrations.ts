@@ -139,6 +139,14 @@ export function memoryShardMigrations(dimensions: number): SchemaMigration[] {
         },
       ],
     },
+    {
+      version: 3,
+      description: "Soft-delete / trash via deleted_at for recoverable memory removal",
+      statements: [
+        { sql: `ALTER TABLE memories ADD COLUMN deleted_at INTEGER` },
+        { sql: `CREATE INDEX IF NOT EXISTS idx_deleted_at ON memories(deleted_at)` },
+      ],
+    },
   ];
 }
 

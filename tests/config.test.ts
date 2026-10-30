@@ -108,6 +108,18 @@ describe("config", () => {
       expect(["first", "always"]).toContain(CONFIG.chatMessage.injectOn);
     });
 
+    it("should default chatMessage.recall to relevant with default scope", () => {
+      expect(CONFIG.chatMessage.recall).toBe("relevant");
+      expect(CONFIG.chatMessage.recallScope).toBe("default");
+    });
+
+    it("should default dreaming to disabled", () => {
+      expect(CONFIG.dreaming.enabled).toBe(false);
+      expect(CONFIG.dreaming.intervalHours).toBe(24);
+      expect(CONFIG.dreaming.maxGroupsPerRun).toBe(5);
+      expect(CONFIG.dreaming.trashRetentionDays).toBe(30);
+    });
+
     it("should have boolean toggle settings", () => {
       expect(typeof CONFIG.autoCaptureEnabled).toBe("boolean");
       expect(typeof CONFIG.injectProfile).toBe("boolean");
