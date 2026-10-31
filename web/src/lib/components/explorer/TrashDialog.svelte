@@ -9,6 +9,7 @@
     content: string;
     deletedAt: number;
     mergedInto?: string;
+    supersededBy?: string;
     projectName?: string;
     containerTag: string;
   };
@@ -71,6 +72,9 @@
                   {/if}
                   {#if item.mergedInto}
                     <span>{i18n.t("trash-merged-into", { id: item.mergedInto })}</span>
+                  {/if}
+                  {#if item.supersededBy}
+                    <span>{i18n.t("trash-superseded-by", { id: item.supersededBy })}</span>
                   {/if}
                   <Button
                     type="button"
