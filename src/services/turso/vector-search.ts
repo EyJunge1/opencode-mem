@@ -361,6 +361,23 @@ export class TursoVectorSearch {
     return changes > 0;
   }
 
+  async patchMemoryMetadata(
+    db: TursoDb,
+    memoryId: string,
+    metaPatch: Record<string, unknown>
+  ): Promise<boolean> {
+    await this.prepareShardDb(db);
+    const existing = await this.getMemoryById(db, memoryId, { includeDeleted: false });
+    if (!existing) return false;
+    const meta = parseMetadata(existing.metadata) || {};
+    Object.assign(meta, metaPatch);
+    const changes = await db.run(
+      `UPDATE memories SET metadata = ?, updated_at = ? WHERE id = ? AND ${ACTIVE_MEMORY_SQL}`,
+      [JSON.stringify(meta), Date.now(), memoryId]
+    );
+    return changes > 0;
+  }
+
   async restoreVector(db: TursoDb, memoryId: string): Promise<boolean> {
     await this.prepareShardDb(db);
     const changes = await db.run(
