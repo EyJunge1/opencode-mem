@@ -7,6 +7,13 @@ import { CONFIG } from "../config.js";
 import { userPromptManager, type UserPrompt } from "./user-prompt/user-prompt-manager.js";
 import { loadOpencodeProvider } from "./ai/opencode-provider-loader.js";
 import { truncateToMaxBytes, utf8ByteLength } from "../utils/context-limit.js";
+import {
+  applyUpdateOnCaptureDecision,
+  buildUpdateOnCaptureDecisionPrompt,
+  filterUpdateOnCaptureCandidates,
+  type UpdateOnCaptureCandidate,
+  type UpdateOnCaptureDecision,
+} from "./update-on-capture.js";
 
 interface ToolCallInfo {
   name: string;
@@ -168,8 +175,8 @@ async function capturePrompt(
             : summaryResult.summary;
 
         phase = "persist";
-        const result = await memoryClient.addMemory(summaryWithTags, tags.project.tag, {
-          source: "auto-capture" as any,
+        const persistMeta = {
+          source: "auto-capture" as const,
           type: summaryResult.type as any,
           tags: summaryResult.tags,
           sessionID,
@@ -181,16 +188,28 @@ async function capturePrompt(
           projectPath: tags.project.projectPath,
           projectName: tags.project.projectName,
           gitRepoUrl: tags.project.gitRepoUrl,
-        });
+        };
+
+        const result = await persistAutoCaptureMemory(
+          ctx,
+          sessionID,
+          prompt,
+          summaryWithTags,
+          summaryResult.type,
+          summaryResult.tags || [],
+          tags.project.tag,
+          persistMeta
+        );
 
         if (result.success) {
-          await userPromptManager.linkMemoryToPrompt(prompt.id, result.id);
+          await userPromptManager.linkMemoryToPrompt(prompt.id, result.id!);
           await userPromptManager.markAsCaptured(prompt.id);
           claimedPromptId = null;
           log("Auto-capture memory persisted", {
             promptId: prompt.id,
             sessionID,
             memoryId: result.id,
+            action: result.action,
           });
 
           if (CONFIG.showAutoCaptureToasts) {
@@ -709,6 +728,208 @@ async function tryExternalSummary(
     summary: result.data.summary,
     type: result.data.type,
     tags: (result.data.tags || []).map((t: string) => t.toLowerCase().trim()),
+  };
+}
+
+async function persistAutoCaptureMemory(
+  ctx: PluginInput,
+  sessionID: string,
+  prompt: UserPrompt,
+  summaryWithTags: string,
+  type: string,
+  tags: string[],
+  containerTag: string,
+  metadata: Record<string, unknown>
+): Promise<{ success: boolean; id?: string; error?: string; action: string }> {
+  if (!CONFIG.updateOnCaptureEnabled) {
+    const result = await memoryClient.addMemory(summaryWithTags, containerTag, metadata as any);
+    return {
+      success: result.success,
+      id: result.success ? result.id : undefined,
+      error: result.success ? undefined : result.error,
+      action: "add",
+    };
+  }
+
+  const scope = CONFIG.memory.defaultScope === "all-projects" ? "all-projects" : "project";
+  const search = await memoryClient.searchMemories(summaryWithTags, containerTag, scope, {
+    similarityThreshold: CONFIG.updateOnCaptureSimilarityThreshold,
+    limit: CONFIG.updateOnCaptureMaxCandidates,
+  });
+
+  const rawCandidates: UpdateOnCaptureCandidate[] = (search.success ? search.results : []).map(
+    (r: any) => ({
+      id: String(r.id),
+      content: String(r.memory ?? r.content ?? ""),
+      similarity: Number(r.similarity ?? 0),
+      isPinned: Number(r.isPinned ?? 0) === 1 || r.isPinned === true,
+    })
+  );
+  const candidates = filterUpdateOnCaptureCandidates(rawCandidates);
+
+  if (candidates.length === 0) {
+    const result = await memoryClient.addMemory(summaryWithTags, containerTag, metadata as any);
+    return {
+      success: result.success,
+      id: result.success ? result.id : undefined,
+      error: result.success ? undefined : result.error,
+      action: "add",
+    };
+  }
+
+  let decision: UpdateOnCaptureDecision;
+  try {
+    decision = await decideUpdateOnCapture(ctx, sessionID, prompt, summaryWithTags, candidates);
+  } catch (error) {
+    log("update-on-capture: decision failed, falling back to add", serializeError(error));
+    decision = { action: "add" };
+  }
+
+  return applyUpdateOnCaptureDecision(
+    memoryClient as any,
+    decision,
+    {
+      summary: summaryWithTags,
+      type,
+      tags,
+      containerTag,
+      metadata: metadata as any,
+    },
+    new Set(candidates.map((c) => c.id))
+  );
+}
+
+async function decideUpdateOnCapture(
+  ctx: PluginInput,
+  sessionID: string,
+  prompt: UserPrompt,
+  summary: string,
+  candidates: UpdateOnCaptureCandidate[]
+): Promise<UpdateOnCaptureDecision> {
+  const order = CONFIG.autoCaptureProviderOrder ?? "opencode-first";
+  const channels: CaptureChannel[] =
+    order === "external-first" ? ["external", "opencode"] : ["opencode", "external"];
+
+  let lastError: unknown;
+  for (let i = 0; i < channels.length; i++) {
+    const channel = channels[i]!;
+    if (!isChannelConfigured(channel)) continue;
+    try {
+      return channel === "opencode"
+        ? await tryOpencodeUpdateDecision(summary, candidates, prompt)
+        : await tryExternalUpdateDecision(summary, candidates, sessionID, prompt);
+    } catch (error) {
+      lastError = error;
+      const nextConfigured = channels.slice(i + 1).find((c) => isChannelConfigured(c));
+      if (!nextConfigured) break;
+      showFallbackToast(ctx, channel, error);
+    }
+  }
+  if (lastError) throw lastError;
+  return { action: "add" };
+}
+
+async function tryOpencodeUpdateDecision(
+  summary: string,
+  candidates: UpdateOnCaptureCandidate[],
+  prompt?: { id?: string; providerId: string | null; modelId: string | null }
+): Promise<UpdateOnCaptureDecision> {
+  const { ensureProviderConnected, getV2Client, generateStructuredOutput } =
+    await loadOpencodeProvider();
+
+  let providerID = CONFIG.opencodeProvider!;
+  let modelID = CONFIG.opencodeModel!;
+  if (modelID === "inherit") {
+    if (!prompt?.providerId || !prompt?.modelId) {
+      throw new Error(
+        "opencode-mem: opencodeModel is 'inherit' but no session model was recorded for this prompt"
+      );
+    }
+    providerID = prompt.providerId;
+    modelID = prompt.modelId;
+  }
+
+  if (!(await ensureProviderConnected(providerID))) {
+    throw new Error(`opencode provider '${providerID}' is not connected`);
+  }
+  const v2Client = getV2Client();
+  if (!v2Client) {
+    throw new Error("opencode-mem: v2 client not initialized");
+  }
+
+  const { z } = await import("zod");
+  const schema = z.object({
+    action: z.enum(["add", "update", "supersede"]),
+    targetId: z.string().optional(),
+    content: z.string().optional(),
+    reason: z.string().optional(),
+  });
+
+  return generateStructuredOutput({
+    client: v2Client,
+    providerID,
+    modelID,
+    ...(CONFIG.opencodeVariant ? { variant: CONFIG.opencodeVariant } : {}),
+    systemPrompt:
+      "You decide whether a new memory should add, update, or supersede similar existing memories. Return only structured JSON.",
+    userPrompt: buildUpdateOnCaptureDecisionPrompt(summary, candidates),
+    schema,
+  });
+}
+
+async function tryExternalUpdateDecision(
+  summary: string,
+  candidates: UpdateOnCaptureCandidate[],
+  sessionID: string,
+  prompt?: { id?: string; providerId: string | null; modelId: string | null }
+): Promise<UpdateOnCaptureDecision> {
+  const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
+  const { buildMemoryProviderConfig } = await import("./ai/provider-config.js");
+
+  const providerConfig = buildMemoryProviderConfig(CONFIG);
+  const provider = AIProviderFactory.createProvider(CONFIG.memoryProvider, providerConfig);
+  const toolSchema = {
+    type: "function" as const,
+    function: {
+      name: "decide_memory_write",
+      description: "Decide how to store a new memory relative to similar existing ones",
+      parameters: {
+        type: "object",
+        properties: {
+          action: {
+            type: "string",
+            enum: ["add", "update", "supersede"],
+          },
+          targetId: { type: "string" },
+          content: { type: "string" },
+          reason: { type: "string" },
+        },
+        required: ["action"],
+      },
+    },
+  };
+
+  const captureSessionID = `update-on-capture-${prompt?.id ?? sessionID}-${randomUUID()}`;
+  const result = await provider.executeToolCall(
+    "You decide whether a new memory should add, update, or supersede similar existing memories.",
+    buildUpdateOnCaptureDecisionPrompt(summary, candidates),
+    toolSchema,
+    captureSessionID
+  );
+
+  if (!result.success || !result.data) {
+    throw new Error(result.error || "Failed to decide update-on-capture action");
+  }
+
+  const action = result.data.action;
+  if (action !== "add" && action !== "update" && action !== "supersede") {
+    return { action: "add" };
+  }
+  return {
+    action,
+    targetId: typeof result.data.targetId === "string" ? result.data.targetId : undefined,
+    content: typeof result.data.content === "string" ? result.data.content : undefined,
+    reason: typeof result.data.reason === "string" ? result.data.reason : undefined,
   };
 }
 

@@ -3,7 +3,7 @@ import { tursoShardManager } from "./turso/shard-manager.js";
 import { tursoVectorSearch } from "./turso/vector-search.js";
 import { tursoConnectionManager } from "./turso/connection-manager.js";
 import { ensureTursoReady } from "./turso/ready.js";
-import { formatTagsForEmbedding, parseSessionIdFromMetadata } from "./turso/vector-utils.js";
+import { formatTagsForEmbedding } from "./turso/vector-utils.js";
 import { extractScopeFromContainerTag, tryExtractScopeFromContainerTag } from "./memory-scope.js";
 import { log } from "./logger.js";
 import { CONFIG } from "../config.js";
@@ -592,104 +592,11 @@ export async function handleUpdateMemory(
   data: { content?: string; type?: MemoryType; tags?: string[] }
 ): Promise<ApiResponse<void>> {
   try {
-    if (!id) return { success: false, error: "id is required" };
-    await embeddingService.warmup();
-
-    // Find the existing memory first (read-only — no data modified yet)
-    const shards = await getAllMemoryShards();
-    let foundShard = null,
-      existingMemory = null;
-    for (const shard of shards) {
-      const db = await tursoConnectionManager.getConnection(shard.dbPath);
-      const memory = await tursoVectorSearch.getMemoryById(db, id);
-      if (memory) {
-        foundShard = shard;
-        existingMemory = memory;
-        break;
-      }
+    const { memoryClient } = await import("./client.js");
+    const result = await memoryClient.updateMemory(id, data);
+    if (!result.success) {
+      return { success: false, error: result.error || "Update failed" };
     }
-    if (!foundShard || !existingMemory) return { success: false, error: "Memory not found" };
-
-    // STEP 1: Generate new embeddings FIRST (safe — no data deleted yet)
-    const newContent = data.content || String(existingMemory.content);
-    const existingTags = existingMemory.tags ? String(existingMemory.tags) : "";
-    const tags =
-      data.tags || (existingTags ? existingTags.split(",").map((t: string) => t.trim()) : []);
-    const vector = await embeddingService.embedWithTimeout(newContent, { task: "document" });
-    let tagsVector: Float32Array | undefined = undefined;
-    if (tags.length > 0) {
-      tagsVector = await embeddingService.embedWithTimeout(formatTagsForEmbedding(tags), {
-        task: "document",
-      });
-    }
-
-    const db = await tursoConnectionManager.getConnection(foundShard.dbPath);
-    const updatedAt = Date.now();
-    const memoryType = data.type || (existingMemory.type ? String(existingMemory.type) : undefined);
-    const containerTag = String(existingMemory.container_tag);
-    const existingMeta = safeJSONParse(existingMemory.metadata) || {};
-
-    if (isMarkdownBackend()) {
-      writeMemoryMarkdownFile({
-        id,
-        content: newContent,
-        type: memoryType,
-        tags,
-        containerTag,
-        createdAt: Number(existingMemory.created_at),
-        updatedAt,
-        source: typeof existingMeta.source === "string" ? existingMeta.source : "api",
-        title: existingMemory.display_name ? String(existingMemory.display_name) : undefined,
-      });
-      existingMeta.markdownRelPath = pluginMemoryRelPath(id);
-    }
-
-    const metadataJson = JSON.stringify(existingMeta);
-
-    const isPinned = Number(existingMemory.is_pinned ?? 0) === 1 ? 1 : 0;
-    const deletedAt =
-      existingMemory.deleted_at == null || existingMemory.deleted_at === undefined
-        ? null
-        : Number(existingMemory.deleted_at);
-
-    await db.transaction("write", async (tx) => {
-      await tx.execute({ sql: `DELETE FROM memories WHERE id = ?`, args: [id] });
-      await tx.execute({
-        sql: `
-        INSERT INTO memories (
-          id, content, vector, tags_vector, container_tag, tags, type, created_at, updated_at,
-          metadata, session_id, display_name, user_name, user_email, project_path, project_name, git_repo_url,
-          is_pinned, deleted_at
-        ) VALUES (?, ?, vector32(?), ${tagsVector ? "vector32(?)" : "NULL"}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-        args: [
-          id,
-          newContent,
-          JSON.stringify(Array.from(vector)),
-          ...(tagsVector ? [JSON.stringify(Array.from(tagsVector))] : []),
-          containerTag,
-          tags.length > 0 ? tags.join(",") : null,
-          memoryType || null,
-          Number(existingMemory.created_at),
-          updatedAt,
-          metadataJson,
-          existingMemory.session_id
-            ? String(existingMemory.session_id)
-            : parseSessionIdFromMetadata(
-                existingMemory.metadata ? String(existingMemory.metadata) : null
-              ),
-          existingMemory.display_name ? String(existingMemory.display_name) : null,
-          existingMemory.user_name ? String(existingMemory.user_name) : null,
-          existingMemory.user_email ? String(existingMemory.user_email) : null,
-          existingMemory.project_path ? String(existingMemory.project_path) : null,
-          existingMemory.project_name ? String(existingMemory.project_name) : null,
-          existingMemory.git_repo_url ? String(existingMemory.git_repo_url) : null,
-          isPinned,
-          deletedAt,
-        ],
-      });
-    });
-
     return { success: true };
   } catch (error) {
     log("handleUpdateMemory: error", { error: String(error) });

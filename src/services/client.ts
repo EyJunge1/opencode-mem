@@ -3,7 +3,7 @@ import { tursoShardManager } from "./turso/shard-manager.js";
 import { tursoVectorSearch } from "./turso/vector-search.js";
 import { tursoConnectionManager } from "./turso/connection-manager.js";
 import { ensureTursoReady } from "./turso/ready.js";
-import { formatTagsForEmbedding } from "./turso/vector-utils.js";
+import { formatTagsForEmbedding, parseSessionIdFromMetadata } from "./turso/vector-utils.js";
 import {
   extractScopeFromContainerTag,
   resolveMemoryScope,
@@ -279,7 +279,128 @@ export class LocalMemoryClient {
     }
   }
 
-  async deleteMemory(memoryId: string) {
+  async updateMemory(
+    id: string,
+    data: {
+      content?: string;
+      type?: MemoryType;
+      tags?: string[];
+      metadataPatch?: Record<string, unknown>;
+    }
+  ) {
+    try {
+      if (!id) return { success: false as const, error: "id is required" };
+      await this.initialize();
+      await embeddingService.warmup();
+
+      const userShards = await tursoShardManager.getAllShards("user", "");
+      const projectShards = await tursoShardManager.getAllShards("project", "");
+      const shards = [...userShards, ...projectShards];
+
+      let foundShard = null;
+      let existingMemory = null;
+      for (const shard of shards) {
+        const db = await tursoConnectionManager.getConnection(shard.dbPath);
+        const memory = await tursoVectorSearch.getMemoryById(db, id);
+        if (memory) {
+          foundShard = shard;
+          existingMemory = memory;
+          break;
+        }
+      }
+      if (!foundShard || !existingMemory) {
+        return { success: false as const, error: "Memory not found" };
+      }
+
+      const newContent = data.content || String(existingMemory.content);
+      const existingTags = existingMemory.tags ? String(existingMemory.tags) : "";
+      const tags =
+        data.tags || (existingTags ? existingTags.split(",").map((t: string) => t.trim()) : []);
+      const vector = await embeddingService.embedWithTimeout(newContent, { task: "document" });
+      let tagsVector: Float32Array | undefined = undefined;
+      if (tags.length > 0) {
+        tagsVector = await embeddingService.embedWithTimeout(formatTagsForEmbedding(tags), {
+          task: "document",
+        });
+      }
+
+      const db = await tursoConnectionManager.getConnection(foundShard.dbPath);
+      const updatedAt = Date.now();
+      const memoryType =
+        data.type || (existingMemory.type ? String(existingMemory.type) : undefined);
+      const containerTag = String(existingMemory.container_tag);
+      const existingMeta = safeJSONParse(existingMemory.metadata) || {};
+      if (data.metadataPatch) Object.assign(existingMeta, data.metadataPatch);
+
+      if (isMarkdownBackend()) {
+        writeMemoryMarkdownFile({
+          id,
+          content: newContent,
+          type: memoryType,
+          tags,
+          containerTag,
+          createdAt: Number(existingMemory.created_at),
+          updatedAt,
+          source: typeof existingMeta.source === "string" ? existingMeta.source : "api",
+          title: existingMemory.display_name ? String(existingMemory.display_name) : undefined,
+        });
+        existingMeta.markdownRelPath = pluginMemoryRelPath(id);
+      }
+
+      const metadataJson = JSON.stringify(existingMeta);
+      const isPinned = Number(existingMemory.is_pinned ?? 0) === 1 ? 1 : 0;
+      const deletedAt =
+        existingMemory.deleted_at == null || existingMemory.deleted_at === undefined
+          ? null
+          : Number(existingMemory.deleted_at);
+
+      await db.transaction("write", async (tx) => {
+        await tx.execute({ sql: `DELETE FROM memories WHERE id = ?`, args: [id] });
+        await tx.execute({
+          sql: `
+        INSERT INTO memories (
+          id, content, vector, tags_vector, container_tag, tags, type, created_at, updated_at,
+          metadata, session_id, display_name, user_name, user_email, project_path, project_name, git_repo_url,
+          is_pinned, deleted_at
+        ) VALUES (?, ?, vector32(?), ${tagsVector ? "vector32(?)" : "NULL"}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+          args: [
+            id,
+            newContent,
+            JSON.stringify(Array.from(vector)),
+            ...(tagsVector ? [JSON.stringify(Array.from(tagsVector))] : []),
+            containerTag,
+            tags.length > 0 ? tags.join(",") : null,
+            memoryType || null,
+            Number(existingMemory.created_at),
+            updatedAt,
+            metadataJson,
+            existingMemory.session_id
+              ? String(existingMemory.session_id)
+              : parseSessionIdFromMetadata(
+                  existingMemory.metadata ? String(existingMemory.metadata) : null
+                ),
+            existingMemory.display_name ? String(existingMemory.display_name) : null,
+            existingMemory.user_name ? String(existingMemory.user_name) : null,
+            existingMemory.user_email ? String(existingMemory.user_email) : null,
+            existingMemory.project_path ? String(existingMemory.project_path) : null,
+            existingMemory.project_name ? String(existingMemory.project_name) : null,
+            existingMemory.git_repo_url ? String(existingMemory.git_repo_url) : null,
+            isPinned,
+            deletedAt,
+          ],
+        });
+      });
+
+      return { success: true as const };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log("updateMemory: error", { id, error: errorMessage });
+      return { success: false as const, error: errorMessage };
+    }
+  }
+
+  async deleteMemory(memoryId: string, metaPatch?: Record<string, unknown>) {
     try {
       await this.initialize();
 
@@ -293,7 +414,7 @@ export class LocalMemoryClient {
 
         if (memory) {
           // Soft-delete into trash (recoverable). Hard-purge happens via cleanup.
-          const ok = await tursoVectorSearch.softDeleteVector(db, memoryId);
+          const ok = await tursoVectorSearch.softDeleteVector(db, memoryId, metaPatch);
           return ok ? { success: true } : { success: false, error: "Memory not found" };
         }
       }
@@ -303,6 +424,40 @@ export class LocalMemoryClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
       log("deleteMemory: error", { memoryId, error: errorMessage });
       return { success: false, error: errorMessage };
+    }
+  }
+
+  async getMemoryById(memoryId: string) {
+    try {
+      await this.initialize();
+      const userShards = await tursoShardManager.getAllShards("user", "");
+      const projectShards = await tursoShardManager.getAllShards("project", "");
+      for (const shard of [...userShards, ...projectShards]) {
+        const db = await tursoConnectionManager.getConnection(shard.dbPath);
+        const memory = await tursoVectorSearch.getMemoryById(db, memoryId);
+        if (memory) {
+          return {
+            success: true as const,
+            memory: {
+              id: String(memory.id),
+              content: String(memory.content),
+              isPinned: Number(memory.is_pinned ?? 0) === 1,
+              containerTag: String(memory.container_tag),
+              type: memory.type ? String(memory.type) : undefined,
+              tags: memory.tags
+                ? String(memory.tags)
+                    .split(",")
+                    .map((t) => t.trim())
+                    .filter(Boolean)
+                : [],
+            },
+          };
+        }
+      }
+      return { success: false as const, error: "Memory not found" };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { success: false as const, error: errorMessage };
     }
   }
 

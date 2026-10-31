@@ -60,6 +60,7 @@ mock.module(${JSON.stringify(embeddingUrl)}, () => ({
 
 mock.module(${JSON.stringify(vectorUtilsUrl)}, () => ({
   formatTagsForEmbedding: (tags) => tags.join(" "),
+  parseSessionIdFromMetadata: () => undefined,
 }));
 
 mock.module(${JSON.stringify(shardManagerUrl)}, () => ({
