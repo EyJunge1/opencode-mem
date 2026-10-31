@@ -300,15 +300,15 @@ memories. Prefixes stay opt-in by default.
 
 ### Dreaming (optional memory consolidation)
 
-Opt-in background pass that finds **related** memories (via `dreaming.relatedThreshold`,
-default `0.75`, independent of `deduplicationSimilarityThreshold`), asks the configured
-`opencodeProvider` / `opencodeModel` to `merge`, `update`, `supersede`, `keep`, or `flag`
-contradictions, and soft-deletes superseded rows into recoverable trash. Pinned memories
-are never touched. Set `dreaming.crossProject: true` (or `memory.defaultScope:
-"all-projects"`) to group across project tags; user-scope stays separate. Configure under
-`dreaming` in `opencode-mem.jsonc` (`enabled` default `false`). The web UI exposes
-**Trash** (restore) and **Dream** (manual run). Soft-deleted rows are hard-purged after
-`dreaming.trashRetentionDays` during normal cleanup.
+Opt-in background pass that finds near-duplicate memories (same similarity threshold as
+deduplication), asks the configured `opencodeProvider` / `opencodeModel` to merge them,
+and soft-deletes superseded rows into recoverable trash. Pinned memories are never
+touched. Configure under `dreaming` in `opencode-mem.jsonc` (`enabled` default `false`).
+The web UI exposes **Trash** (restore) and **Dream** (manual run). Soft-deleted rows are
+hard-purged after `dreaming.trashRetentionDays` during normal cleanup.
+
+Deeper related-threshold dreaming (update/supersede/flag, cross-project) lands in the
+follow-up PR for #464.
 
 ### Choosing / configuring embeddings
 
