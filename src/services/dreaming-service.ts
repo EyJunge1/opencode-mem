@@ -13,7 +13,7 @@ import { parseExtractedVector, formatTagsForEmbedding } from "./turso/vector-uti
 import { getV2Client } from "./ai/opencode-provider.js";
 import { tryAcquireDreamingLock } from "./dreaming-lock.js";
 
-const MAX_GROUP_SIZE = 5;
+export const DREAMING_MAX_GROUP_SIZE = 5;
 
 export interface DreamingNearDupGroup {
   representative: {
@@ -32,6 +32,78 @@ export interface DreamingNearDupGroup {
     containerTag: string;
     createdAt: number;
   }>;
+}
+
+export type DreamingMemoryEntry = {
+  id: string;
+  content: string;
+  containerTag: string;
+  createdAt: number;
+  vector: Float32Array;
+};
+
+/**
+ * Pure grouping used by dreaming (and unit tests). Pinned rows must be
+ * excluded by the caller before invoking this.
+ */
+export function groupRelatedMemoryEntries(
+  entries: DreamingMemoryEntry[],
+  options: {
+    threshold: number;
+    allowCrossTag: boolean;
+    scope: "user" | "project";
+    maxGroupSize?: number;
+  }
+): DreamingNearDupGroup[] {
+  const threshold = options.threshold;
+  const allowCrossTag = options.allowCrossTag;
+  const maxGroupSize = options.maxGroupSize ?? DREAMING_MAX_GROUP_SIZE;
+  const groups: DreamingNearDupGroup[] = [];
+  const processedIds = new Set<string>();
+
+  for (let i = 0; i < entries.length; i++) {
+    const mem1 = entries[i]!;
+    if (processedIds.has(mem1.id)) continue;
+
+    const similarGroup: DreamingNearDupGroup = {
+      representative: {
+        id: mem1.id,
+        content: mem1.content,
+        containerTag: mem1.containerTag,
+        createdAt: mem1.createdAt,
+        isPinned: false,
+        scope: options.scope,
+      },
+      duplicates: [],
+    };
+
+    for (let j = i + 1; j < entries.length; j++) {
+      const mem2 = entries[j]!;
+      if (processedIds.has(mem2.id)) continue;
+      if (!allowCrossTag && mem1.containerTag !== mem2.containerTag) continue;
+
+      const similarity = cosineSimilarity(mem1.vector, mem2.vector);
+      if (similarity >= threshold && similarity < 1.0) {
+        similarGroup.duplicates.push({
+          id: mem2.id,
+          content: mem2.content,
+          similarity,
+          isPinned: false,
+          containerTag: mem2.containerTag,
+          createdAt: mem2.createdAt,
+        });
+        processedIds.add(mem2.id);
+        if (similarGroup.duplicates.length >= maxGroupSize - 1) break;
+      }
+    }
+
+    if (similarGroup.duplicates.length > 0) {
+      processedIds.add(mem1.id);
+      groups.push(similarGroup);
+    }
+  }
+
+  return groups;
 }
 
 export interface DreamingRunResult {
@@ -106,15 +178,7 @@ export async function findNearDuplicateGroupsForDreaming(): Promise<DreamingNear
     scope: "user" | "project",
     allowCrossTag: boolean
   ) => {
-    type Entry = {
-      id: string;
-      content: string;
-      containerTag: string;
-      createdAt: number;
-      vector: Float32Array;
-      shardDbPath: string;
-    };
-    const entries: Entry[] = [];
+    const entries: DreamingMemoryEntry[] = [];
 
     for (const shard of shards) {
       const db = await tursoConnectionManager.getConnection(shard.dbPath);
@@ -129,53 +193,18 @@ export async function findNearDuplicateGroupsForDreaming(): Promise<DreamingNear
           containerTag: String(mem.container_tag),
           createdAt: Number(mem.created_at),
           vector,
-          shardDbPath: shard.dbPath,
         });
       }
     }
 
-    const processedIds = new Set<string>();
-    for (let i = 0; i < entries.length; i++) {
-      const mem1 = entries[i]!;
-      if (processedIds.has(mem1.id)) continue;
-
-      const similarGroup: DreamingNearDupGroup = {
-        representative: {
-          id: mem1.id,
-          content: mem1.content,
-          containerTag: mem1.containerTag,
-          createdAt: mem1.createdAt,
-          isPinned: false,
-          scope,
-        },
-        duplicates: [],
-      };
-
-      for (let j = i + 1; j < entries.length; j++) {
-        const mem2 = entries[j]!;
-        if (processedIds.has(mem2.id)) continue;
-        if (!allowCrossTag && mem1.containerTag !== mem2.containerTag) continue;
-
-        const similarity = cosineSimilarity(mem1.vector, mem2.vector);
-        if (similarity >= threshold && similarity < 1.0) {
-          similarGroup.duplicates.push({
-            id: mem2.id,
-            content: mem2.content,
-            similarity,
-            isPinned: false,
-            containerTag: mem2.containerTag,
-            createdAt: mem2.createdAt,
-          });
-          processedIds.add(mem2.id);
-          if (similarGroup.duplicates.length >= MAX_GROUP_SIZE - 1) break;
-        }
-      }
-
-      if (similarGroup.duplicates.length > 0) {
-        processedIds.add(mem1.id);
-        groups.push(similarGroup);
-      }
-    }
+    groups.push(
+      ...groupRelatedMemoryEntries(entries, {
+        threshold,
+        allowCrossTag,
+        scope,
+        maxGroupSize: DREAMING_MAX_GROUP_SIZE,
+      })
+    );
   };
 
   // User-scope: always same container_tag only (never mix with projects).
@@ -357,11 +386,12 @@ export class DreamingService {
           }
 
           const metaKey = decision.action === "supersede" ? "supersededBy" : "mergedInto";
+          // Always preserve the keep row's own container_tag (critical for
+          // cross-project groups where keepId may not be the representative).
           const applied = await this.applyDreamingAction(
             keepId,
             decision.content.trim(),
             finalDrop,
-            group.representative.containerTag,
             metaKey,
             decision.action
           );
@@ -414,7 +444,6 @@ export class DreamingService {
     keepId: string,
     content: string,
     dropIds: string[],
-    containerTag: string,
     dropMetaKey: "mergedInto" | "supersededBy",
     action: "merge" | "update" | "supersede"
   ): Promise<boolean> {
@@ -468,7 +497,7 @@ export class DreamingService {
     const db = await tursoConnectionManager.getConnection(keepShard.dbPath);
     const updatedAt = Date.now();
     const isPinned = Number(keepRow.is_pinned ?? 0) === 1 ? 1 : 0;
-    const keepContainerTag = containerTag || String(keepRow.container_tag);
+    const keepContainerTag = String(keepRow.container_tag);
 
     await db.transaction("write", async (tx) => {
       await tx.execute({ sql: `DELETE FROM memories WHERE id = ?`, args: [keepId] });

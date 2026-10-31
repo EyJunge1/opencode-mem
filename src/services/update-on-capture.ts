@@ -71,7 +71,7 @@ export function filterUpdateOnCaptureCandidates(
   maxCandidates = CONFIG.updateOnCaptureMaxCandidates
 ): UpdateOnCaptureCandidate[] {
   return candidates
-    .filter((c) => !c.isPinned)
+    .filter((c) => Number(c.isPinned) !== 1 && c.isPinned !== true)
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, Math.max(1, maxCandidates));
 }
