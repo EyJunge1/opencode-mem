@@ -310,6 +310,9 @@ are never touched. Set `dreaming.crossProject: true` (or `memory.defaultScope:
 **Trash** (restore) and **Dream** (manual run). Soft-deleted rows are hard-purged after
 `dreaming.trashRetentionDays` during normal cleanup.
 
+Deeper related-threshold dreaming (update/supersede/flag, cross-project) lands in the
+follow-up PR for #464.
+
 ### Choosing / configuring embeddings
 
 Embeddings power similarity search for memories and the user profile. Configure them in the same file (`~/.config/opencode/opencode-mem.jsonc`). There is **no MLX backend** — local embeddings use `@huggingface/transformers` with ONNX, not Apple MLX.
