@@ -82,6 +82,16 @@ interface OpenCodeMemConfig {
   autoCaptureMaxContextBytes?: number;
   autoCaptureLanguage?: string;
   /**
+   * When true, auto-capture searches for similar memories before insert and
+   * may update or supersede an existing entry instead of always adding.
+   * Default false (opt-in).
+   */
+  updateOnCaptureEnabled?: boolean;
+  /** Cosine/hybrid floor for update-on-capture candidates. Default 0.75. */
+  updateOnCaptureSimilarityThreshold?: number;
+  /** Max similar memories shown to the decision LLM. Default 5. */
+  updateOnCaptureMaxCandidates?: number;
+  /**
    * Which auto-capture summary channel to try first when both opencode and
    * manual (memoryModel/memoryApiUrl) providers are configured.
    * Default "opencode-first". Use "external-first" for lower latency when the
@@ -239,6 +249,16 @@ interface OpenCodeMemConfig {
     intervalHours?: number;
     maxGroupsPerRun?: number;
     trashRetentionDays?: number;
+    /**
+     * Similarity floor for related (not only near-duplicate) dreaming groups.
+     * Default 0.75. Independent of deduplicationSimilarityThreshold.
+     */
+    relatedThreshold?: number;
+    /**
+     * Allow grouping across project container tags. Also effective when
+     * memory.defaultScope is "all-projects". User-scope stays separate.
+     */
+    crossProject?: boolean;
   };
 }
 
@@ -326,6 +346,9 @@ const DEFAULTS: Required<
   autoCaptureMaxRetries: 3,
   autoCaptureMaxContextBytes: 131072,
   autoCaptureProviderOrder: "opencode-first",
+  updateOnCaptureEnabled: false,
+  updateOnCaptureSimilarityThreshold: 0.75,
+  updateOnCaptureMaxCandidates: 5,
   aiSessionRetentionDays: 7,
   webServerEnabled: true,
   webServerPort: 4747,
@@ -389,6 +412,8 @@ const DEFAULTS: Required<
     intervalHours: 24,
     maxGroupsPerRun: 5,
     trashRetentionDays: 30,
+    relatedThreshold: 0.75,
+    crossProject: false,
   },
 };
 
@@ -600,6 +625,12 @@ const CONFIG_TEMPLATE = `{
   // Note: Ollama may not support tool calling. Use OpenAI, Anthropic, or Groq for best results.
   
   "autoCaptureEnabled": true,
+
+  // Opt-in: before saving a new auto-capture memory, search for similar entries
+  // and let the model choose add / update / supersede (old rows go to trash).
+  // "updateOnCaptureEnabled": true,
+  // "updateOnCaptureSimilarityThreshold": 0.75,
+  // "updateOnCaptureMaxCandidates": 5,
   
   // Provider type: "api-route" | "atlas-cloud" | "cheaper-inference" | "openai-chat" | "openai-responses" | "anthropic" | "minimax" | "orcarouter" | "runcrate"
   // Note: "openai-chat" is a generic OpenAI API-compatible mode.
@@ -890,13 +921,18 @@ const CONFIG_TEMPLATE = `{
     // "injectionMarkers": ["<my-plugin-banner>"]
   },
 
-  // Opt-in background consolidation: merge near-duplicate memories via the
-  // configured LLM and soft-delete superseded rows into trash (recoverable).
+  // Opt-in background consolidation: merge/update/supersede related memories
+  // via the configured LLM and soft-delete superseded rows into trash.
   "dreaming": {
     "enabled": false,
     "intervalHours": 24,
     "maxGroupsPerRun": 5,
-    "trashRetentionDays": 30
+    "trashRetentionDays": 30,
+    // Related (not only near-duplicate) grouping floor; independent of
+    // deduplicationSimilarityThreshold (default 0.9).
+    "relatedThreshold": 0.75,
+    // Also effective when memory.defaultScope is "all-projects".
+    "crossProject": false
   }
 }
 `;
@@ -1158,6 +1194,26 @@ export function normalizeDreamingTrashRetentionDays(value: unknown): number {
   return value;
 }
 
+export function normalizeSimilarityUnitInterval(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+export function normalizeUpdateOnCaptureMaxCandidates(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return 5;
+  }
+  return Math.max(1, Math.min(20, Math.trunc(value)));
+}
+
+export function normalizeDreamingRelatedThreshold(value: unknown): number {
+  return normalizeSimilarityUnitInterval(value, 0.75);
+}
+
 /**
  * User-supplied markers extend the built-in set rather than replacing it, so
  * adding one marker cannot silently disable protection against all the others.
@@ -1288,6 +1344,14 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
     autoCaptureProviderOrder: normalizeAutoCaptureProviderOrder(
       fileConfig.autoCaptureProviderOrder
     ),
+    updateOnCaptureEnabled: fileConfig.updateOnCaptureEnabled ?? DEFAULTS.updateOnCaptureEnabled,
+    updateOnCaptureSimilarityThreshold: normalizeSimilarityUnitInterval(
+      fileConfig.updateOnCaptureSimilarityThreshold,
+      DEFAULTS.updateOnCaptureSimilarityThreshold
+    ),
+    updateOnCaptureMaxCandidates: normalizeUpdateOnCaptureMaxCandidates(
+      fileConfig.updateOnCaptureMaxCandidates
+    ),
     memoryProvider,
     memoryModel: fileConfig.memoryModel,
     memoryApiUrl: fileConfig.memoryApiUrl,
@@ -1416,6 +1480,8 @@ function buildConfig(fileConfig: OpenCodeMemConfig) {
       trashRetentionDays: normalizeDreamingTrashRetentionDays(
         fileConfig.dreaming?.trashRetentionDays
       ),
+      relatedThreshold: normalizeDreamingRelatedThreshold(fileConfig.dreaming?.relatedThreshold),
+      crossProject: fileConfig.dreaming?.crossProject ?? DEFAULTS.dreaming.crossProject,
     },
   };
 }

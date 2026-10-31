@@ -118,6 +118,14 @@ describe("config", () => {
       expect(CONFIG.dreaming.intervalHours).toBe(24);
       expect(CONFIG.dreaming.maxGroupsPerRun).toBe(5);
       expect(CONFIG.dreaming.trashRetentionDays).toBe(30);
+      expect(CONFIG.dreaming.relatedThreshold).toBe(0.75);
+      expect(CONFIG.dreaming.crossProject).toBe(false);
+    });
+
+    it("should default update-on-capture to disabled", () => {
+      expect(CONFIG.updateOnCaptureEnabled).toBe(false);
+      expect(CONFIG.updateOnCaptureSimilarityThreshold).toBe(0.75);
+      expect(CONFIG.updateOnCaptureMaxCandidates).toBe(5);
     });
 
     it("should have boolean toggle settings", () => {

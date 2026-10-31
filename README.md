@@ -279,6 +279,25 @@ memories do not consume slots that could hold eligible memories. Setting
 `chatMessage.maxMemories` to `0` disables project-memory injection while still allowing
 the user profile to be injected when enabled.
 
+### Update-on-capture (optional)
+
+Opt-in path that keeps memories current as facts change. When `updateOnCaptureEnabled` is
+`true`, auto-capture embeds the new summary, searches for similar memories above
+`updateOnCaptureSimilarityThreshold` (default `0.75`), and asks the capture model to
+choose `add`, `update` (rewrite in place), or `supersede` (save new + soft-delete old into
+trash). Pinned memories are skipped. Default is off so existing installs keep add-only
+behavior.
+
+```jsonc
+"updateOnCaptureEnabled": true,
+"updateOnCaptureSimilarityThreshold": 0.75,
+"updateOnCaptureMaxCandidates": 5,
+```
+
+Tip: with `Xenova/nomic-embed-text-v1`, enabling `embeddingUseTaskPrefixes: true` (and
+optionally lowering recall `similarityThreshold`) often improves match quality for longer
+memories. Prefixes stay opt-in by default.
+
 ### Dreaming (optional memory consolidation)
 
 Opt-in background pass that finds near-duplicate memories (same similarity threshold as
@@ -287,6 +306,9 @@ and soft-deletes superseded rows into recoverable trash. Pinned memories are nev
 touched. Configure under `dreaming` in `opencode-mem.jsonc` (`enabled` default `false`).
 The web UI exposes **Trash** (restore) and **Dream** (manual run). Soft-deleted rows are
 hard-purged after `dreaming.trashRetentionDays` during normal cleanup.
+
+Deeper related-threshold dreaming (update/supersede/flag, cross-project) lands in the
+follow-up PR for #464.
 
 ### Choosing / configuring embeddings
 

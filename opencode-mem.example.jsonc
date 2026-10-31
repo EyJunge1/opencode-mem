@@ -155,13 +155,16 @@
     // "injectionMarkers": ["<my-plugin-banner>"],
   },
 
-  // Opt-in background consolidation ("dreaming"): merge near-duplicates via LLM
-  // and soft-delete superseded memories into recoverable trash.
+  // Opt-in background consolidation ("dreaming"): merge/update/supersede related
+  // memories via LLM and soft-delete superseded rows into recoverable trash.
   "dreaming": {
     "enabled": false,
     "intervalHours": 24,
     "maxGroupsPerRun": 5,
     "trashRetentionDays": 30,
+    "relatedThreshold": 0.75,
+    // Also effective when memory.defaultScope is "all-projects".
+    "crossProject": false,
   },
 
   // ============================================
@@ -204,6 +207,12 @@
   // Note: Ollama may not support tool calling. Use OpenAI, Anthropic, or Groq for best results.
 
   "autoCaptureEnabled": true,
+
+  // Opt-in: before saving a new auto-capture memory, search for similar entries
+  // and let the model choose add / update / supersede (old rows go to trash).
+  // "updateOnCaptureEnabled": true,
+  // "updateOnCaptureSimilarityThreshold": 0.75,
+  // "updateOnCaptureMaxCandidates": 5,
 
   // When both opencodeProvider and manual memoryModel/memoryApiUrl are set, which
   // channel to try first for auto-capture summaries. Default "opencode-first".
