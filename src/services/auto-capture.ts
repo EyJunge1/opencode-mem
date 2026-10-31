@@ -213,11 +213,27 @@ async function capturePrompt(
           });
 
           if (CONFIG.showAutoCaptureToasts) {
+            const action = result.action || "add";
+            const toastByAction: Record<string, { title: string; message: string }> = {
+              add: {
+                title: "Memory Captured",
+                message: "Project memory saved from conversation",
+              },
+              update: {
+                title: "Memory Updated",
+                message: "Similar existing memory was rewritten with current facts",
+              },
+              supersede: {
+                title: "Memory Superseded",
+                message: "New memory saved; outdated entry moved to trash",
+              },
+            };
+            const toast = toastByAction[action] ?? toastByAction.add!;
             await ctx.client?.tui
               .showToast({
                 body: {
-                  title: "Memory Captured",
-                  message: "Project memory saved from conversation",
+                  title: toast.title,
+                  message: toast.message,
                   variant: "success",
                   duration: 3000,
                 },
@@ -752,9 +768,14 @@ async function persistAutoCaptureMemory(
   }
 
   const scope = CONFIG.memory.defaultScope === "all-projects" ? "all-projects" : "project";
+  // Over-fetch before pin-filtering so pinned hits don't starve the candidate list.
+  const searchLimit = Math.min(
+    20,
+    Math.max(CONFIG.updateOnCaptureMaxCandidates * 3, CONFIG.updateOnCaptureMaxCandidates + 5)
+  );
   const search = await memoryClient.searchMemories(summaryWithTags, containerTag, scope, {
     similarityThreshold: CONFIG.updateOnCaptureSimilarityThreshold,
-    limit: CONFIG.updateOnCaptureMaxCandidates,
+    limit: searchLimit,
   });
 
   const rawCandidates: UpdateOnCaptureCandidate[] = (search.success ? search.results : []).map(

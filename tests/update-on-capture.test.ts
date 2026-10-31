@@ -119,7 +119,37 @@ describe("applyUpdateOnCaptureDecision", () => {
     );
     expect(result).toEqual({ success: true, id: "mem_new", action: "supersede" });
     expect(client.calls).toContain("add");
-    expect(client.calls.some((c) => c.startsWith("delete:mem_old:"))).toBe(true);
+    expect(client.calls.some((c) => c.includes("supersededBy"))).toBe(true);
+  });
+
+  it("rolls back new memory when supersede soft-delete fails", async () => {
+    const calls: string[] = [];
+    const client: UpdateOnCaptureMemoryClient & { calls: string[] } = {
+      calls,
+      addMemory: async () => {
+        calls.push("add");
+        return { success: true, id: "mem_new" };
+      },
+      updateMemory: async () => ({ success: true }),
+      getMemoryById: async (id) => ({
+        success: true,
+        memory: { id, content: "old", isPinned: false },
+      }),
+      deleteMemory: async (id, patch) => {
+        calls.push(`delete:${id}:${JSON.stringify(patch)}`);
+        if (id === "mem_old") return { success: false, error: "busy" };
+        return { success: true };
+      },
+    };
+    const result = await applyUpdateOnCaptureDecision(
+      client,
+      { action: "supersede", targetId: "mem_old" },
+      baseInput,
+      new Set(["mem_old"])
+    );
+    expect(result.success).toBe(false);
+    expect(result.action).toBe("supersede");
+    expect(calls.some((c) => c.includes("supersededRollback"))).toBe(true);
   });
 
   it("falls back to add for invalid target", async () => {

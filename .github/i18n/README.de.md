@@ -279,14 +279,36 @@ Memories verfügbar wären. Mit `chatMessage.maxMemories` auf `0` wird die Injek
 von Projekt-Memories deaktiviert; das Nutzerprofil kann weiterhin injiziert werden,
 wenn es aktiviert ist.
 
+### Update-on-capture (optional)
+
+Opt-in-Pfad, der Memories aktuell hält, wenn sich Fakten ändern. Bei
+`updateOnCaptureEnabled: true` bettet Auto-Capture die neue Summary ein, sucht ähnliche
+Memories oberhalb von `updateOnCaptureSimilarityThreshold` (Standard `0.75`) und lässt das
+Capture-Modell zwischen `add`, `update` (in-place überschreiben) und `supersede` (neu
+speichern + alt soft-deleten in den Papierkorb) wählen. Gepinnte Memories werden übersprungen.
+Standard ist aus, damit bestehende Installationen add-only bleiben.
+
+```jsonc
+"updateOnCaptureEnabled": true,
+"updateOnCaptureSimilarityThreshold": 0.75,
+"updateOnCaptureMaxCandidates": 5,
+```
+
+Tipp: Bei `Xenova/nomic-embed-text-v1` verbessert `embeddingUseTaskPrefixes: true` (und ggf.
+ein niedrigeres Recall-`similarityThreshold`) oft die Trefferqualität bei längeren Memories.
+Prefixes bleiben standardmäßig opt-in.
+
 ### Dreaming (optionale Memory-Konsolidierung)
 
-Opt-in-Hintergrundlauf, der Near-Duplikate findet (gleicher Similarity-Schwellwert wie
-Deduplizierung), sie über `opencodeProvider`/`opencodeModel` zusammenführt und ersetzte
-Einträge soft-deleten (wiederherstellbarer Papierkorb). Gepinnte Memories bleiben unberührt.
-Konfiguration unter `dreaming` in `opencode-mem.jsonc` (`enabled` Standard `false`). Die
-Web-UI bietet **Papierkorb** und **Dreaming**. Soft-gelöschte Zeilen werden nach
-`dreaming.trashRetentionDays` beim Cleanup hart bereinigt.
+Opt-in-Hintergrundlauf, der **verwandte** Memories findet (über `dreaming.relatedThreshold`,
+Standard `0.75`, unabhängig von `deduplicationSimilarityThreshold`), sie über
+`opencodeProvider`/`opencodeModel` mit `merge` / `update` / `supersede` / `keep` / `flag`
+(Widersprüche) konsolidiert und ersetzte Einträge soft-deleten (wiederherstellbarer
+Papierkorb). Gepinnte Memories bleiben unberührt. Mit `dreaming.crossProject: true` (oder
+`memory.defaultScope: "all-projects"`) gruppiert Dreaming über Projekt-Tags; User-Scope
+bleibt getrennt. Konfiguration unter `dreaming` in `opencode-mem.jsonc` (`enabled` Standard
+`false`). Die Web-UI bietet **Papierkorb** und **Dreaming**. Soft-gelöschte Zeilen werden
+nach `dreaming.trashRetentionDays` beim Cleanup hart bereinigt.
 
 ### Embeddings wählen / konfigurieren
 

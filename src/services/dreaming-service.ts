@@ -13,6 +13,8 @@ import { parseExtractedVector, formatTagsForEmbedding } from "./turso/vector-uti
 import { getV2Client } from "./ai/opencode-provider.js";
 import { tryAcquireDreamingLock } from "./dreaming-lock.js";
 
+export const DREAMING_MAX_GROUP_SIZE = 5;
+
 export interface DreamingNearDupGroup {
   representative: {
     id: string;
@@ -20,19 +22,95 @@ export interface DreamingNearDupGroup {
     containerTag: string;
     createdAt: number;
     isPinned: boolean;
+    scope: "user" | "project";
   };
   duplicates: Array<{
     id: string;
     content: string;
     similarity: number;
     isPinned: boolean;
+    containerTag: string;
+    createdAt: number;
   }>;
+}
+
+export type DreamingMemoryEntry = {
+  id: string;
+  content: string;
+  containerTag: string;
+  createdAt: number;
+  vector: Float32Array;
+};
+
+/**
+ * Pure grouping used by dreaming (and unit tests). Pinned rows must be
+ * excluded by the caller before invoking this.
+ */
+export function groupRelatedMemoryEntries(
+  entries: DreamingMemoryEntry[],
+  options: {
+    threshold: number;
+    allowCrossTag: boolean;
+    scope: "user" | "project";
+    maxGroupSize?: number;
+  }
+): DreamingNearDupGroup[] {
+  const threshold = options.threshold;
+  const allowCrossTag = options.allowCrossTag;
+  const maxGroupSize = options.maxGroupSize ?? DREAMING_MAX_GROUP_SIZE;
+  const groups: DreamingNearDupGroup[] = [];
+  const processedIds = new Set<string>();
+
+  for (let i = 0; i < entries.length; i++) {
+    const mem1 = entries[i]!;
+    if (processedIds.has(mem1.id)) continue;
+
+    const similarGroup: DreamingNearDupGroup = {
+      representative: {
+        id: mem1.id,
+        content: mem1.content,
+        containerTag: mem1.containerTag,
+        createdAt: mem1.createdAt,
+        isPinned: false,
+        scope: options.scope,
+      },
+      duplicates: [],
+    };
+
+    for (let j = i + 1; j < entries.length; j++) {
+      const mem2 = entries[j]!;
+      if (processedIds.has(mem2.id)) continue;
+      if (!allowCrossTag && mem1.containerTag !== mem2.containerTag) continue;
+
+      const similarity = cosineSimilarity(mem1.vector, mem2.vector);
+      if (similarity >= threshold && similarity < 1.0) {
+        similarGroup.duplicates.push({
+          id: mem2.id,
+          content: mem2.content,
+          similarity,
+          isPinned: false,
+          containerTag: mem2.containerTag,
+          createdAt: mem2.createdAt,
+        });
+        processedIds.add(mem2.id);
+        if (similarGroup.duplicates.length >= maxGroupSize - 1) break;
+      }
+    }
+
+    if (similarGroup.duplicates.length > 0) {
+      processedIds.add(mem1.id);
+      groups.push(similarGroup);
+    }
+  }
+
+  return groups;
 }
 
 export interface DreamingRunResult {
   groupsConsidered: number;
   groupsMerged: number;
   groupsSkipped: number;
+  groupsFlagged: number;
   memoriesSoftDeleted: number;
 }
 
@@ -40,8 +118,8 @@ interface DreamingState {
   lastRunAt: number;
 }
 
-const mergeSchema = z.object({
-  action: z.enum(["merge", "skip"]),
+const dreamingActionSchema = z.object({
+  action: z.enum(["merge", "update", "supersede", "keep", "flag"]),
   content: z.string().optional(),
   keepId: z.string().optional(),
   dropIds: z.array(z.string()).optional(),
@@ -69,79 +147,103 @@ function writeState(state: DreamingState): void {
   writeFileSync(statePath(), JSON.stringify(state), "utf-8");
 }
 
+export function isDreamingCrossProjectEnabled(): boolean {
+  return Boolean(CONFIG.dreaming.crossProject) || CONFIG.memory.defaultScope === "all-projects";
+}
+
+type MemoryRow = {
+  id: unknown;
+  content: unknown;
+  container_tag: unknown;
+  created_at: unknown;
+  is_pinned?: unknown;
+  vector_json?: unknown;
+};
+
+/**
+ * Group related memories for dreaming. Uses dreaming.relatedThreshold
+ * (not deduplicationSimilarityThreshold). Cross-project grouping is opt-in /
+ * follows memory.defaultScope; user-scope never mixes with project-scope.
+ */
 export async function findNearDuplicateGroupsForDreaming(): Promise<DreamingNearDupGroup[]> {
   await ensureTursoReady();
   const userShards = await tursoShardManager.getAllShards("user", "");
   const projectShards = await tursoShardManager.getAllShards("project", "");
-  const allShards = [...userShards, ...projectShards];
+  const threshold = CONFIG.dreaming.relatedThreshold;
+  const crossProject = isDreamingCrossProjectEnabled();
   const groups: DreamingNearDupGroup[] = [];
-  const threshold = CONFIG.deduplicationSimilarityThreshold;
 
-  for (const shard of allShards) {
-    const db = await tursoConnectionManager.getConnection(shard.dbPath);
-    const memories = await tursoVectorSearch.getAllMemoriesWithExtractedVectors(db);
-    const processedIds = new Set<string>();
+  const collectFromShardPool = async (
+    shards: Awaited<ReturnType<typeof tursoShardManager.getAllShards>>,
+    scope: "user" | "project",
+    allowCrossTag: boolean
+  ) => {
+    const entries: DreamingMemoryEntry[] = [];
 
-    for (let i = 0; i < memories.length; i++) {
-      const mem1 = memories[i]!;
-      if (Number(mem1.is_pinned ?? 0) === 1) continue;
-      const vector1 = parseExtractedVector(mem1.vector_json);
-      if (!vector1 || processedIds.has(String(mem1.id))) continue;
-
-      const similarGroup: DreamingNearDupGroup = {
-        representative: {
-          id: String(mem1.id),
-          content: String(mem1.content),
-          containerTag: String(mem1.container_tag),
-          createdAt: Number(mem1.created_at),
-          isPinned: false,
-        },
-        duplicates: [],
-      };
-
-      for (let j = i + 1; j < memories.length; j++) {
-        const mem2 = memories[j]!;
-        if (Number(mem2.is_pinned ?? 0) === 1) continue;
-        const vector2 = parseExtractedVector(mem2.vector_json);
-        if (!vector2 || processedIds.has(String(mem2.id))) continue;
-        if (mem1.container_tag !== mem2.container_tag) continue;
-
-        const similarity = cosineSimilarity(vector1, vector2);
-        if (similarity >= threshold && similarity < 1.0) {
-          similarGroup.duplicates.push({
-            id: String(mem2.id),
-            content: String(mem2.content),
-            similarity,
-            isPinned: false,
-          });
-          processedIds.add(String(mem2.id));
-        }
-      }
-
-      if (similarGroup.duplicates.length > 0) {
-        processedIds.add(String(mem1.id));
-        groups.push(similarGroup);
+    for (const shard of shards) {
+      const db = await tursoConnectionManager.getConnection(shard.dbPath);
+      const memories = await tursoVectorSearch.getAllMemoriesWithExtractedVectors(db);
+      for (const mem of memories as MemoryRow[]) {
+        if (Number(mem.is_pinned ?? 0) === 1) continue;
+        const vector = parseExtractedVector(mem.vector_json);
+        if (!vector) continue;
+        entries.push({
+          id: String(mem.id),
+          content: String(mem.content),
+          containerTag: String(mem.container_tag),
+          createdAt: Number(mem.created_at),
+          vector,
+        });
       }
     }
-  }
+
+    groups.push(
+      ...groupRelatedMemoryEntries(entries, {
+        threshold,
+        allowCrossTag,
+        scope,
+        maxGroupSize: DREAMING_MAX_GROUP_SIZE,
+      })
+    );
+  };
+
+  // User-scope: always same container_tag only (never mix with projects).
+  await collectFromShardPool(userShards, "user", false);
+  // Project-scope: cross-tag when crossProject / defaultScope all-projects.
+  await collectFromShardPool(projectShards, "project", crossProject);
 
   return groups;
 }
 
-function buildMergePrompt(group: DreamingNearDupGroup): string {
+export function buildMergePrompt(group: DreamingNearDupGroup): string {
   const items = [
-    { id: group.representative.id, content: group.representative.content },
-    ...group.duplicates.map((d) => ({ id: d.id, content: d.content })),
+    {
+      id: group.representative.id,
+      content: group.representative.content,
+      createdAt: group.representative.createdAt,
+      containerTag: group.representative.containerTag,
+    },
+    ...group.duplicates.map((d) => ({
+      id: d.id,
+      content: d.content,
+      createdAt: d.createdAt,
+      containerTag: d.containerTag,
+      similarity: Number(d.similarity.toFixed(3)),
+    })),
   ];
-  return `You consolidate near-duplicate project memories into one clearer entry.
+  return `You consolidate related project/user memories. They may be near-duplicates OR newer facts that replace older ones.
 
 Rules:
-- Prefer action "merge" only when the memories clearly describe the same fact/fix/gotcha.
-- The merged content MUST retain important details, including why something failed when present.
+- "merge": same fact worded differently → one clearer entry (keepId + dropIds + content).
+- "update": rewrite keepId with the current correct content; soft-delete dropIds.
+- "supersede": newer fact replaces older → keep newest correct content on keepId (or prefer newest id), soft-delete outdated dropIds.
+- "keep": related but all still valid / unsafe to change — no mutation.
+- "flag": clear contradiction you cannot resolve — no mutation; we mark metadata.
+- Prefer the newest correct fact when one clearly supersedes another.
+- Merged/updated content MUST retain important details, including why something failed when present.
 - Do NOT invent facts. Do NOT drop unique constraints, commands, paths, or error messages.
-- keepId must be one of the input ids (prefer the most complete/recent).
-- dropIds must list every other id when merging.
-- Use action "skip" when memories are related but not safe to merge.
+- keepId must be one of the input ids. dropIds lists every other id when merging/updating/superseding.
+- Use "keep" when memories are only loosely related.
 
 Return JSON matching the schema.
 
@@ -159,6 +261,9 @@ export class DreamingService {
       intervalHours: CONFIG.dreaming.intervalHours,
       maxGroupsPerRun: CONFIG.dreaming.maxGroupsPerRun,
       trashRetentionDays: CONFIG.dreaming.trashRetentionDays,
+      relatedThreshold: CONFIG.dreaming.relatedThreshold,
+      crossProject: CONFIG.dreaming.crossProject,
+      crossProjectEffective: isDreamingCrossProjectEnabled(),
       isRunning: this.isRunning,
       lastRunAt: state.lastRunAt || null,
     };
@@ -201,6 +306,7 @@ export class DreamingService {
       groupsConsidered: 0,
       groupsMerged: 0,
       groupsSkipped: 0,
+      groupsFlagged: 0,
       memoriesSoftDeleted: 0,
     };
 
@@ -233,19 +339,37 @@ export class DreamingService {
             systemPrompt:
               "You are a careful memory consolidation assistant. Return only structured JSON.",
             userPrompt: buildMergePrompt(group),
-            schema: mergeSchema,
+            schema: dreamingActionSchema,
             directory,
           });
-
-          if (decision.action !== "merge" || !decision.content?.trim()) {
-            result.groupsSkipped++;
-            continue;
-          }
 
           const memberIds = new Set([
             group.representative.id,
             ...group.duplicates.map((d) => d.id),
           ]);
+
+          if (decision.action === "keep") {
+            result.groupsSkipped++;
+            continue;
+          }
+
+          if (decision.action === "flag") {
+            const flagged = await this.applyFlag(group, decision.reason);
+            if (flagged) result.groupsFlagged++;
+            else result.groupsSkipped++;
+            continue;
+          }
+
+          if (
+            (decision.action !== "merge" &&
+              decision.action !== "update" &&
+              decision.action !== "supersede") ||
+            !decision.content?.trim()
+          ) {
+            result.groupsSkipped++;
+            continue;
+          }
+
           const keepId =
             decision.keepId && memberIds.has(decision.keepId)
               ? decision.keepId
@@ -261,15 +385,19 @@ export class DreamingService {
             continue;
           }
 
-          const applied = await this.applyMerge(
+          const metaKey = decision.action === "supersede" ? "supersededBy" : "mergedInto";
+          // Always preserve the keep row's own container_tag (critical for
+          // cross-project groups where keepId may not be the representative).
+          const outcome = await this.applyDreamingAction(
             keepId,
             decision.content.trim(),
             finalDrop,
-            group.representative.containerTag
+            metaKey,
+            decision.action
           );
-          if (applied) {
+          if (outcome.applied) {
             result.groupsMerged++;
-            result.memoriesSoftDeleted += finalDrop.length;
+            result.memoriesSoftDeleted += outcome.softDeleted;
           } else {
             result.groupsSkipped++;
           }
@@ -288,12 +416,37 @@ export class DreamingService {
     }
   }
 
-  private async applyMerge(
+  private async applyFlag(group: DreamingNearDupGroup, reason?: string): Promise<boolean> {
+    const ids = [group.representative.id, ...group.duplicates.map((d) => d.id)];
+    const shards = [
+      ...(await tursoShardManager.getAllShards("user", "")),
+      ...(await tursoShardManager.getAllShards("project", "")),
+    ];
+    let any = false;
+    for (const id of ids) {
+      for (const shard of shards) {
+        const db = await tursoConnectionManager.getConnection(shard.dbPath);
+        const row = await tursoVectorSearch.getMemoryById(db, id);
+        if (!row) continue;
+        const ok = await tursoVectorSearch.patchMemoryMetadata(db, id, {
+          contradictionWith: ids.filter((other) => other !== id),
+          contradictionReason: reason || "Unresolved contradiction during dreaming",
+          contradictionFlaggedAt: Date.now(),
+        });
+        if (ok) any = true;
+        break;
+      }
+    }
+    return any;
+  }
+
+  private async applyDreamingAction(
     keepId: string,
     content: string,
     dropIds: string[],
-    containerTag: string
-  ): Promise<boolean> {
+    dropMetaKey: "mergedInto" | "supersededBy",
+    action: "merge" | "update" | "supersede"
+  ): Promise<{ applied: boolean; softDeleted: number }> {
     const shards = [
       ...(await tursoShardManager.getAllShards("user", "")),
       ...(await tursoShardManager.getAllShards("project", "")),
@@ -310,8 +463,32 @@ export class DreamingService {
         break;
       }
     }
-    if (!keepShard || !keepRow) return false;
-    if (Number(keepRow.is_pinned ?? 0) === 1) return false;
+    if (!keepShard || !keepRow) return { applied: false, softDeleted: 0 };
+    if (Number(keepRow.is_pinned ?? 0) === 1) return { applied: false, softDeleted: 0 };
+
+    // Soft-delete drops first so we never rewrite keep if nothing can be retired.
+    let softDeleted = 0;
+    for (const dropId of dropIds) {
+      for (const shard of shards) {
+        const dropDb = await tursoConnectionManager.getConnection(shard.dbPath);
+        const dropRow = await tursoVectorSearch.getMemoryById(dropDb, dropId);
+        if (!dropRow) continue;
+        if (Number(dropRow.is_pinned ?? 0) === 1) continue;
+        const ok = await tursoVectorSearch.softDeleteVector(dropDb, dropId, {
+          [dropMetaKey]: keepId,
+        });
+        if (ok) softDeleted++;
+        break;
+      }
+    }
+    if (softDeleted === 0) {
+      log("dreaming: skipped keep rewrite (no drops soft-deleted)", {
+        keepId,
+        dropIds,
+        action,
+      });
+      return { applied: false, softDeleted: 0 };
+    }
 
     await embeddingService.warmup();
     const vector = await embeddingService.embedWithTimeout(content, { task: "document" });
@@ -339,10 +516,12 @@ export class DreamingService {
     }
     meta.mergedFrom = mergedFrom;
     meta.source = typeof meta.source === "string" ? meta.source : "dreaming";
+    meta.dreamingAction = action;
 
     const db = await tursoConnectionManager.getConnection(keepShard.dbPath);
     const updatedAt = Date.now();
     const isPinned = Number(keepRow.is_pinned ?? 0) === 1 ? 1 : 0;
+    const keepContainerTag = String(keepRow.container_tag);
 
     await db.transaction("write", async (tx) => {
       await tx.execute({ sql: `DELETE FROM memories WHERE id = ?`, args: [keepId] });
@@ -359,7 +538,7 @@ export class DreamingService {
           content,
           JSON.stringify(Array.from(vector)),
           ...(tagsVector ? [JSON.stringify(Array.from(tagsVector))] : []),
-          containerTag || String(keepRow.container_tag),
+          keepContainerTag,
           tags.length > 0 ? tags.join(",") : null,
           keepRow.type ? String(keepRow.type) : null,
           Number(keepRow.created_at),
@@ -377,18 +556,7 @@ export class DreamingService {
       });
     });
 
-    for (const dropId of dropIds) {
-      for (const shard of shards) {
-        const dropDb = await tursoConnectionManager.getConnection(shard.dbPath);
-        const dropRow = await tursoVectorSearch.getMemoryById(dropDb, dropId);
-        if (!dropRow) continue;
-        if (Number(dropRow.is_pinned ?? 0) === 1) continue;
-        await tursoVectorSearch.softDeleteVector(dropDb, dropId, { mergedInto: keepId });
-        break;
-      }
-    }
-
-    return true;
+    return { applied: true, softDeleted };
   }
 }
 

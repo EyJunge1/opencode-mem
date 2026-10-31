@@ -46,6 +46,7 @@ export function createMemoriesExplorer() {
       content: string;
       deletedAt: number;
       mergedInto?: string;
+      supersededBy?: string;
       projectName?: string;
       containerTag: string;
     }>

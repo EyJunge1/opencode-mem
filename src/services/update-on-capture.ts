@@ -71,7 +71,7 @@ export function filterUpdateOnCaptureCandidates(
   maxCandidates = CONFIG.updateOnCaptureMaxCandidates
 ): UpdateOnCaptureCandidate[] {
   return candidates
-    .filter((c) => !c.isPinned)
+    .filter((c) => Number(c.isPinned) !== 1 && c.isPinned !== true)
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, Math.max(1, maxCandidates));
 }
@@ -171,16 +171,23 @@ export async function applyUpdateOnCaptureDecision(
 
   // supersede
   const added = await client.addMemory(input.summary, input.containerTag, input.metadata as any);
-  if (!added.success) {
-    return { success: false, action: "supersede", error: added.error };
+  if (!added.success || !added.id) {
+    return { success: false, action: "supersede", error: added.error || "add failed" };
   }
   const deleted = await client.deleteMemory(targetId, { supersededBy: added.id });
   if (!deleted.success) {
-    log("update-on-capture: supersede soft-delete failed", {
+    log("update-on-capture: supersede soft-delete failed; rolling back new memory", {
       targetId,
       newId: added.id,
       error: deleted.error,
     });
+    // Keep store consistent: don't leave both old (active) and new (active).
+    await client.deleteMemory(added.id, { supersededRollback: true });
+    return {
+      success: false,
+      action: "supersede",
+      error: deleted.error || "failed to soft-delete superseded memory",
+    };
   }
   return { success: true, id: added.id, action: "supersede" };
 }

@@ -506,6 +506,7 @@ export async function handleListTrash(limit = 200): Promise<
       content: string;
       deletedAt: number;
       mergedInto?: string;
+      supersededBy?: string;
       projectName?: string;
       containerTag: string;
     }>
@@ -518,6 +519,7 @@ export async function handleListTrash(limit = 200): Promise<
       content: string;
       deletedAt: number;
       mergedInto?: string;
+      supersededBy?: string;
       projectName?: string;
       containerTag: string;
     }> = [];
@@ -531,6 +533,7 @@ export async function handleListTrash(limit = 200): Promise<
           content: String(row.content),
           deletedAt: Number(row.deleted_at),
           mergedInto: typeof meta.mergedInto === "string" ? meta.mergedInto : undefined,
+          supersededBy: typeof meta.supersededBy === "string" ? meta.supersededBy : undefined,
           projectName: row.project_name ? String(row.project_name) : undefined,
           containerTag: String(row.container_tag),
         });
@@ -554,10 +557,18 @@ export async function handleRestoreMemory(id: string): Promise<ApiResponse<{ res
       if (!memory || memory.deleted_at == null) continue;
       const ok = await tursoVectorSearch.restoreVector(db, id);
       if (!ok) return { success: false, error: "Failed to restore memory" };
-      // Clear merge pointer so the restored row stands alone again.
+      // Clear merge/supersede pointers so the restored row stands alone again.
       const meta = safeJSONParse(memory.metadata) || {};
+      let metaChanged = false;
       if (meta.mergedInto) {
         delete meta.mergedInto;
+        metaChanged = true;
+      }
+      if (meta.supersededBy) {
+        delete meta.supersededBy;
+        metaChanged = true;
+      }
+      if (metaChanged) {
         await db.run(`UPDATE memories SET metadata = ? WHERE id = ?`, [JSON.stringify(meta), id]);
       }
       return { success: true, data: { restored: true } };
