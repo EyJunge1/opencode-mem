@@ -7,6 +7,10 @@ import {
   prepareOnnxruntimeForTransformers,
 } from "./onnxruntime-resolve.js";
 import { createRuntimeRequire } from "./runtime-require.js";
+import {
+  getTransformersPackageSpecifier,
+  resolveTransformersCjsEntry,
+} from "./transformers-resolve.js";
 
 const requireFromHere = createRuntimeRequire(import.meta);
 
@@ -194,17 +198,10 @@ let _transformers: {
   env: HfTransformers["env"];
 } | null = null;
 
-function getTransformersPackageSpecifier(): string {
-  // Keep this non-literal so OpenCode/Bun plugin-loader bundling does not eagerly
-  // traverse @huggingface/transformers internals during plugin startup. The package
-  // is only needed for the local embedding backend, and should stay lazy.
-  return ["@huggingface", "transformers"].join("/");
-}
-
 async function ensureTransformersLoaded(): Promise<NonNullable<typeof _transformers>> {
   if (_transformers !== null) return _transformers;
   // Pin onnxruntime-node (+ common) to our direct 1.30.0 stack before transformers
-  // resolves them (#184 / #210 / #225). Load the CJS export so Module._resolveFilename
+  // resolves them (#184 / #210 / #225 / #463). Load the CJS export so Module._resolveFilename
   // shim applies — the ESM entry's static import bypasses it under OpenCode nested installs.
   //
   // Critical ordering for OpenCode's Bun --compile host (#210 follow-up):
@@ -213,17 +210,16 @@ async function ensureTransformersLoaded(): Promise<NonNullable<typeof _transform
   // `Cannot find module '@huggingface/transformers' from ''` even though the package
   // exists. Loading via the pre-resolved absolute path keeps the onnx pin shim active
   // for transformers' nested requires without needing a post-shim package resolve.
+  //
+  // #463: OpenCode nested npm/Bun cache layouts can make createRequire(packageName)
+  // fail even when the package is on disk — fall back to Bun.resolveSync + node_modules walk.
   const transformersSpecifier = getTransformersPackageSpecifier();
-  let transformersEntry: string;
-  try {
-    transformersEntry = requireFromHere.resolve(transformersSpecifier);
-  } catch (error) {
-    throw new Error(
-      `Cannot resolve ${transformersSpecifier} before installing the onnxruntime pin shim. ` +
-        `Original error: ${error instanceof Error ? error.message : String(error)}`,
-      { cause: error }
-    );
-  }
+  const meta = import.meta as ImportMeta & { path?: string; dirname?: string; dir?: string };
+  const transformersEntry = resolveTransformersCjsEntry({
+    requireFn: requireFromHere,
+    specifier: transformersSpecifier,
+    startPaths: [meta.url, meta.path, meta.dirname, meta.dir, process.cwd()],
+  });
 
   prepareOnnxruntimeForTransformers();
   const mod = requireFromHere(transformersEntry) as HfTransformers;
