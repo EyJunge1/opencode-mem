@@ -275,6 +275,22 @@ memory({ mode: "import", inputPath: "./memories.json" });
 不会占用原本可供符合条件的记忆使用的名额。将 `chatMessage.maxMemories` 设为 `0`
 会禁用项目记忆注入，但启用用户画像后仍可注入用户画像。
 
+### Update-on-capture（可选）
+
+可选路径，用于在事实变化时保持记忆最新。当 `updateOnCaptureEnabled: true` 时，自动捕获会嵌入新摘要，搜索高于 `updateOnCaptureSimilarityThreshold`（默认 `0.75`）的相似记忆，并由捕获模型选择 `add`、`update`（原地改写）或 `supersede`（保存新条目并将旧条目软删除到回收站）。已固定（pinned）的记忆会被跳过。默认关闭，以便现有安装保持仅新增行为。
+
+```jsonc
+"updateOnCaptureEnabled": true,
+"updateOnCaptureSimilarityThreshold": 0.75,
+"updateOnCaptureMaxCandidates": 5,
+```
+
+提示：对 `Xenova/nomic-embed-text-v1`，启用 `embeddingUseTaskPrefixes: true`（并可视情况降低召回 `similarityThreshold`）通常能改善较长记忆的匹配质量。前缀默认仍为可选。
+
+### Dreaming（可选记忆整合）
+
+可选后台流程，通过 `dreaming.relatedThreshold`（默认 `0.75`，独立于 `deduplicationSimilarityThreshold`）查找**相关**记忆，并由配置的 `opencodeProvider` / `opencodeModel` 执行 `merge` / `update` / `supersede` / `keep` / `flag`（矛盾标记），将过时条目软删除到可恢复回收站。已固定记忆不会被改动。设置 `dreaming.crossProject: true`（或 `memory.defaultScope: "all-projects"`）可跨项目标签分组；用户范围保持分离。在 `opencode-mem.jsonc` 的 `dreaming` 下配置（`enabled` 默认 `false`）。Web UI 提供 **Trash** 与 **Dream**。软删除行在常规清理时于 `dreaming.trashRetentionDays` 后硬清除。
+
 ### 选择 / 配置嵌入模型
 
 嵌入为记忆与用户画像提供相似性搜索能力。在同一文件中配置（`~/.config/opencode/opencode-mem.jsonc`）。**没有 MLX 后端** — 本地嵌入使用带 ONNX 的 `@huggingface/transformers`，而非 Apple MLX。

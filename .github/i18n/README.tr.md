@@ -278,6 +278,39 @@ Oturum ve yaşa göre hariç tutma kuralları, enjekte edilen bellek sayısı s�
 doldurmaz. `chatMessage.maxMemories` değerini `0` yapmak proje belleği enjeksiyonunu
 devre dışı bırakır; kullanıcı profili etkinleştirilmişse yine de enjekte edilebilir.
 
+### Update-on-capture (isteğe bağlı)
+
+Gerçekler değiştikçe bellekleri güncel tutmak için isteğe bağlı yol.
+`updateOnCaptureEnabled: true` iken otomatik yakalama yeni özeti gömer,
+`updateOnCaptureSimilarityThreshold` (varsayılan `0.75`) üzerindeki benzer
+bellekleri arar ve yakalama modelinin `add`, `update` (yerinde yeniden yazma)
+veya `supersede` (yeniyi kaydet + eskisini çöp kutusuna soft-delete) seçmesini
+sağlar. Sabitlenmiş (pinned) bellekler atlanır. Varsayılan kapalıdır; mevcut
+kurulumlar add-only kalır.
+
+```jsonc
+"updateOnCaptureEnabled": true,
+"updateOnCaptureSimilarityThreshold": 0.75,
+"updateOnCaptureMaxCandidates": 5,
+```
+
+İpucu: `Xenova/nomic-embed-text-v1` için `embeddingUseTaskPrefixes: true`
+(ve isteğe bağlı olarak daha düşük recall `similarityThreshold`) uzun belleklerde
+eşleşme kalitesini çoğu zaman iyileştirir. Önekler varsayılan olarak opt-in kalır.
+
+### Dreaming (isteğe bağlı bellek birleştirme)
+
+`dreaming.relatedThreshold` (varsayılan `0.75`, `deduplicationSimilarityThreshold`
+ile bağımsız) ile **ilgili** bellekleri bulan isteğe bağlı arka plan geçişi;
+yapılandırılmış `opencodeProvider` / `opencodeModel` ile `merge` / `update` /
+`supersede` / `keep` / `flag` (çelişkiler) uygular ve geçersiz kılınan satırları
+geri yüklenebilir çöp kutusuna soft-delete eder. Sabitlenmiş bellekler dokunulmaz.
+`dreaming.crossProject: true` (veya `memory.defaultScope: "all-projects"`) ile
+proje etiketleri arasında gruplanır; kullanıcı kapsamı ayrı kalır.
+`opencode-mem.jsonc` içinde `dreaming` altında yapılandırın (`enabled` varsayılan
+`false`). Web arayüzü **Trash** ve **Dream** sunar. Soft-silinen satırlar
+`dreaming.trashRetentionDays` sonra temizlikte kalıcı silinir.
+
 ### Embedding seçimi / yapılandırması
 
 Embedding’ler bellekler ve kullanıcı profili için benzerlik aramasını güçlendirir. Bunları aynı dosyada yapılandırın (`~/.config/opencode/opencode-mem.jsonc`). **MLX backend yoktur** — yerel embedding’ler Apple MLX değil, ONNX ile `@huggingface/transformers` kullanır.

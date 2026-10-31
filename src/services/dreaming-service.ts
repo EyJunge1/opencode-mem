@@ -388,16 +388,16 @@ export class DreamingService {
           const metaKey = decision.action === "supersede" ? "supersededBy" : "mergedInto";
           // Always preserve the keep row's own container_tag (critical for
           // cross-project groups where keepId may not be the representative).
-          const applied = await this.applyDreamingAction(
+          const outcome = await this.applyDreamingAction(
             keepId,
             decision.content.trim(),
             finalDrop,
             metaKey,
             decision.action
           );
-          if (applied) {
+          if (outcome.applied) {
             result.groupsMerged++;
-            result.memoriesSoftDeleted += finalDrop.length;
+            result.memoriesSoftDeleted += outcome.softDeleted;
           } else {
             result.groupsSkipped++;
           }
@@ -446,7 +446,7 @@ export class DreamingService {
     dropIds: string[],
     dropMetaKey: "mergedInto" | "supersededBy",
     action: "merge" | "update" | "supersede"
-  ): Promise<boolean> {
+  ): Promise<{ applied: boolean; softDeleted: number }> {
     const shards = [
       ...(await tursoShardManager.getAllShards("user", "")),
       ...(await tursoShardManager.getAllShards("project", "")),
@@ -463,8 +463,32 @@ export class DreamingService {
         break;
       }
     }
-    if (!keepShard || !keepRow) return false;
-    if (Number(keepRow.is_pinned ?? 0) === 1) return false;
+    if (!keepShard || !keepRow) return { applied: false, softDeleted: 0 };
+    if (Number(keepRow.is_pinned ?? 0) === 1) return { applied: false, softDeleted: 0 };
+
+    // Soft-delete drops first so we never rewrite keep if nothing can be retired.
+    let softDeleted = 0;
+    for (const dropId of dropIds) {
+      for (const shard of shards) {
+        const dropDb = await tursoConnectionManager.getConnection(shard.dbPath);
+        const dropRow = await tursoVectorSearch.getMemoryById(dropDb, dropId);
+        if (!dropRow) continue;
+        if (Number(dropRow.is_pinned ?? 0) === 1) continue;
+        const ok = await tursoVectorSearch.softDeleteVector(dropDb, dropId, {
+          [dropMetaKey]: keepId,
+        });
+        if (ok) softDeleted++;
+        break;
+      }
+    }
+    if (softDeleted === 0) {
+      log("dreaming: skipped keep rewrite (no drops soft-deleted)", {
+        keepId,
+        dropIds,
+        action,
+      });
+      return { applied: false, softDeleted: 0 };
+    }
 
     await embeddingService.warmup();
     const vector = await embeddingService.embedWithTimeout(content, { task: "document" });
@@ -532,18 +556,7 @@ export class DreamingService {
       });
     });
 
-    for (const dropId of dropIds) {
-      for (const shard of shards) {
-        const dropDb = await tursoConnectionManager.getConnection(shard.dbPath);
-        const dropRow = await tursoVectorSearch.getMemoryById(dropDb, dropId);
-        if (!dropRow) continue;
-        if (Number(dropRow.is_pinned ?? 0) === 1) continue;
-        await tursoVectorSearch.softDeleteVector(dropDb, dropId, { [dropMetaKey]: keepId });
-        break;
-      }
-    }
-
-    return true;
+    return { applied: true, softDeleted };
   }
 }
 

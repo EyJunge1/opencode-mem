@@ -276,6 +276,38 @@ memory({ mode: "import", inputPath: "./memories.json" });
 `chatMessage.maxMemories` على `0` إلى تعطيل حقن ذكريات المشروع، مع استمرار إمكانية
 حقن ملف المستخدم عند تفعيله.
 
+### Update-on-capture (اختياري)
+
+مسار اختياري لإبقاء الذكريات حديثة عند تغيّر الحقائق. عند
+`updateOnCaptureEnabled: true` يضمّن الالتقاط التلقائي الملخص الجديد، ويبحث عن
+ذكريات مشابهة فوق `updateOnCaptureSimilarityThreshold` (الافتراضي `0.75`)، ويترك
+لنموذج الالتقاط الاختيار بين `add` أو `update` (إعادة كتابة في المكان) أو
+`supersede` (حفظ الجديد وحذف القديم soft-delete إلى سلة المهملات). تُتخطى الذكريات
+المثبّتة. الافتراضي معطّل ليبقى السلوك السابق add-only.
+
+```jsonc
+"updateOnCaptureEnabled": true,
+"updateOnCaptureSimilarityThreshold": 0.75,
+"updateOnCaptureMaxCandidates": 5,
+```
+
+ملاحظة: مع `Xenova/nomic-embed-text-v1` غالبًا ما يحسّن
+`embeddingUseTaskPrefixes: true` (وخفض `similarityThreshold` للاستدعاء عند الحاجة)
+جودة المطابقة للذكريات الأطول. تبقى البادئات opt-in افتراضيًا.
+
+### Dreaming (توحيد ذاكرة اختياري)
+
+تمريرة خلفية اختيارية تجد الذكريات **ذات الصلة** عبر
+`dreaming.relatedThreshold` (الافتراضي `0.75`، مستقل عن
+`deduplicationSimilarityThreshold`)، وتطلب من `opencodeProvider` /
+`opencodeModel` تنفيذ `merge` / `update` / `supersede` / `keep` / `flag`
+(تناقضات)، وتحذف الصفوف المستبدلة soft-delete إلى سلة قابلة للاستعادة. الذكريات
+المثبّتة لا تُمس. مع `dreaming.crossProject: true` (أو
+`memory.defaultScope: "all-projects"`) تُجمَّع عبر وسوم المشاريع؛ نطاق المستخدم
+يبقى منفصلًا. الإعداد تحت `dreaming` في `opencode-mem.jsonc` (`enabled` افتراضي
+`false`). واجهة الويب تعرض **Trash** و**Dream**. تُحذف الصفوف soft-deleted نهائيًا
+بعد `dreaming.trashRetentionDays` أثناء التنظيف.
+
 ### اختيار / إعداد التضمينات
 
 تشغّل التضمينات البحث بالتشابه للذكريات وملف المستخدم. أعدها في نفس الملف (`~/.config/opencode/opencode-mem.jsonc`). **لا توجد خلفية MLX** — التضمينات المحلية تستخدم `@huggingface/transformers` مع ONNX، وليس Apple MLX.

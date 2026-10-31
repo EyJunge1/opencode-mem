@@ -277,6 +277,40 @@ in die voor geschikte herinneringen beschikbaar zijn. Met `chatMessage.maxMemori
 op `0` wordt het injecteren van projectherinneringen uitgeschakeld; het
 gebruikersprofiel kan nog steeds worden geïnjecteerd als dit is ingeschakeld.
 
+### Update-on-capture (optioneel)
+
+Optioneel pad om herinneringen actueel te houden wanneer feiten veranderen. Met
+`updateOnCaptureEnabled: true` embedt auto-capture de nieuwe samenvatting, zoekt
+vergelijkbare herinneringen boven `updateOnCaptureSimilarityThreshold` (standaard
+`0.75`) en laat het capture-model kiezen tussen `add`, `update` (in-place
+herschrijven) of `supersede` (nieuw opslaan + oud soft-deleten naar de prullenbak).
+Vastgezette (pinned) herinneringen worden overgeslagen. Standaard uit, zodat
+bestaande installaties add-only blijven.
+
+```jsonc
+"updateOnCaptureEnabled": true,
+"updateOnCaptureSimilarityThreshold": 0.75,
+"updateOnCaptureMaxCandidates": 5,
+```
+
+Tip: bij `Xenova/nomic-embed-text-v1` verbetert `embeddingUseTaskPrefixes: true`
+(en eventueel een lagere recall-`similarityThreshold`) vaak de matchkwaliteit voor
+langere herinneringen. Prefixes blijven standaard opt-in.
+
+### Dreaming (optionele geheugenconsolidatie)
+
+Optionele achtergrondpass die **gerelateerde** herinneringen vindt via
+`dreaming.relatedThreshold` (standaard `0.75`, onafhankelijk van
+`deduplicationSimilarityThreshold`), ze via `opencodeProvider` / `opencodeModel`
+met `merge` / `update` / `supersede` / `keep` / `flag` (tegenstrijdigheden)
+consolideert, en vervangen rijen soft-deletet naar herstelbare prullenbak.
+Vastgezette herinneringen blijven onaangeroerd. Met `dreaming.crossProject: true`
+(of `memory.defaultScope: "all-projects"`) groepeert dreaming over projecttags;
+user-scope blijft gescheiden. Configureer onder `dreaming` in
+`opencode-mem.jsonc` (`enabled` standaard `false`). De web-UI toont **Trash** en
+**Dream**. Soft-verwijderde rijen worden na `dreaming.trashRetentionDays` hard
+opgeschoond.
+
 ### Embeddings kiezen / configureren
 
 Embeddings voeden similarity search voor herinneringen en het gebruikersprofiel. Configureer ze in hetzelfde bestand (`~/.config/opencode/opencode-mem.jsonc`). Er is **geen MLX-backend** — lokale embeddings gebruiken `@huggingface/transformers` met ONNX, niet Apple MLX.
